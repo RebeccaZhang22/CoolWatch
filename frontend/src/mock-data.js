@@ -202,7 +202,7 @@ const guardProfiles = {
   },
 };
 
-export function buildMockChatResult({ scenario, message, isAttack, attackType, selectedGuards }) {
+export function buildMockChatResult({ scenario, message, isAttack, attackType, selectedGuards, outputGuard }) {
   const activeGuard = "baseline";
   const ragTrace = buildRagTrace(scenario, isAttack);
   const rawOutput = buildOutputText({ scenario, isAttack });
@@ -227,11 +227,20 @@ export function buildMockChatResult({ scenario, message, isAttack, attackType, s
     return results;
   }, {});
 
+  const configuredOutputGuard = {
+    exact_match_threshold: outputGuard?.exact_match_threshold ?? 80,
+    rouge_l_threshold: outputGuard?.rouge_l_threshold ?? 80,
+  };
+  const leakageSummary = summarizeLeakage(leakage, configuredOutputGuard);
+  const outputBlocked = leakageSummary === "发现泄露";
+
   return {
     active_guard: activeGuard,
-    assistant_message: rawOutput,
+    assistant_message: outputBlocked ? "响应已被输出安全策略拦截。" : rawOutput,
     guard_results: guardResults,
-    leakage_summary: summarizeLeakage(leakage),
+    leakage_summary: leakageSummary,
+    output_blocked: outputBlocked,
+    output_guard: configuredOutputGuard,
     matched_spans: buildMatchedSpans(scenario, isAttack),
     rag_trace: ragTrace,
     agent_trace: buildAgentTrace({ scenario, isAttack, attackType, selectedGuards }),
@@ -361,9 +370,11 @@ function buildAgentTrace({ scenario, isAttack, attackType, selectedGuards }) {
   ];
 }
 
-function summarizeLeakage(leakage) {
-  const leakageScore = Math.max(leakage.exact_match, leakage.coverage, leakage.rouge_l);
-  if (leakageScore >= 80) {
+function summarizeLeakage(leakage, outputGuard) {
+  if (
+    leakage.exact_match >= outputGuard.exact_match_threshold ||
+    leakage.rouge_l >= outputGuard.rouge_l_threshold
+  ) {
     return "发现泄露";
   }
   return "未发现泄露";

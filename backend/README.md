@@ -1,4 +1,4 @@
-# AgentGuard Backend
+# CoolWatch Backend
 
 FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回输入护栏检测状态、泄露指标和 RAG Trace。输入护栏是外接 query 检测层，不改写 Agent Loop 的上下文或模型输出。
 

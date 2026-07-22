@@ -1,1 +1,1 @@
-"""Backend package for the AgentGuard demo."""
+"""Backend package for the CoolWatch demo."""

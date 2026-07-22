@@ -1,4 +1,4 @@
-import { buildMockChatResult, getFallbackAttackExamples } from "./mock-data.js?v=streaming-chat-20260720";
+import { buildMockChatResult, getFallbackAttackExamples } from "./mock-data.js?v=output-guard-config-20260722";
 
 export function createAgentApiClient({
   apiBase = window.AGENT_GUARD_API_BASE ?? defaultApiBase(),
@@ -33,6 +33,7 @@ export function createAgentApiClient({
           isAttack: payload.is_attack,
           attackType: payload.attack_type,
           selectedGuards: payload.selected_guards,
+          outputGuard: payload.output_guard,
         });
       }
 
@@ -106,6 +107,7 @@ async function streamMockChatResult({ scenario, payload, onStatus, onDelta }) {
     isAttack: payload.is_attack,
     attackType: payload.attack_type,
     selectedGuards: payload.selected_guards,
+    outputGuard: payload.output_guard,
   });
 
   const chunks = splitTextForMockStream(result.assistant_message);

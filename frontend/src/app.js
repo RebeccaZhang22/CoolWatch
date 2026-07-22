@@ -1,10 +1,10 @@
-import { createAgentApiClient } from "./api.js?v=same-origin-api-20260722";
+import { createAgentApiClient } from "./api.js?v=output-guard-config-20260722";
 import {
   getFallbackAttackExamples,
   guards,
   scenarioCategories,
   scenarios,
-} from "./mock-data.js?v=streaming-chat-20260720";
+} from "./mock-data.js?v=output-guard-config-20260722";
 
 const QWEN_LABEL_NAMES = {
   Violent: "暴力",
@@ -36,7 +36,15 @@ const defaultSystemPrompts = new Map(scenarios.map((scenario) => [scenario.id, s
 const elements = {
   appShell: document.querySelector("#appShell"),
   scenarioCategoryTabs: document.querySelector("#scenarioCategoryTabs"),
-  scenarioSelect: document.querySelector("#scenarioSelect"),
+  scenarioPickerShell: document.querySelector("#scenarioPickerShell"),
+  scenarioPickerTrigger: document.querySelector("#scenarioPickerTrigger"),
+  scenarioPickerValue: document.querySelector("#scenarioPickerValue"),
+  scenarioPickerMenu: document.querySelector("#scenarioPickerMenu"),
+  scenarioOptionList: document.querySelector("#scenarioOptionList"),
+  editPromptButton: document.querySelector("#editPromptButton"),
+  editAgentConfigButton: document.querySelector("#editAgentConfigButton"),
+  agentConfigModel: document.querySelector("#agentConfigModel"),
+  agentConfigParams: document.querySelector("#agentConfigParams"),
   guardList: document.querySelector("#guardList"),
   securityFlow: document.querySelector("#securityFlow"),
   flowModeBadge: document.querySelector("#flowModeBadge"),
@@ -48,6 +56,19 @@ const elements = {
   restorePromptButton: document.querySelector("#restorePromptButton"),
   cancelPromptButton: document.querySelector("#cancelPromptButton"),
   savePromptButton: document.querySelector("#savePromptButton"),
+  agentModalBackdrop: document.querySelector("#agentModalBackdrop"),
+  agentModalTitle: document.querySelector("#agentModalTitle"),
+  closeAgentModalButton: document.querySelector("#closeAgentModalButton"),
+  cancelAgentModalButton: document.querySelector("#cancelAgentModalButton"),
+  saveAgentConfigButton: document.querySelector("#saveAgentConfigButton"),
+  outputConfigModalBackdrop: document.querySelector("#outputConfigModalBackdrop"),
+  closeOutputConfigModalButton: document.querySelector("#closeOutputConfigModalButton"),
+  cancelOutputConfigButton: document.querySelector("#cancelOutputConfigButton"),
+  saveOutputConfigButton: document.querySelector("#saveOutputConfigButton"),
+  exactMatchThresholdInput: document.querySelector("#exactMatchThresholdInput"),
+  exactMatchThresholdValue: document.querySelector("#exactMatchThresholdValue"),
+  rougeLThresholdInput: document.querySelector("#rougeLThresholdInput"),
+  rougeLThresholdValue: document.querySelector("#rougeLThresholdValue"),
   messageList: document.querySelector("#messageList"),
   chatForm: document.querySelector("#chatForm"),
   messageInput: document.querySelector("#messageInput"),
@@ -91,9 +112,14 @@ const state = {
   scenarioCategory: scenarios[0].category,
   selectedGuards: [],
   modelParams: readModelParamsFromInputs(),
+  outputDetectionConfig: {
+    exact_match_threshold: 80,
+    rouge_l_threshold: 80,
+  },
   attackExamples: selectBestAttackByCategory(getFallbackAttackExamples()),
   selectedAttackId: "",
   attackPickerOpen: false,
+  scenarioPickerOpen: false,
   attackPickerTab: "",
   messages: [],
   isBusy: false,
@@ -103,6 +129,10 @@ const state = {
   rawOutputModalTrigger: null,
   promptModalOpen: false,
   promptModalTrigger: null,
+  agentModalOpen: false,
+  agentModalTrigger: null,
+  outputConfigModalOpen: false,
+  outputConfigModalTrigger: null,
   activeGuardDetailId: null,
   detailTruthVisible: false,
   sidebarCollapsed: false,
@@ -118,6 +148,8 @@ function init() {
   setSidebarCollapsed(false);
   renderGuardList();
   renderModelParams();
+  renderAgentConfigSummary();
+  renderOutputDetectionConfig();
   bindEvents();
   applyScenario(scenarios[0].id, { resetMessages: true });
   loadAttackExamples();
@@ -139,9 +171,14 @@ function bindEvents() {
   });
   elements.sidebarCollapseButton.addEventListener("click", () => setSidebarCollapsed(true));
   elements.sidebarOpenButton.addEventListener("click", () => setSidebarCollapsed(false));
-  elements.scenarioSelect.addEventListener("change", (event) => {
-    applyScenario(event.target.value, { resetMessages: true });
+  elements.scenarioPickerTrigger.addEventListener("click", () => {
+    setScenarioPickerOpen(!state.scenarioPickerOpen);
   });
+  elements.editPromptButton.addEventListener("click", () => {
+    setScenarioPickerOpen(false);
+    openPromptModal(elements.scenarioPickerTrigger);
+  });
+  elements.editAgentConfigButton.addEventListener("click", (event) => openAgentModal(event.currentTarget));
   elements.closePromptModalButton.addEventListener("click", () => closePromptModal());
   elements.cancelPromptButton.addEventListener("click", () => closePromptModal());
   elements.savePromptButton.addEventListener("click", savePromptConfiguration);
@@ -149,6 +186,25 @@ function bindEvents() {
   elements.promptModalBackdrop.addEventListener("click", (event) => {
     if (event.target === elements.promptModalBackdrop) {
       closePromptModal();
+    }
+  });
+  elements.closeAgentModalButton.addEventListener("click", () => closeAgentModal());
+  elements.cancelAgentModalButton.addEventListener("click", () => closeAgentModal());
+  elements.saveAgentConfigButton.addEventListener("click", saveAgentConfiguration);
+  elements.agentModalBackdrop.addEventListener("click", (event) => {
+    if (event.target === elements.agentModalBackdrop) {
+      closeAgentModal();
+    }
+  });
+  [elements.exactMatchThresholdInput, elements.rougeLThresholdInput].forEach((input) => {
+    input.addEventListener("input", renderOutputDetectionDraft);
+  });
+  elements.closeOutputConfigModalButton.addEventListener("click", () => closeOutputConfigModal());
+  elements.cancelOutputConfigButton.addEventListener("click", () => closeOutputConfigModal());
+  elements.saveOutputConfigButton.addEventListener("click", saveOutputDetectionConfig);
+  elements.outputConfigModalBackdrop.addEventListener("click", (event) => {
+    if (event.target === elements.outputConfigModalBackdrop) {
+      closeOutputConfigModal();
     }
   });
   elements.closeDrawerButton.addEventListener("click", closeDrawer);
@@ -171,6 +227,11 @@ function bindEvents() {
     elements.messageInput.focus();
   });
   document.addEventListener("click", (event) => {
+    if (state.scenarioPickerOpen && !event.composedPath().includes(elements.scenarioPickerShell)) {
+      setScenarioPickerOpen(false);
+    }
+  });
+  document.addEventListener("click", (event) => {
     if (!state.attackPickerOpen || event.composedPath().includes(elements.attackBar)) {
       return;
     }
@@ -183,6 +244,19 @@ function bindEvents() {
     }
     if (event.key === "Escape" && state.promptModalOpen) {
       closePromptModal();
+      return;
+    }
+    if (event.key === "Escape" && state.agentModalOpen) {
+      closeAgentModal();
+      return;
+    }
+    if (event.key === "Escape" && state.outputConfigModalOpen) {
+      closeOutputConfigModal();
+      return;
+    }
+    if (event.key === "Escape" && state.scenarioPickerOpen) {
+      setScenarioPickerOpen(false);
+      elements.scenarioPickerTrigger.focus();
       return;
     }
     if (event.key === "Escape" && state.attackPickerOpen) {
@@ -258,6 +332,27 @@ function renderModelDraftParams() {
   renderRangeProgress(elements.topPInput);
 }
 
+function renderAgentConfigSummary() {
+  const params = state.modelParams;
+  elements.agentConfigModel.textContent = params.model;
+  elements.agentConfigParams.textContent = `Temperature ${params.temperature.toFixed(1)} · Top P ${params.top_p.toFixed(1)} · Max ${params.max_tokens}`;
+}
+
+function renderOutputDetectionConfig() {
+  elements.exactMatchThresholdInput.value = String(state.outputDetectionConfig.exact_match_threshold);
+  elements.rougeLThresholdInput.value = String(state.outputDetectionConfig.rouge_l_threshold);
+  renderOutputDetectionDraft();
+}
+
+function renderOutputDetectionDraft() {
+  const exactMatchThreshold = Math.round(readNumberInput(elements.exactMatchThresholdInput, 80));
+  const rougeLThreshold = Math.round(readNumberInput(elements.rougeLThresholdInput, 80));
+  elements.exactMatchThresholdValue.textContent = `${exactMatchThreshold}%`;
+  elements.rougeLThresholdValue.textContent = `${rougeLThreshold}%`;
+  renderRangeProgress(elements.exactMatchThresholdInput);
+  renderRangeProgress(elements.rougeLThresholdInput);
+}
+
 function renderRangeProgress(input) {
   const min = Number(input.min || 0);
   const max = Number(input.max || 100);
@@ -295,10 +390,38 @@ function renderScenarioCategories() {
 
 function renderScenarioSelect() {
   const scenarioOptions = getScenariosByCategory(state.scenarioCategory);
-  elements.scenarioSelect.innerHTML = scenarioOptions
-    .map((scenario) => `<option value="${scenario.id}">${escapeHtml(scenario.name)}</option>`)
+  const currentScenario = getCurrentScenario();
+  elements.scenarioPickerValue.textContent = currentScenario.name;
+  elements.scenarioOptionList.innerHTML = scenarioOptions
+    .map(
+      (scenario) => `
+        <button class="scenario-option ${scenario.id === state.scenarioId ? "active" : ""}"
+          data-scenario-id="${escapeHtml(scenario.id)}" type="button" role="option"
+          aria-selected="${scenario.id === state.scenarioId}">
+          <span>${escapeHtml(scenario.name)}</span>
+          <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="m3 8 3 3 7-7"></path></svg>
+        </button>
+      `,
+    )
     .join("");
-  elements.scenarioSelect.value = state.scenarioId;
+
+  elements.scenarioOptionList.querySelectorAll("[data-scenario-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      setScenarioPickerOpen(false);
+      if (button.dataset.scenarioId !== state.scenarioId) {
+        applyScenario(button.dataset.scenarioId, { resetMessages: true });
+      }
+      elements.scenarioPickerTrigger.focus();
+    });
+  });
+}
+
+function setScenarioPickerOpen(isOpen) {
+  state.scenarioPickerOpen = isOpen;
+  elements.scenarioPickerTrigger.classList.toggle("open", isOpen);
+  elements.scenarioPickerTrigger.setAttribute("aria-expanded", String(isOpen));
+  elements.scenarioPickerMenu.classList.toggle("open", isOpen);
+  elements.scenarioPickerMenu.setAttribute("aria-hidden", String(!isOpen));
 }
 
 function renderGuardList() {
@@ -429,14 +552,23 @@ function renderSecurityFlow() {
       methods: preMethods.map((guard) => renderPreGenerationMethod(guard)).join(""),
     })}
     ${renderFlowConnector(getFlowConnectorState("pre"))}
-    <button class="flow-agent-node ${getFlowStageState("generation")}" data-open-prompt type="button">
-      <span class="flow-node-icon" aria-hidden="true">A</span>
+    <div class="flow-agent-node ${getFlowStageState("generation")}">
+      <span class="flow-node-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" focusable="false">
+          <path d="M12 3v3"></path>
+          <circle cx="12" cy="2.5" r="1"></circle>
+          <rect x="5" y="6" width="14" height="12" rx="4"></rect>
+          <path d="M8.5 18v2.5M15.5 18v2.5M5 11H3M21 11h-2"></path>
+          <circle cx="9.5" cy="11.5" r="1"></circle>
+          <circle cx="14.5" cy="11.5" r="1"></circle>
+          <path d="M9 15h6"></path>
+        </svg>
+      </span>
       <span class="flow-node-copy">
         <span class="flow-node-eyebrow">Agent 生成</span>
         <strong>${escapeHtml(state.modelParams.model)}</strong>
       </span>
-      <span class="flow-node-action" aria-hidden="true">›</span>
-    </button>
+    </div>
     ${renderFlowConnector(getFlowConnectorState("generation"))}
     ${renderFlowStage({
       id: "post",
@@ -444,14 +576,16 @@ function renderSecurityFlow() {
       title: "输出泄露检测",
       stateClass: getFlowStageState("post"),
       methods: "",
+      configurable: true,
     })}
     ${renderFlowConnector(getFlowConnectorState("post"))}
     ${renderFlowEndpoint("response", "最终响应", "Response", phase === "complete" ? "complete" : phase === "error" ? "error" : "idle")}
   `;
 
-  elements.securityFlow.querySelector("[data-open-prompt]")?.addEventListener("click", (event) => {
-    openPromptModal(event.currentTarget);
+  elements.securityFlow.querySelector("[data-open-output-config]")?.addEventListener("click", (event) => {
+    openOutputConfigModal(event.currentTarget);
   });
+
 }
 
 function renderFlowEndpoint(id, title, meta, stateClass) {
@@ -464,7 +598,7 @@ function renderFlowEndpoint(id, title, meta, stateClass) {
   `;
 }
 
-function renderFlowStage({ id, eyebrow, title, stateClass, methods }) {
+function renderFlowStage({ id, eyebrow, title, stateClass, methods, configurable = false }) {
   return `
     <section class="flow-stage ${stateClass} ${methods ? "" : "compact"}" data-flow-stage="${id}">
       <header class="flow-stage-header">
@@ -473,7 +607,19 @@ function renderFlowStage({ id, eyebrow, title, stateClass, methods }) {
           <small>${escapeHtml(eyebrow)}</small>
           <strong>${escapeHtml(title)}</strong>
         </span>
-        <span class="flow-stage-status">${escapeHtml(getFlowStageStatusText(id))}</span>
+        <span class="flow-stage-tools">
+          <span class="flow-stage-status">${escapeHtml(getFlowStageStatusText(id))}</span>
+          ${
+            configurable
+              ? `<button class="flow-stage-config-button" data-open-output-config type="button" aria-label="配置输出泄露检测" title="配置输出泄露检测">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <circle cx="12" cy="12" r="3.2"></circle>
+                    <path d="M19.1 13.2c.1-.4.1-.8.1-1.2s0-.8-.1-1.2l2-1.5-2-3.4-2.5 1a8 8 0 0 0-2.1-1.2L14.2 3h-4.1l-.4 2.7a8 8 0 0 0-2.1 1.2l-2.5-1-2 3.4 2 1.5A6 6 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a8 8 0 0 0 2.1 1.2l.4 2.7h4.1l.4-2.7a8 8 0 0 0 2.1-1.2l2.5 1 2-3.4-2.1-1.5Z"></path>
+                  </svg>
+                </button>`
+              : ""
+          }
+        </span>
       </header>
       ${methods ? `<div class="flow-method-list">${methods}</div>` : ""}
     </section>
@@ -482,7 +628,7 @@ function renderFlowStage({ id, eyebrow, title, stateClass, methods }) {
 
 function renderPreGenerationMethod(guard) {
   const enabled = state.selectedGuards.includes(guard.id);
-  const result = state.flowResult?.guard_results?.[guard.id];
+  const result = getFlowGuardResult(guard.id);
   const methodState = getPreMethodState(enabled, result);
   return `
     <div class="flow-method ${enabled ? "enabled" : "disabled"}" title="${escapeHtml(guard.description)}">
@@ -491,6 +637,11 @@ function renderPreGenerationMethod(guard) {
       <small class="flow-method-runtime ${methodState}">${escapeHtml(getFlowMethodStatusText(methodState))}</small>
     </div>
   `;
+}
+
+function getFlowGuardResult(guardId) {
+  const guardResults = state.flowResult?.guard_results ?? {};
+  return guardResults[guardId] ?? Object.values(guardResults).find((result) => result?.guard_id === guardId);
 }
 
 function renderFlowHeaderStatus() {
@@ -524,7 +675,7 @@ function getFlowStageState(stage) {
     return "running";
   }
   if (stage === "pre" && state.flowResult && ["post", "complete"].includes(state.flowPhase)) {
-    const selectedResults = state.selectedGuards.map((guardId) => state.flowResult.guard_results?.[guardId]).filter(Boolean);
+    const selectedResults = state.selectedGuards.map((guardId) => getFlowGuardResult(guardId)).filter(Boolean);
     if (selectedResults.some((result) => !result.connected || result.status === "检测失败")) {
       return "error";
     }
@@ -609,7 +760,16 @@ function getPreMethodState(enabled, result) {
     }
     return "passed";
   }
-  return state.flowPhase === "pre" ? "running" : "idle";
+  if (state.flowPhase === "pre") {
+    return "running";
+  }
+  if (["generation", "post", "complete"].includes(state.flowPhase)) {
+    return "checked";
+  }
+  if (state.flowPhase === "error") {
+    return "error";
+  }
+  return "idle";
 }
 
 function getFlowMethodStatusText(methodState) {
@@ -617,6 +777,7 @@ function getFlowMethodStatusText(methodState) {
     disabled: "未启用",
     idle: "待运行",
     running: "检测中",
+    checked: "已检测",
     passed: "✓ 通过",
     risk: "! 有风险",
     error: "× 失败",
@@ -627,10 +788,9 @@ function openPromptModal(trigger) {
   const scenario = getCurrentScenario();
   state.promptModalOpen = true;
   state.promptModalTrigger = trigger;
-  elements.promptModalTitle.textContent = `${scenario.name} · Agent 配置`;
-  elements.promptScenarioName.textContent = scenario.target;
+  elements.promptModalTitle.textContent = `${scenario.name} · System Prompt`;
+  elements.promptScenarioName.textContent = scenario.name;
   elements.promptEditor.value = scenario.systemPrompt;
-  renderModelParams();
   elements.promptModalBackdrop.classList.add("open");
   elements.promptModalBackdrop.setAttribute("aria-hidden", "false");
   window.requestAnimationFrame(() => elements.promptEditor.focus());
@@ -645,17 +805,77 @@ function closePromptModal({ restoreFocus = true } = {}) {
   state.promptModalTrigger = null;
   elements.promptModalBackdrop.classList.remove("open");
   elements.promptModalBackdrop.setAttribute("aria-hidden", "true");
-  renderModelParams();
   if (restoreFocus && trigger?.isConnected) {
     trigger.focus();
   }
 }
 
 function savePromptConfiguration() {
-  state.modelParams = readModelParamsFromInputs();
   getCurrentScenario().systemPrompt = elements.promptEditor.value;
-  renderSecurityFlow();
   closePromptModal();
+}
+
+function openAgentModal(trigger) {
+  state.agentModalOpen = true;
+  state.agentModalTrigger = trigger;
+  renderModelParams();
+  elements.agentModalBackdrop.classList.add("open");
+  elements.agentModalBackdrop.setAttribute("aria-hidden", "false");
+  window.requestAnimationFrame(() => elements.modelSelect.focus());
+}
+
+function closeAgentModal({ restoreFocus = true } = {}) {
+  if (!state.agentModalOpen) {
+    return;
+  }
+  const trigger = state.agentModalTrigger;
+  state.agentModalOpen = false;
+  state.agentModalTrigger = null;
+  elements.agentModalBackdrop.classList.remove("open");
+  elements.agentModalBackdrop.setAttribute("aria-hidden", "true");
+  renderModelParams();
+  if (restoreFocus && trigger?.isConnected) {
+    trigger.focus();
+  }
+}
+
+function saveAgentConfiguration() {
+  state.modelParams = readModelParamsFromInputs();
+  renderAgentConfigSummary();
+  renderSecurityFlow();
+  closeAgentModal();
+}
+
+function openOutputConfigModal(trigger) {
+  state.outputConfigModalOpen = true;
+  state.outputConfigModalTrigger = trigger;
+  renderOutputDetectionConfig();
+  elements.outputConfigModalBackdrop.classList.add("open");
+  elements.outputConfigModalBackdrop.setAttribute("aria-hidden", "false");
+  window.requestAnimationFrame(() => elements.exactMatchThresholdInput.focus());
+}
+
+function closeOutputConfigModal({ restoreFocus = true } = {}) {
+  if (!state.outputConfigModalOpen) {
+    return;
+  }
+  const trigger = state.outputConfigModalTrigger;
+  state.outputConfigModalOpen = false;
+  state.outputConfigModalTrigger = null;
+  elements.outputConfigModalBackdrop.classList.remove("open");
+  elements.outputConfigModalBackdrop.setAttribute("aria-hidden", "true");
+  renderOutputDetectionConfig();
+  if (restoreFocus && trigger?.isConnected) {
+    trigger.focus();
+  }
+}
+
+function saveOutputDetectionConfig() {
+  state.outputDetectionConfig = {
+    exact_match_threshold: Math.round(readNumberInput(elements.exactMatchThresholdInput, 80)),
+    rouge_l_threshold: Math.round(readNumberInput(elements.rougeLThresholdInput, 80)),
+  };
+  closeOutputConfigModal();
 }
 
 function restoreDefaultPrompt() {
@@ -664,6 +884,7 @@ function restoreDefaultPrompt() {
 }
 
 function applyScenario(scenarioId, { resetMessages }) {
+  setScenarioPickerOpen(false);
   state.scenarioId = scenarioId;
   const scenario = getCurrentScenario();
   state.scenarioCategory = scenario.category;
@@ -1024,6 +1245,7 @@ async function sendChatRequest({ scenario, message, isAttack, attackType, onStat
     attack_type: attackType,
     selected_guards: getExecutedGuardIds(),
     model_params: modelParams,
+    output_guard: { ...state.outputDetectionConfig },
     scenario_id: scenario.id,
     scenario: {
       id: scenario.id,
@@ -1244,16 +1466,17 @@ function closeRawOutputModal() {
 
 function renderMetricGrid(result) {
   const metrics = getLeakageMetrics(result);
+  const outputGuard = result.output_guard ?? state.outputDetectionConfig;
   const metricItems = [
     {
       name: "Exact Match",
       value: `${metrics.exact_match}%`,
-      note: "敏感片段是否完整出现在输出中",
+      note: `阻断阈值 ${outputGuard.exact_match_threshold}%`,
     },
     {
       name: "ROUGE-L",
       value: `${metrics.rouge_l}%`,
-      note: "基于最长公共子序列的文本相似度",
+      note: `阻断阈值 ${outputGuard.rouge_l_threshold}%`,
     },
     {
       name: "字符覆盖率",
@@ -1480,7 +1703,8 @@ function formatLatency(value) {
 }
 
 function getAssistantOutput(message) {
-  return message.result?.assistant_message ?? message.content ?? "";
+  const guardResult = Object.values(message.result?.guard_results ?? {})[0];
+  return guardResult?.raw_output ?? message.result?.assistant_message ?? message.content ?? "";
 }
 
 function getReferenceText(scenario, result) {

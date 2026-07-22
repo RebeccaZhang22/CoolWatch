@@ -7,7 +7,7 @@ from backend.evaluator import evaluate_leakage
 from backend.guards import GUARD_NAMES, detect_attack_intent, evaluate_input_guard
 from backend.netease_yidun_client import NeteaseYidunAssessment, SUGGESTION_TEXT, NeteaseYidunClient
 from backend.qwen_guard_client import Qwen3GuardClient, QwenGuardAssessment
-from backend.schemas import AgentTraceItem, ChatRequest, ChatResponse, GuardResult, LeakageMetrics, MatchedSpan
+from backend.schemas import AgentTraceItem, ChatRequest, ChatResponse, GuardResult, LeakageMetrics, MatchedSpan, OutputGuardConfig
 
 
 class ChatOrchestrator:
@@ -30,12 +30,16 @@ class ChatOrchestrator:
             return build_error_response(request, error)
 
         guard_results, matched_spans = run_external_guard_evaluation(request, agent_result, input_guard_assessments)
+        leakage_summary = summarize_leakage(guard_results, request.output_guard)
+        output_blocked = leakage_summary == "发现泄露"
 
         return ChatResponse(
             active_guard="baseline",
-            assistant_message=agent_result.raw_output,
+            assistant_message=build_assistant_message(agent_result.raw_output, output_blocked),
             guard_results=guard_results,
-            leakage_summary=summarize_leakage(guard_results),
+            leakage_summary=leakage_summary,
+            output_blocked=output_blocked,
+            output_guard=request.output_guard,
             matched_spans=dedupe_matched_spans(matched_spans),
             rag_trace=agent_result.rag_trace,
             agent_trace=agent_result.agent_trace,
@@ -49,7 +53,7 @@ class ChatOrchestrator:
         try:
             async for event_type, payload in self.agent_loop.stream(request):
                 if event_type == "delta" and isinstance(payload, str):
-                    yield sse_event("delta", {"content": payload})
+                    # Output is buffered until the post-generation guard decides whether it may be returned.
                     continue
 
                 if event_type == "final" and isinstance(payload, AgentRunResult):
@@ -76,11 +80,15 @@ def build_chat_response(
     input_guard_assessments: dict[str, object],
 ) -> ChatResponse:
     guard_results, matched_spans = run_external_guard_evaluation(request, agent_result, input_guard_assessments)
+    leakage_summary = summarize_leakage(guard_results, request.output_guard)
+    output_blocked = leakage_summary == "发现泄露"
     return ChatResponse(
         active_guard="baseline",
-        assistant_message=agent_result.raw_output,
+        assistant_message=build_assistant_message(agent_result.raw_output, output_blocked),
         guard_results=guard_results,
-        leakage_summary=summarize_leakage(guard_results),
+        leakage_summary=leakage_summary,
+        output_blocked=output_blocked,
+        output_guard=request.output_guard,
         matched_spans=dedupe_matched_spans(matched_spans),
         rag_trace=agent_result.rag_trace,
         agent_trace=agent_result.agent_trace,
@@ -264,6 +272,8 @@ def build_error_response(request: ChatRequest, error: Exception) -> ChatResponse
             )
         },
         leakage_summary="模型服务异常",
+        output_blocked=False,
+        output_guard=request.output_guard,
         matched_spans=[],
         rag_trace=[],
         agent_trace=trace,
@@ -277,16 +287,24 @@ def find_agent_latency(trace: list[AgentTraceItem]) -> int:
     return 0
 
 
-def summarize_leakage(guard_results: dict[str, GuardResult]) -> str:
+def summarize_leakage(guard_results: dict[str, GuardResult], output_guard: OutputGuardConfig) -> str:
     values = list(guard_results.values())
     if not values:
         return "未发现泄露"
 
     leakage = values[0].leakage
-    leakage_score = max(leakage.exact_match, leakage.coverage, leakage.rouge_l)
-    if leakage_score >= 80:
+    if (
+        leakage.exact_match >= output_guard.exact_match_threshold
+        or leakage.rouge_l >= output_guard.rouge_l_threshold
+    ):
         return "发现泄露"
     return "未发现泄露"
+
+
+def build_assistant_message(raw_output: str, output_blocked: bool) -> str:
+    if output_blocked:
+        return "响应已被输出安全策略拦截。"
+    return raw_output
 
 
 def dedupe_matched_spans(spans: list[MatchedSpan]) -> list[MatchedSpan]:

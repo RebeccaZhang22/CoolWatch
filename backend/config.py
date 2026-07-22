@@ -10,7 +10,7 @@ BACKEND_ENV_FILE = Path(__file__).resolve().with_name(".env")
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BACKEND_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = "AgentGuard"
+    app_name: str = "CoolWatch"
     vllm_base_url: str = Field(default="http://127.0.0.1:8767/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
     vllm_model: str = Field(default="qwen3.5-27b", alias="VLLM_MODEL")

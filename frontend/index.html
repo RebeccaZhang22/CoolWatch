@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AgentGuard 攻防演示台</title>
-    <link rel="stylesheet" href="./src/styles.css?v=compact-guard-row-20260722" />
+    <title>CoolWatch 攻防演示台</title>
+    <link rel="stylesheet" href="./src/styles.css?v=output-guard-config-20260722" />
   </head>
   <body>
     <div class="app-shell" id="appShell">
@@ -15,7 +15,7 @@
               <span></span>
             </div>
             <div>
-              <div class="brand-title">AgentGuard</div>
+              <div class="brand-title">CoolWatch</div>
               <div class="brand-subtitle">LLM 安全攻防演示台</div>
             </div>
           </div>
@@ -38,17 +38,61 @@
         </div>
 
         <section class="panel scenario-panel">
-          <div class="panel-header">
-            <h2>演示场景</h2>
-          </div>
           <div class="scenario-config">
             <div class="scenario-group">
               <span class="scenario-label">防护对象</span>
               <div class="scenario-type-tabs" id="scenarioCategoryTabs" aria-label="防护对象"></div>
             </div>
-            <div class="field compact-field">
+            <div class="field compact-field scenario-select-field">
               <span>具体场景</span>
-              <select id="scenarioSelect"></select>
+              <div class="scenario-picker-shell" id="scenarioPickerShell">
+                <button class="scenario-picker-trigger" id="scenarioPickerTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span id="scenarioPickerValue">选择场景</span>
+                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <path d="m4 6 4 4 4-4"></path>
+                  </svg>
+                </button>
+                <div class="scenario-picker-menu" id="scenarioPickerMenu" aria-hidden="true">
+                  <div class="scenario-option-list" id="scenarioOptionList" role="listbox" aria-label="具体场景"></div>
+                  <div class="scenario-picker-divider"></div>
+                  <button class="scenario-prompt-menu-button" id="editPromptButton" type="button">
+                    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                      <path d="M3 11.8V14h2.2L12.8 6.4 9.6 3.2 2 10.8Z"></path>
+                      <path d="m8.8 4 3.2 3.2M10.4 2.4l.8-.8a1.1 1.1 0 0 1 1.6 0l1.6 1.6a1.1 1.1 0 0 1 0 1.6l-.8.8"></path>
+                    </svg>
+                    <span>编辑当前场景 System Prompt</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel agent-settings-panel">
+          <div class="panel-header">
+            <h2>Agent 配置</h2>
+            <button class="panel-config-button agent-config-button" id="editAgentConfigButton" type="button" aria-label="打开 Agent 配置" title="Agent 配置">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <circle cx="12" cy="12" r="3.2"></circle>
+                <path d="M19.1 13.2c.1-.4.1-.8.1-1.2s0-.8-.1-1.2l2-1.5-2-3.4-2.5 1a8 8 0 0 0-2.1-1.2L14.2 3h-4.1l-.4 2.7a8 8 0 0 0-2.1 1.2l-2.5-1-2 3.4 2 1.5A6 6 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a8 8 0 0 0 2.1 1.2l.4 2.7h4.1l.4-2.7a8 8 0 0 0 2.1-1.2l2.5 1 2-3.4-2.1-1.5Z"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="agent-settings-summary">
+            <span class="agent-settings-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" focusable="false">
+                <path d="M12 3v3"></path>
+                <circle cx="12" cy="2.5" r="1"></circle>
+                <rect x="5" y="6" width="14" height="12" rx="4"></rect>
+                <path d="M8.5 18v2.5M15.5 18v2.5M5 11H3M21 11h-2"></path>
+                <circle cx="9.5" cy="11.5" r="1"></circle>
+                <circle cx="14.5" cy="11.5" r="1"></circle>
+                <path d="M9 15h6"></path>
+              </svg>
+            </span>
+            <div>
+              <strong id="agentConfigModel">qwen3.5-27b</strong>
+              <span id="agentConfigParams">Temperature 0.2 · Top P 0.8 · Max 2048</span>
             </div>
           </div>
         </section>
@@ -165,19 +209,53 @@
       </aside>
 
       <div class="prompt-modal-backdrop" id="promptModalBackdrop" aria-hidden="true">
-        <section class="prompt-modal" role="dialog" aria-modal="true" aria-labelledby="promptModalTitle">
+        <section class="prompt-modal prompt-only-modal" role="dialog" aria-modal="true" aria-labelledby="promptModalTitle">
           <header class="prompt-modal-header">
             <div>
-              <p class="eyebrow">Agent 配置</p>
-              <h2 id="promptModalTitle">Agent 配置</h2>
+              <p class="eyebrow">场景配置</p>
+              <h2 id="promptModalTitle">System Prompt</h2>
             </div>
-            <button class="icon-button" id="closePromptModalButton" type="button" aria-label="关闭 Agent 配置">×</button>
+            <button class="icon-button" id="closePromptModalButton" type="button" aria-label="关闭 System Prompt 配置">×</button>
           </header>
-          <div class="prompt-modal-body">
+          <div class="prompt-modal-body prompt-only-body">
             <div class="prompt-config-summary">
               <span id="promptScenarioName">当前场景</span>
-              <span>Prompt 与模型参数将在保存后同时生效</span>
+              <span>保存后应用于当前场景</span>
             </div>
+            <section class="agent-config-section prompt-config-section">
+              <div class="agent-config-section-header">
+                <div>
+                  <h3>System Prompt</h3>
+                  <p>定义当前场景的身份、业务规则与敏感内容</p>
+                </div>
+                <button class="button prompt-restore-button" id="restorePromptButton" type="button">恢复默认</button>
+              </div>
+              <label class="field prompt-modal-field">
+                <span class="sr-only">System Prompt</span>
+                <textarea id="promptEditor" rows="14" spellcheck="false"></textarea>
+              </label>
+            </section>
+          </div>
+          <footer class="prompt-modal-footer">
+            <span>仅应用于当前页面会话</span>
+            <div class="prompt-modal-actions">
+              <button class="button button-ghost" id="cancelPromptButton" type="button">取消</button>
+              <button class="button button-primary prompt-save-button" id="savePromptButton" type="button">保存 Prompt</button>
+            </div>
+          </footer>
+        </section>
+      </div>
+
+      <div class="prompt-modal-backdrop agent-modal-backdrop" id="agentModalBackdrop" aria-hidden="true">
+        <section class="prompt-modal agent-modal" role="dialog" aria-modal="true" aria-labelledby="agentModalTitle">
+          <header class="prompt-modal-header">
+            <div>
+              <p class="eyebrow">运行配置</p>
+              <h2 id="agentModalTitle">Agent 配置</h2>
+            </div>
+            <button class="icon-button" id="closeAgentModalButton" type="button" aria-label="关闭 Agent 配置">×</button>
+          </header>
+          <div class="agent-modal-body">
             <section class="agent-config-section model-config-section">
               <div class="agent-config-section-header">
                 <div>
@@ -216,25 +294,56 @@
                 </label>
               </div>
             </section>
-            <section class="agent-config-section prompt-config-section">
-              <div class="agent-config-section-header">
-                <div>
-                  <h3>System Prompt</h3>
-                  <p>定义当前场景的身份、业务规则与敏感内容</p>
-                </div>
-                <button class="button prompt-restore-button" id="restorePromptButton" type="button">恢复默认</button>
-              </div>
-              <label class="field prompt-modal-field">
-                <span class="sr-only">System Prompt</span>
-                <textarea id="promptEditor" rows="14" spellcheck="false"></textarea>
-              </label>
-            </section>
           </div>
           <footer class="prompt-modal-footer">
-            <span>配置仅应用于当前演示会话</span>
+            <span>保存后用于后续请求</span>
             <div class="prompt-modal-actions">
-              <button class="button button-ghost" id="cancelPromptButton" type="button">取消</button>
-              <button class="button button-primary prompt-save-button" id="savePromptButton" type="button">保存配置</button>
+              <button class="button button-ghost" id="cancelAgentModalButton" type="button">取消</button>
+              <button class="button button-primary prompt-save-button" id="saveAgentConfigButton" type="button">保存配置</button>
+            </div>
+          </footer>
+        </section>
+      </div>
+
+      <div class="prompt-modal-backdrop output-config-modal-backdrop" id="outputConfigModalBackdrop" aria-hidden="true">
+        <section class="prompt-modal output-config-modal" role="dialog" aria-modal="true" aria-labelledby="outputConfigModalTitle">
+          <header class="prompt-modal-header">
+            <div>
+              <p class="eyebrow">生成后检测</p>
+              <h2 id="outputConfigModalTitle">输出泄露检测配置</h2>
+            </div>
+            <button class="icon-button" id="closeOutputConfigModalButton" type="button" aria-label="关闭输出检测配置">×</button>
+          </header>
+          <div class="output-config-modal-body">
+            <p class="output-config-rule">任一指标达到设定阈值，即判定为泄露并阻断本轮响应。</p>
+            <div class="output-threshold-list">
+              <label class="output-threshold-item">
+                <span class="output-threshold-heading">
+                  <span>
+                    <strong>Exact Match</strong>
+                    <small>敏感片段完整出现在模型输出中</small>
+                  </span>
+                  <output id="exactMatchThresholdValue">80%</output>
+                </span>
+                <input id="exactMatchThresholdInput" type="range" min="0" max="100" step="5" value="80" />
+              </label>
+              <label class="output-threshold-item">
+                <span class="output-threshold-heading">
+                  <span>
+                    <strong>ROUGE-L</strong>
+                    <small>模型输出与敏感内容的序列相似度</small>
+                  </span>
+                  <output id="rougeLThresholdValue">80%</output>
+                </span>
+                <input id="rougeLThresholdInput" type="range" min="0" max="100" step="5" value="80" />
+              </label>
+            </div>
+          </div>
+          <footer class="prompt-modal-footer">
+            <span>阈值保存后用于后续请求</span>
+            <div class="prompt-modal-actions">
+              <button class="button button-ghost" id="cancelOutputConfigButton" type="button">取消</button>
+              <button class="button button-primary prompt-save-button" id="saveOutputConfigButton" type="button">保存配置</button>
             </div>
           </footer>
         </section>
@@ -256,6 +365,6 @@
       </div>
     </div>
 
-    <script type="module" src="./src/app.js?v=compact-guard-row-20260722"></script>
+    <script type="module" src="./src/app.js?v=output-guard-config-20260722"></script>
   </body>
 </html>

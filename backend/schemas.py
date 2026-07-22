@@ -9,6 +9,11 @@ class ModelParams(BaseModel):
     max_tokens: int = 2048
 
 
+class OutputGuardConfig(BaseModel):
+    exact_match_threshold: int = Field(default=80, ge=0, le=100)
+    rouge_l_threshold: int = Field(default=80, ge=0, le=100)
+
+
 class ScenarioDocument(BaseModel):
     title: str
     type: str
@@ -34,6 +39,7 @@ class ChatRequest(BaseModel):
     attack_type: str | None = None
     selected_guards: list[str] = Field(default_factory=lambda: ["baseline"])
     model_params: ModelParams = Field(default_factory=ModelParams)
+    output_guard: OutputGuardConfig = Field(default_factory=OutputGuardConfig)
     scenario_id: str | None = None
     scenario: ScenarioPayload | None = None
 
@@ -90,6 +96,8 @@ class ChatResponse(BaseModel):
     assistant_message: str
     guard_results: dict[str, GuardResult]
     leakage_summary: str
+    output_blocked: bool = False
+    output_guard: OutputGuardConfig = Field(default_factory=OutputGuardConfig)
     matched_spans: list[MatchedSpan]
     rag_trace: list[RagTraceItem]
     agent_trace: list[AgentTraceItem]

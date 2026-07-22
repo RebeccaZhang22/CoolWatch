@@ -1,6 +1,6 @@
-# AgentGuard
+# CoolWatch
 
-AgentGuard 是一个 LLM 安全攻防演示项目：前端用于选择场景、攻击样例和输入护栏，FastAPI 后端负责调用主模型、Qwen3Guard/网易易盾，并展示检测结果和泄露评估。
+CoolWatch 是一个 LLM 安全攻防演示项目：前端用于选择场景、攻击样例和输入护栏，FastAPI 后端负责调用主模型、Qwen3Guard/网易易盾，并展示检测结果和泄露评估。
 
 ## 运行架构
 

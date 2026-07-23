@@ -10,22 +10,25 @@ from backend.attack_library import load_attack_examples
 from backend.chat_orchestrator import ChatOrchestrator
 from backend.config import get_settings
 from backend.llm_client import LlmClient
-from backend.netease_yidun_client import NeteaseYidunClient
-from backend.qwen_guard_client import Qwen3GuardClient
 from backend.scenarios import DEFAULT_SCENARIOS
 from backend.schemas import ChatRequest, ChatResponse, HealthResponse, SessionCreateRequest, SessionCreateResponse
 from backend.session_store import SessionStore
+from backend.watchers import LlamaPromptGuardClient, NeteaseYidunClient, Qwen3GuardClient, SafeGaugeClient
 
 settings = get_settings()
 session_store = SessionStore()
 llm_client = LlmClient(settings)
 qwen_guard_client = Qwen3GuardClient(settings)
+llama_prompt_guard_client = LlamaPromptGuardClient(settings)
 netease_yidun_client = NeteaseYidunClient(settings)
+safegauge_client = SafeGaugeClient(settings)
 agent_loop = AgentLoop(llm_client=llm_client, session_store=session_store)
 chat_orchestrator = ChatOrchestrator(
     agent_loop=agent_loop,
     qwen_guard_client=qwen_guard_client,
+    llama_prompt_guard_client=llama_prompt_guard_client,
     netease_yidun_client=netease_yidun_client,
+    safegauge_client=safegauge_client,
 )
 
 
@@ -34,7 +37,9 @@ async def lifespan(_: FastAPI):
     yield
     await llm_client.close()
     await qwen_guard_client.close()
+    await llama_prompt_guard_client.close()
     await netease_yidun_client.close()
+    await safegauge_client.close()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
@@ -76,6 +81,11 @@ async def list_scenarios():
 @app.get("/api/attacks")
 async def list_attacks(language: str = "cn"):
     return {"attacks": load_attack_examples(language=language)}
+
+
+@app.get("/api/guards/safegauge/info")
+async def safegauge_info():
+    return await safegauge_client.get_model_info()
 
 
 @app.post("/api/sessions", response_model=SessionCreateResponse)

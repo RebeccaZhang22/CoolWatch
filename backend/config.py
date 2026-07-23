@@ -11,19 +11,28 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BACKEND_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "CoolWatch"
-    vllm_base_url: str = Field(default="http://127.0.0.1:8767/v1", alias="VLLM_BASE_URL")
+    vllm_base_url: str = Field(default="http://127.0.0.1:8768/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
-    vllm_model: str = Field(default="qwen3.5-27b", alias="VLLM_MODEL")
+    vllm_model: str = Field(default="Qwen3.5-27B", alias="VLLM_MODEL")
     llm_timeout_seconds: float = Field(default=120.0, alias="LLM_TIMEOUT_SECONDS")
     qwen3_guard_backend: str = Field(default="auto", alias="QWEN3_GUARD_BACKEND")
     qwen3_guard_base_url: str = Field(default="", alias="QWEN3_GUARD_BASE_URL")
     qwen3_guard_api_key: str = Field(default="EMPTY", alias="QWEN3_GUARD_API_KEY")
     qwen3_guard_model: str = Field(
-        default="/share/workspace/models/hub/models--Qwen--Qwen3Guard-Gen-8B/snapshots/4505cb1a6f1864f21f8b27f7daf1b9a1aab6edbb",
+        default="../../../../share/workspace/models/hub/models--Qwen--Qwen3Guard-Gen-8B/snapshots/4505cb1a6f1864f21f8b27f7daf1b9a1aab6edbb",
         alias="QWEN3_GUARD_MODEL",
     )
     qwen3_guard_timeout_seconds: float = Field(default=120.0, alias="QWEN3_GUARD_TIMEOUT_SECONDS")
     qwen3_guard_max_new_tokens: int = Field(default=128, alias="QWEN3_GUARD_MAX_NEW_TOKENS")
+    llama_prompt_guard_model: str = Field(
+        default="../models/Llama-Prompt-Guard-2-86M",
+        alias="LLAMA_PROMPT_GUARD_MODEL",
+    )
+    llama_prompt_guard_threshold: float = Field(default=0.5, ge=0, le=1, alias="LLAMA_PROMPT_GUARD_THRESHOLD")
+    llama_prompt_guard_max_length: int = Field(default=512, ge=1, le=512, alias="LLAMA_PROMPT_GUARD_MAX_LENGTH")
+    llama_prompt_guard_device: str = Field(default="auto", alias="LLAMA_PROMPT_GUARD_DEVICE")
+    safegauge_base_url: str = Field(default="http://127.0.0.1:8900", alias="SAFEGAUGE_BASE_URL")
+    safegauge_timeout_seconds: float = Field(default=120.0, alias="SAFEGAUGE_TIMEOUT_SECONDS")
     netease_yidun_api_url: str = Field(default="http://as.dun.163.com/v5/text/check", alias="NETEASE_YIDUN_API_URL")
     netease_yidun_secret_id: str = Field(default="", alias="NETEASE_YIDUN_SECRET_ID")
     netease_yidun_secret_key: str = Field(default="", alias="NETEASE_YIDUN_SECRET_KEY")

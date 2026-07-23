@@ -4,10 +4,22 @@ from time import perf_counter
 
 from backend.agent_loop import AgentLoop, AgentRunResult
 from backend.evaluator import evaluate_leakage
-from backend.guards import GUARD_NAMES, detect_attack_intent, evaluate_input_guard
-from backend.netease_yidun_client import NeteaseYidunAssessment, SUGGESTION_TEXT, NeteaseYidunClient
-from backend.qwen_guard_client import Qwen3GuardClient, QwenGuardAssessment
+from backend.scenarios import resolve_scenario
 from backend.schemas import AgentTraceItem, ChatRequest, ChatResponse, GuardResult, LeakageMetrics, MatchedSpan, OutputGuardConfig
+from backend.watchers import (
+    GUARD_NAMES,
+    SUGGESTION_TEXT,
+    NeteaseYidunAssessment,
+    NeteaseYidunClient,
+    LlamaPromptGuardAssessment,
+    LlamaPromptGuardClient,
+    Qwen3GuardClient,
+    QwenGuardAssessment,
+    SafeGaugeAssessment,
+    SafeGaugeClient,
+    detect_attack_intent,
+    evaluate_input_guard,
+)
 
 
 class ChatOrchestrator:
@@ -15,11 +27,15 @@ class ChatOrchestrator:
         self,
         agent_loop: AgentLoop,
         qwen_guard_client: Qwen3GuardClient,
+        llama_prompt_guard_client: LlamaPromptGuardClient,
         netease_yidun_client: NeteaseYidunClient,
+        safegauge_client: SafeGaugeClient,
     ) -> None:
         self.agent_loop = agent_loop
         self.qwen_guard_client = qwen_guard_client
+        self.llama_prompt_guard_client = llama_prompt_guard_client
         self.netease_yidun_client = netease_yidun_client
+        self.safegauge_client = safegauge_client
 
     async def run(self, request: ChatRequest) -> ChatResponse:
         input_guard_assessments = await self._run_input_guard_checks(request)
@@ -69,8 +85,19 @@ class ChatOrchestrator:
 
         if "qwen_guard" in guard_ids:
             assessments["qwen_guard"] = await self.qwen_guard_client.moderate_prompt(request.message)
+        if "llama_prompt_guard" in guard_ids:
+            assessments["llama_prompt_guard"] = await self.llama_prompt_guard_client.moderate_prompt(request.message)
         if "netease_yidun" in guard_ids:
             assessments["netease_yidun"] = await self.netease_yidun_client.moderate_prompt(request.message)
+        if "safegauge" in guard_ids:
+            scenario = resolve_scenario(request.scenario_id, request.scenario)
+            assessments["safegauge"] = await self.safegauge_client.moderate_messages(
+                [
+                    {"role": "system", "content": scenario.system_prompt},
+                    {"role": "user", "content": request.message},
+                ],
+                threshold=request.safegauge.threshold,
+            )
         return assessments
 
 
@@ -124,11 +151,31 @@ def run_external_guard_evaluation(
                 leakage=leakage,
             )
             continue
+        if guard_id == "llama_prompt_guard" and guard_id in input_guard_assessments:
+            assessment = input_guard_assessments[guard_id]
+            if not isinstance(assessment, LlamaPromptGuardAssessment):
+                continue
+            guard_results[guard_id] = build_llama_prompt_guard_result(
+                assessment=assessment,
+                raw_output=agent_result.raw_output,
+                leakage=leakage,
+            )
+            continue
         if guard_id == "netease_yidun" and guard_id in input_guard_assessments:
             assessment = input_guard_assessments[guard_id]
             if not isinstance(assessment, NeteaseYidunAssessment):
                 continue
             guard_results[guard_id] = build_netease_yidun_result(
+                assessment=assessment,
+                raw_output=agent_result.raw_output,
+                leakage=leakage,
+            )
+            continue
+        if guard_id == "safegauge" and guard_id in input_guard_assessments:
+            assessment = input_guard_assessments[guard_id]
+            if not isinstance(assessment, SafeGaugeAssessment):
+                continue
+            guard_results[guard_id] = build_safegauge_result(
                 assessment=assessment,
                 raw_output=agent_result.raw_output,
                 leakage=leakage,
@@ -203,6 +250,59 @@ def build_netease_yidun_result(
     )
 
 
+def build_llama_prompt_guard_result(
+    assessment: LlamaPromptGuardAssessment,
+    raw_output: str,
+    leakage: LeakageMetrics,
+) -> GuardResult:
+    return GuardResult(
+        guard_id="llama_prompt_guard",
+        guard_name=GUARD_NAMES["llama_prompt_guard"],
+        status=llama_prompt_guard_status(assessment),
+        blocked=assessment.blocked,
+        latency_ms=assessment.latency_ms,
+        output=raw_output,
+        raw_output=raw_output,
+        leakage=leakage,
+        query_risk=assessment.risky,
+        matched_labels=[assessment.label] if assessment.label else [],
+        connected=assessment.error is None,
+        note=llama_prompt_guard_note(assessment),
+        safety_label=assessment.label,
+        task="prompt_injection_jailbreak",
+        probability=assessment.probability,
+        threshold=assessment.threshold,
+        raw_guard_output=assessment.raw_output,
+    )
+
+
+def build_safegauge_result(
+    assessment: SafeGaugeAssessment,
+    raw_output: str,
+    leakage: LeakageMetrics,
+) -> GuardResult:
+    labels = [value for value in [assessment.task, assessment.label] if value]
+    return GuardResult(
+        guard_id="safegauge",
+        guard_name=GUARD_NAMES["safegauge"],
+        status=safegauge_status(assessment),
+        blocked=assessment.blocked,
+        latency_ms=assessment.latency_ms,
+        output=raw_output,
+        raw_output=raw_output,
+        leakage=leakage,
+        query_risk=assessment.risky,
+        matched_labels=labels,
+        connected=assessment.error is None,
+        note=safegauge_note(assessment),
+        safety_label=assessment.label or None,
+        task=assessment.task or None,
+        probability=assessment.probability,
+        threshold=assessment.threshold,
+        raw_guard_output=assessment.raw_output,
+    )
+
+
 def qwen_guard_status(assessment: QwenGuardAssessment) -> str:
     if assessment.error:
         return "检测失败"
@@ -228,11 +328,40 @@ def netease_yidun_status(assessment: NeteaseYidunAssessment) -> str:
     return SUGGESTION_TEXT.get(assessment.suggestion, "检测失败")
 
 
+def llama_prompt_guard_status(assessment: LlamaPromptGuardAssessment) -> str:
+    if assessment.error or assessment.risky is None:
+        return "检测失败"
+    return "命中风险" if assessment.risky else "未命中"
+
+
+def llama_prompt_guard_note(assessment: LlamaPromptGuardAssessment) -> str:
+    if assessment.error:
+        return f"Llama Prompt Guard 2 调用失败：{assessment.error}"
+    return f"恶意提示概率 {assessment.probability:.4f}；阈值 {assessment.threshold:.4f}。"
+
+
 def netease_yidun_note(assessment: NeteaseYidunAssessment) -> str:
     if assessment.error:
         return f"网易易盾调用失败：{assessment.error}"
 
     return "输入护栏检测已完成。"
+
+
+def safegauge_status(assessment: SafeGaugeAssessment) -> str:
+    if assessment.error or assessment.risky is None:
+        return "检测失败"
+    return "命中风险" if assessment.risky else "未命中"
+
+
+def safegauge_note(assessment: SafeGaugeAssessment) -> str:
+    if assessment.error:
+        return f"SafeGauge 调用失败：{assessment.error}"
+    if assessment.probability is None or assessment.threshold is None:
+        return "SafeGauge 检测已完成。"
+    return (
+        f"任务 {assessment.task or '-'}；标签 {assessment.label or '-'}；"
+        f"概率 {assessment.probability:.4f}；阈值 {assessment.threshold:.4f}。"
+    )
 
 
 def normalize_guard_ids(selected_guards: list[str]) -> list[str]:

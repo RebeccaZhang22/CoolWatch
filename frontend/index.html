@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CoolWatch 攻防演示台</title>
-    <link rel="stylesheet" href="./src/styles.css?v=output-guard-config-20260722" />
+    <link rel="stylesheet" href="./src/styles.css?v=safegauge-threshold-20260723" />
   </head>
   <body>
     <div class="app-shell" id="appShell">
@@ -91,7 +91,7 @@
               </svg>
             </span>
             <div>
-              <strong id="agentConfigModel">qwen3.5-27b</strong>
+              <strong id="agentConfigModel">Qwen3.5-27B</strong>
               <span id="agentConfigParams">Temperature 0.2 · Top P 0.8 · Max 2048</span>
             </div>
           </div>
@@ -267,7 +267,7 @@
               <label class="field agent-model-field">
                 <span>模型</span>
                 <select id="modelSelect">
-                  <option value="qwen3.5-27b">qwen3.5-27b</option>
+                  <option value="Qwen3.5-27B">Qwen3.5-27B</option>
                 </select>
               </label>
               <div class="agent-parameter-grid">
@@ -365,6 +365,6 @@
       </div>
     </div>
 
-    <script type="module" src="./src/app.js?v=output-guard-config-20260722"></script>
+    <script type="module" src="./src/app.js?v=safegauge-threshold-20260723"></script>
   </body>
 </html>

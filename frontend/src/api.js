@@ -1,4 +1,4 @@
-import { buildMockChatResult, getFallbackAttackExamples } from "./mock-data.js?v=output-guard-config-20260722";
+import { buildMockChatResult, getFallbackAttackExamples } from "./mock-data.js?v=safegauge-threshold-20260723";
 
 export function createAgentApiClient({
   apiBase = window.AGENT_GUARD_API_BASE ?? defaultApiBase(),
@@ -24,6 +24,19 @@ export function createAgentApiClient({
       return response.json();
     },
 
+    async getSafeGaugeInfo() {
+      if (useMock) {
+        return { meta: { best_threshold: 0.42150071263313293 } };
+      }
+
+      const response = await fetch(`${normalizedBase}/api/guards/safegauge/info`);
+      if (!response.ok) {
+        const message = await readErrorMessage(response);
+        throw new Error(message || `SafeGauge 配置加载失败：${response.status}`);
+      }
+      return response.json();
+    },
+
     async sendChat({ scenario, payload }) {
       if (useMock) {
         await sleep(420);
@@ -34,6 +47,7 @@ export function createAgentApiClient({
           attackType: payload.attack_type,
           selectedGuards: payload.selected_guards,
           outputGuard: payload.output_guard,
+          safeGaugeThreshold: payload.safegauge?.threshold,
         });
       }
 
@@ -108,6 +122,7 @@ async function streamMockChatResult({ scenario, payload, onStatus, onDelta }) {
     attackType: payload.attack_type,
     selectedGuards: payload.selected_guards,
     outputGuard: payload.output_guard,
+    safeGaugeThreshold: payload.safegauge?.threshold,
   });
 
   const chunks = splitTextForMockStream(result.assistant_message);

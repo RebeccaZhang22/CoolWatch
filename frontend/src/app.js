@@ -1,10 +1,10 @@
-import { createAgentApiClient } from "./api.js?v=output-guard-config-20260722";
+import { createAgentApiClient } from "./api.js?v=safegauge-threshold-20260723";
 import {
   getFallbackAttackExamples,
   guards,
   scenarioCategories,
   scenarios,
-} from "./mock-data.js?v=output-guard-config-20260722";
+} from "./mock-data.js?v=safegauge-threshold-20260723";
 
 const QWEN_LABEL_NAMES = {
   Violent: "暴力",
@@ -29,6 +29,18 @@ const YIDUN_LABEL_NAMES = {
   "700": "灌水",
   "900": "其他",
   "1100": "价值观",
+};
+
+const SAFEGAUGE_LABEL_NAMES = {
+  system_prompt_leakage_intent: "系统提示词泄露意图",
+  attack: "攻击",
+  benign: "正常",
+};
+
+const LLAMA_PROMPT_GUARD_LABEL_NAMES = {
+  MALICIOUS: "恶意提示",
+  BENIGN: "正常提示",
+  prompt_injection_jailbreak: "提示注入 / 越狱",
 };
 
 const defaultSystemPrompts = new Map(scenarios.map((scenario) => [scenario.id, scenario.systemPrompt]));
@@ -111,6 +123,7 @@ const state = {
   scenarioId: scenarios[0].id,
   scenarioCategory: scenarios[0].category,
   selectedGuards: [],
+  safeGaugeThreshold: 0.5,
   modelParams: readModelParamsFromInputs(),
   outputDetectionConfig: {
     exact_match_threshold: 80,
@@ -153,6 +166,7 @@ function init() {
   bindEvents();
   applyScenario(scenarios[0].id, { resetMessages: true });
   loadAttackExamples();
+  loadSafeGaugeInfo();
 }
 
 function bindEvents() {
@@ -441,12 +455,17 @@ function renderGuardList() {
               ? `<div class="guard-detail-panel">${renderGuardDetail(guard)}</div>`
               : ""
           }
+          ${
+            guard.id === "safegauge" && (state.selectedGuards.includes(guard.id) || state.activeGuardDetailId === guard.id)
+              ? `<div class="guard-detail-panel safegauge-config-panel">${renderSafeGaugeThresholdControl()}</div>`
+              : ""
+          }
         </article>
       `,
     )
     .join("");
 
-  const guardInputs = Array.from(elements.guardList.querySelectorAll("input"));
+  const guardInputs = Array.from(elements.guardList.querySelectorAll('input[type="checkbox"]'));
   syncGuardCheckboxes(guardInputs);
   window.requestAnimationFrame(() => syncGuardCheckboxes(guardInputs));
 
@@ -467,9 +486,22 @@ function renderGuardList() {
       renderGuardList();
     });
   });
+
+  const safeGaugeThresholdInput = elements.guardList.querySelector("[data-safegauge-threshold]");
+  if (safeGaugeThresholdInput) {
+    renderRangeProgress(safeGaugeThresholdInput);
+    safeGaugeThresholdInput.addEventListener("input", () => {
+      state.safeGaugeThreshold = readNumberInput(safeGaugeThresholdInput, state.safeGaugeThreshold);
+      const output = elements.guardList.querySelector("[data-safegauge-threshold-value]");
+      if (output) {
+        output.textContent = formatProbability(state.safeGaugeThreshold);
+      }
+      renderRangeProgress(safeGaugeThresholdInput);
+    });
+  }
 }
 
-function syncGuardCheckboxes(inputs = Array.from(elements.guardList.querySelectorAll("input"))) {
+function syncGuardCheckboxes(inputs = Array.from(elements.guardList.querySelectorAll('input[type="checkbox"]'))) {
   inputs.forEach((input) => {
     const isSelected = state.selectedGuards.includes(input.value);
     input.checked = isSelected;
@@ -511,6 +543,20 @@ function renderGuardDetail(guard) {
   `;
 }
 
+function renderSafeGaugeThresholdControl() {
+  return `
+    <div class="safegauge-threshold-control">
+      <div class="safegauge-threshold-heading">
+        <span>泄漏判断阈值</span>
+        <output data-safegauge-threshold-value>${escapeHtml(formatProbability(state.safeGaugeThreshold))}</output>
+      </div>
+      <input data-safegauge-threshold type="range" min="0" max="1" step="0.001"
+        value="${escapeHtml(String(state.safeGaugeThreshold))}" aria-label="SafeGauge 泄漏判断阈值" />
+      <small>检测概率高于该值时判定为泄漏风险，本轮请求立即生效。</small>
+    </div>
+  `;
+}
+
 function isGuardActive(guard) {
   return guard.alwaysRun || state.selectedGuards.includes(guard.id);
 }
@@ -526,8 +572,14 @@ function getGuardDetailText(guard) {
   if (guard.id === "qwen_guard") {
     return "在 query 进入 Agent Loop 前运行输入检测，给出拦截建议和命中类别。";
   }
+  if (guard.id === "llama_prompt_guard") {
+    return "在 query 进入 Agent Loop 前本地检测 Prompt Injection 和 Jailbreak，返回恶意概率与判定。";
+  }
   if (guard.id === "netease_yidun") {
     return "在 query 进入 Agent Loop 前调用文本同步检测接口，给出拦截建议和命中类别。";
+  }
+  if (guard.id === "safegauge") {
+    return "在 query 进入 Agent Loop 前调用 SafeGauge，由所选模型的 meta 和 suffix 决定检测任务。";
   }
   return guard.description;
 }
@@ -913,6 +965,19 @@ async function loadAttackExamples() {
   }
 }
 
+async function loadSafeGaugeInfo() {
+  try {
+    const payload = await agentApi.getSafeGaugeInfo();
+    const threshold = Number(payload?.meta?.best_threshold);
+    if (Number.isFinite(threshold) && threshold >= 0 && threshold <= 1) {
+      state.safeGaugeThreshold = threshold;
+      renderGuardList();
+    }
+  } catch (error) {
+    console.warn("SafeGauge 模型阈值加载失败，使用默认值。", error);
+  }
+}
+
 function renderAttackPicker() {
   const attacks = state.attackExamples;
   if (!attacks.length) {
@@ -1246,6 +1311,7 @@ async function sendChatRequest({ scenario, message, isAttack, attackType, onStat
     selected_guards: getExecutedGuardIds(),
     model_params: modelParams,
     output_guard: { ...state.outputDetectionConfig },
+    safegauge: { threshold: state.safeGaugeThreshold },
     scenario_id: scenario.id,
     scenario: {
       id: scenario.id,
@@ -1594,6 +1660,7 @@ function renderInputGuardMeta(item) {
         <dt>检测耗时</dt>
         <dd>${escapeHtml(formatLatency(item.latency_ms))}</dd>
       </div>
+      ${renderGuardScore(item)}
       <div class="guard-field guard-field-wide">
         <dt>命中类别</dt>
         <dd class="guard-label-list">
@@ -1604,8 +1671,26 @@ function renderInputGuardMeta(item) {
   `;
 }
 
+function renderGuardScore(item) {
+  if (!["safegauge", "llama_prompt_guard"].includes(item.guard_id)) {
+    return "";
+  }
+
+  const labelNames = item.guard_id === "safegauge" ? SAFEGAUGE_LABEL_NAMES : LLAMA_PROMPT_GUARD_LABEL_NAMES;
+  const task = labelNames[item.task] ?? item.task ?? "-";
+  const label = labelNames[item.safety_label] ?? item.safety_label ?? "-";
+  const probability = formatProbability(item.probability);
+  const threshold = formatProbability(item.threshold);
+  return `
+    <div class="guard-field guard-field-wide">
+      <dt>模型判断</dt>
+      <dd>${escapeHtml(`${task} · ${label} · 概率 ${probability} / 阈值 ${threshold}`)}</dd>
+    </div>
+  `;
+}
+
 function renderRawGuardOutput(item) {
-  if (!["qwen_guard", "netease_yidun"].includes(item.guard_id)) {
+  if (!["qwen_guard", "llama_prompt_guard", "netease_yidun", "safegauge"].includes(item.guard_id)) {
     return "";
   }
 
@@ -1691,7 +1776,21 @@ function formatGuardLabel(guardId, label) {
   if (guardId === "netease_yidun") {
     return YIDUN_LABEL_NAMES[value] ?? value;
   }
+  if (guardId === "safegauge") {
+    return SAFEGAUGE_LABEL_NAMES[value] ?? value;
+  }
+  if (guardId === "llama_prompt_guard") {
+    return LLAMA_PROMPT_GUARD_LABEL_NAMES[value] ?? value;
+  }
   return value;
+}
+
+function formatProbability(value) {
+  const probability = Number(value);
+  if (!Number.isFinite(probability)) {
+    return "-";
+  }
+  return `${(probability * 100).toFixed(2)}%`;
 }
 
 function formatLatency(value) {

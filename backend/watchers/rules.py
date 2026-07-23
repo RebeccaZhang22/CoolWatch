@@ -4,7 +4,9 @@ from dataclasses import dataclass
 GUARD_NAMES = {
     "baseline": "无防护",
     "qwen_guard": "Qwen3Guard",
+    "llama_prompt_guard": "Llama Prompt Guard 2",
     "netease_yidun": "网易易盾",
+    "safegauge": "SafeGauge",
     "rule_guard": "规则防护",
     "custom_guard": "自定义防护",
 }
@@ -51,7 +53,7 @@ def evaluate_input_guard(guard_id: str, query_risky: bool, matched_labels: list[
             note="固定对照，不对输入做拦截或改写。",
         )
 
-    if guard_id in {"qwen_guard", "netease_yidun"}:
+    if guard_id in {"qwen_guard", "llama_prompt_guard", "netease_yidun", "safegauge"}:
         return GuardDecision(
             blocked=False,
             status="待接入",

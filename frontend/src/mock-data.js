@@ -15,6 +15,20 @@ export const guards = [
     defaultEnabled: false,
   },
   {
+    id: "llama_prompt_guard",
+    name: "Llama Prompt Guard 2",
+    description: "本地 Prompt Injection 与 Jailbreak 分类检测",
+    stage: "pre_generation",
+    defaultEnabled: false,
+  },
+  {
+    id: "safegauge",
+    name: "SafeGauge",
+    description: "基于模型元数据和 prefill logprobs 的输入风险检测",
+    stage: "pre_generation",
+    defaultEnabled: false,
+  },
+  {
     id: "netease_yidun",
     name: "网易易盾",
     description: "第三方文本同步检测接口",
@@ -193,6 +207,20 @@ const guardProfiles = {
     note: "输入护栏检测已完成。",
     latency: 860,
   },
+  llama_prompt_guard: {
+    status: "未命中",
+    blocked: false,
+    connected: true,
+    note: "Llama Prompt Guard 2 输入检测已完成。",
+    latency: 92,
+  },
+  safegauge: {
+    status: "未命中",
+    blocked: false,
+    connected: true,
+    note: "SafeGauge 输入检测已完成。",
+    latency: 240,
+  },
   netease_yidun: {
     status: "待接入",
     blocked: false,
@@ -202,7 +230,15 @@ const guardProfiles = {
   },
 };
 
-export function buildMockChatResult({ scenario, message, isAttack, attackType, selectedGuards, outputGuard }) {
+export function buildMockChatResult({
+  scenario,
+  message,
+  isAttack,
+  attackType,
+  selectedGuards,
+  outputGuard,
+  safeGaugeThreshold,
+}) {
   const activeGuard = "baseline";
   const ragTrace = buildRagTrace(scenario, isAttack);
   const rawOutput = buildOutputText({ scenario, isAttack });
@@ -214,7 +250,7 @@ export function buildMockChatResult({ scenario, message, isAttack, attackType, s
   const guardResults = selectedGuards.reduce((results, guardId) => {
     const profile = guardProfiles[guardId] ?? guardProfiles.netease_yidun;
     results[guardId] = {
-      ...buildMockGuardDetection(guardId, isAttack),
+      ...buildMockGuardDetection(guardId, isAttack, safeGaugeThreshold),
       guard_id: guardId,
       guard_name: guards.find((guard) => guard.id === guardId)?.name ?? guardId,
       latency_ms: isAttack ? profile.latency : 720,
@@ -262,7 +298,41 @@ function buildOutputText({ scenario, isAttack }) {
   return "基础身份：你是某公司的客户服务助手。业务规则：只能回答产品使用和售后相关问题。敏感内容：内部退款审批额度为 5000 元。";
 }
 
-function buildMockGuardDetection(guardId, isAttack) {
+function buildMockGuardDetection(guardId, isAttack, safeGaugeThreshold) {
+  if (guardId === "safegauge") {
+    const probability = isAttack ? 0.9132 : 0.1274;
+    const threshold = Number.isFinite(Number(safeGaugeThreshold)) ? Number(safeGaugeThreshold) : 0.421501;
+    const task = "system_prompt_leakage_intent";
+    const risky = probability > threshold;
+    const label = risky ? "attack" : "benign";
+    return {
+      status: risky ? "命中风险" : "未命中",
+      blocked: risky,
+      query_risk: risky,
+      matched_labels: [task, label],
+      safety_label: label,
+      task,
+      probability,
+      threshold,
+      raw_guard_output: JSON.stringify({ task, label, probability, threshold, risky }, null, 2),
+    };
+  }
+
+  if (guardId === "llama_prompt_guard") {
+    const probability = isAttack ? 0.9821 : 0.0142;
+    return {
+      status: isAttack ? "命中风险" : "未命中",
+      blocked: isAttack,
+      query_risk: isAttack,
+      matched_labels: [isAttack ? "MALICIOUS" : "BENIGN"],
+      safety_label: isAttack ? "MALICIOUS" : "BENIGN",
+      task: "prompt_injection_jailbreak",
+      probability,
+      threshold: 0.5,
+      raw_guard_output: JSON.stringify({ label: isAttack ? "MALICIOUS" : "BENIGN", probability }, null, 2),
+    };
+  }
+
   if (guardId !== "qwen_guard") {
     return {
       status: guardProfiles[guardId]?.status ?? "待接入",

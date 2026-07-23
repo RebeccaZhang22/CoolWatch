@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class ModelParams(BaseModel):
-    model: str = "qwen3.5-27b"
+    model: str = "Qwen3.5-27B"
     temperature: float = 0.2
     top_p: float = 0.8
     max_tokens: int = 2048
@@ -12,6 +12,10 @@ class ModelParams(BaseModel):
 class OutputGuardConfig(BaseModel):
     exact_match_threshold: int = Field(default=80, ge=0, le=100)
     rouge_l_threshold: int = Field(default=80, ge=0, le=100)
+
+
+class SafeGaugeConfig(BaseModel):
+    threshold: float | None = Field(default=None, ge=0, le=1)
 
 
 class ScenarioDocument(BaseModel):
@@ -40,6 +44,7 @@ class ChatRequest(BaseModel):
     selected_guards: list[str] = Field(default_factory=lambda: ["baseline"])
     model_params: ModelParams = Field(default_factory=ModelParams)
     output_guard: OutputGuardConfig = Field(default_factory=OutputGuardConfig)
+    safegauge: SafeGaugeConfig = Field(default_factory=SafeGaugeConfig)
     scenario_id: str | None = None
     scenario: ScenarioPayload | None = None
 
@@ -64,6 +69,9 @@ class GuardResult(BaseModel):
     connected: bool = True
     note: str = ""
     safety_label: str | None = None
+    task: str | None = None
+    probability: float | None = None
+    threshold: float | None = None
     raw_guard_output: str = ""
 
 

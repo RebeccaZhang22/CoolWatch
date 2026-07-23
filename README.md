@@ -1,68 +1,144 @@
 # CoolWatch
 
-CoolWatch 是一个 LLM 安全攻防演示项目：前端用于选择场景、攻击样例和输入护栏，FastAPI 后端负责调用主模型、Qwen3Guard/网易易盾，并展示检测结果和泄露评估。
+CoolWatch 是一个 LLM 安全攻防演示项目。下面以 `Llama-3.1-8B-Instruct` 为例，让 Agent 和 SafeGauge 复用同一个 vLLM 服务，并使用与该模型匹配的 suffix-probe checkpoint 检测系统提示词泄露意图。
 
 ## 运行架构
 
 ```text
-浏览器
-  └─ FastAPI + 前端静态页面：http://127.0.0.1:8000
-       ├─ 主模型 vLLM：http://127.0.0.1:8767/v1
-       └─ Qwen3Guard vLLM（可选）：http://127.0.0.1:8001/v1
+浏览器：http://127.0.0.1:8000
+  └─ CoolWatch / FastAPI
+       ├─ Llama-3.1-8B-Instruct vLLM：http://127.0.0.1:8768/v1
+       ├─ SafeGauge：http://127.0.0.1:8900
+       ├─ Llama Prompt Guard 2（可选，本地懒加载）
+       ├─ Qwen3Guard（可选）
+       └─ 网易易盾（可选）
 ```
 
-建议从项目根目录执行下面的命令。主模型、Qwen3Guard 和 Web 后端需要分别占用终端；如果 GPU 资源有限，也可以不单独启动 Qwen3Guard，改用后端本地 Transformers 模式。
+以下命令直接使用当前 Python/vLLM 环境。请将尖括号中的占位符替换为本机绝对路径；三步启动分别占用三个终端。
 
-## 1. 安装后端依赖
+需要准备：
 
-推荐使用 Python 3.10～3.12：
+```text
+项目目录：<absolute-path-to-CoolWatch>
+Llama 模型：<absolute-path-to-Llama-3.1-8B-Instruct>
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-pip install -r requirements.txt
+SafeGauge checkpoint:
+<absolute-path-to-CoolWatch>/backend/watchers/safegauge/models/Llama-3.1-8B-Instruct/sys_prompt/best_model.pt
 ```
 
-`requirements.txt` 已包含 Web 后端、Transformers 本地推理和 vLLM serving 所需依赖。vLLM 需要可用的 CUDA 环境；如果主模型使用独立的推理环境，也可以在那里单独执行 `pip install vllm`。模型需要提前下载到本机，或保证当前环境可以从 Hugging Face 拉取。
+## 第一步：启动 Llama-3.1-8B-Instruct
 
-## 2. 启动主模型 serving
-
-项目默认使用 `qwen3.5-27b`，服务端口为 `8767`。可以直接启动一个 OpenAI-compatible 服务：
+终端 1：
 
 ```bash
-CUDA_VISIBLE_DEVICES=0,1 vllm serve Qwen/Qwen3.5-27B \
-  --served-model-name qwen3.5-27b \
-  --host 0.0.0.0 \
-  --port 8767 \
-  --tensor-parallel-size 2 \
+export COOLWATCH_ROOT="<absolute-path-to-CoolWatch>"
+export LLAMA_MODEL_PATH="<absolute-path-to-Llama-3.1-8B-Instruct>"
+cd "$COOLWATCH_ROOT"
+
+CUDA_VISIBLE_DEVICES=0 vllm serve \
+  "$LLAMA_MODEL_PATH" \
+  --served-model-name Llama-3.1-8B-Instruct \
+  --host 127.0.0.1 \
+  --port 8768 \
+  --dtype bfloat16 \
+  --tensor-parallel-size 1 \
+  --max-model-len 8192 \
+  --gpu-memory-utilization 0.85 \
+  --enable-prefix-caching \
+  --enable-chunked-prefill \
   --trust-remote-code
 ```
 
-确认服务正常：
+等模型加载完成后检查：
 
 ```bash
-curl http://127.0.0.1:8767/v1/models
+curl http://127.0.0.1:8768/v1/models
 ```
 
-如果使用其他模型或端口，需要同步修改后端的 `VLLM_MODEL` 和 `VLLM_BASE_URL`。前端当前的模型下拉框默认填写 `qwen3.5-27b`，它必须和 serving 的 `--served-model-name` 一致。
+返回的模型列表应包含 `Llama-3.1-8B-Instruct`。当前 vLLM 默认的 `max_logprobs=20`、`logprobs_mode=raw_logprobs` 已满足 SafeGauge 请求，无需显式传入。
 
-## 3. 配置 Qwen3Guard
+## 第二步：启动 SafeGauge
 
-### 推荐：独立 vLLM 服务
-
-在另一张空闲 GPU 上启动 Qwen3Guard：
+终端 2：
 
 ```bash
-CUDA_VISIBLE_DEVICES=2 vllm serve \
-  /share/workspace/models/hub/models--Qwen--Qwen3Guard-Gen-8B/snapshots/4505cb1a6f1864f21f8b27f7daf1b9a1aab6edbb \
-  --served-model-name Qwen/Qwen3Guard-Gen-8B \
-  --host 0.0.0.0 \
-  --port 8001 \
-  --max-model-len 32768
+export COOLWATCH_ROOT="<absolute-path-to-CoolWatch>"
+export LLAMA_MODEL_PATH="<absolute-path-to-Llama-3.1-8B-Instruct>"
+cd "$COOLWATCH_ROOT"
+
+python "$COOLWATCH_ROOT/backend/watchers/safegauge/service.py" \
+  --processor-path "$COOLWATCH_ROOT/backend/watchers/safegauge/models/Llama-3.1-8B-Instruct/sys_prompt/best_model.pt" \
+  --base-url http://127.0.0.1:8768/v1 \
+  --api-key EMPTY \
+  --model Llama-3.1-8B-Instruct \
+  --tokenizer-path "$LLAMA_MODEL_PATH" \
+  --device cpu \
+  --host 127.0.0.1 \
+  --port 8900
 ```
 
-然后在 `backend/.env` 中配置：
+检查 SafeGauge 和加载的 meta：
+
+```bash
+curl http://127.0.0.1:8900/health
+curl http://127.0.0.1:8900/model/info
+```
+
+`model/info` 返回值的 `meta` 中应显示：
+
+```text
+meta.model_name: Llama-3.1-8B-Instruct
+meta.task: system_prompt_leakage_intent
+meta.best_threshold: 0.42150071263313293
+```
+
+## 第三步：启动 CoolWatch
+
+终端 3：
+
+```bash
+export COOLWATCH_ROOT="<absolute-path-to-CoolWatch>"
+cd "$COOLWATCH_ROOT"
+
+VLLM_BASE_URL=http://127.0.0.1:8768/v1 \
+VLLM_API_KEY=EMPTY \
+VLLM_MODEL=Llama-3.1-8B-Instruct \
+SAFEGAUGE_BASE_URL=http://127.0.0.1:8900 \
+uvicorn backend.app:app --host 0.0.0.0 --port 8000
+```
+
+检查后端：
+
+```bash
+curl http://127.0.0.1:8000/api/health
+```
+
+然后在浏览器访问：
+
+```text
+http://127.0.0.1:8000
+```
+
+FastAPI 会直接托管 `frontend/`，不需要单独启动前端服务。进入页面后勾选 `SafeGauge`，即可使用 Llama-3.1-8B-Instruct 对应的 `system_prompt_leakage_intent` 探针。
+
+## 可选输入护栏
+
+### Llama Prompt Guard 2
+
+本地权重配置示例：
+
+```dotenv
+LLAMA_PROMPT_GUARD_MODEL=<absolute-path-to-Llama-Prompt-Guard-2-86M>
+LLAMA_PROMPT_GUARD_THRESHOLD=0.5
+LLAMA_PROMPT_GUARD_MAX_LENGTH=512
+LLAMA_PROMPT_GUARD_DEVICE=auto
+```
+
+它会在页面第一次勾选时由后端懒加载，不需要额外启动服务。
+
+### Qwen3Guard
+
+如果已有独立的 Qwen3Guard OpenAI-compatible 服务，可在 `backend/.env` 配置：
 
 ```dotenv
 QWEN3_GUARD_BACKEND=openai
@@ -71,39 +147,11 @@ QWEN3_GUARD_API_KEY=EMPTY
 QWEN3_GUARD_MODEL=Qwen/Qwen3Guard-Gen-8B
 ```
 
-### 备选：后端本地加载
+未设置 `QWEN3_GUARD_BASE_URL` 时，`auto` 模式会尝试通过 Transformers 本地加载配置的 Qwen3Guard 权重。
 
-不单独开启服务时，可以让后端在首次使用 Qwen3Guard 时通过 Transformers 懒加载模型：
+### 网易易盾
 
-```dotenv
-QWEN3_GUARD_BACKEND=transformers
-QWEN3_GUARD_MODEL=/share/workspace/models/hub/models--Qwen--Qwen3Guard-Gen-8B/snapshots/4505cb1a6f1864f21f8b27f7daf1b9a1aab6edbb
-```
-
-这种方式启动简单，但首次检测较慢，并且 Qwen3Guard 会和后端进程共享 GPU/内存。`QWEN3_GUARD_BACKEND=auto` 时，有 `QWEN3_GUARD_BASE_URL` 就调用独立服务，否则使用本地 Transformers。
-
-## 4. 配置并启动后端
-
-后端会自动读取 `backend/.env`。如果该文件还不存在，可以先复制示例文件，再补充主模型和 Qwen3Guard 配置：
-
-```bash
-cp -n backend/.env.example backend/.env
-```
-
-推荐的基础配置如下：
-
-```dotenv
-VLLM_BASE_URL=http://127.0.0.1:8767/v1
-VLLM_API_KEY=EMPTY
-VLLM_MODEL=qwen3.5-27b
-
-QWEN3_GUARD_BACKEND=openai
-QWEN3_GUARD_BASE_URL=http://127.0.0.1:8001/v1
-QWEN3_GUARD_API_KEY=EMPTY
-QWEN3_GUARD_MODEL=Qwen/Qwen3Guard-Gen-8B
-```
-
-如需使用网易易盾，再在同一个文件中填写：
+在 `backend/.env` 填写：
 
 ```dotenv
 NETEASE_YIDUN_SECRET_ID=your_secret_id
@@ -111,57 +159,12 @@ NETEASE_YIDUN_SECRET_KEY=your_secret_key
 NETEASE_YIDUN_BUSINESS_ID=your_business_id
 ```
 
-从项目根目录启动 FastAPI：
+未配置密钥时，页面选择网易易盾会返回“未配置”。
 
-```bash
-source .venv/bin/activate
-uvicorn backend.app:app --host 0.0.0.0 --port 8000
-```
-
-检查后端和主模型连接状态：
-
-```bash
-curl http://127.0.0.1:8000/api/health
-```
-
-## 5. 启动前端
-
-### 推荐：由后端直接托管
-
-FastAPI 已经挂载了 `frontend/` 静态目录。后端启动后直接访问：
+## 三步启动摘要
 
 ```text
-http://127.0.0.1:8000
+终端 1：Llama-3.1-8B-Instruct vLLM  127.0.0.1:8768
+终端 2：SafeGauge                   127.0.0.1:8900
+终端 3：CoolWatch + 前端            0.0.0.0:8000
 ```
-
-这种方式不需要 Node.js，也不需要再开前端进程。
-
-### 前后端分开运行
-
-如需单独启动前端：
-
-```bash
-python3 -m http.server 4173 --directory frontend
-```
-
-然后访问 `http://127.0.0.1:4173`。前端默认请求同源 `/api`；分开部署时，需要在 `frontend/index.html` 的 `app.js` 引入之前加入后端地址：
-
-```html
-<script>
-  window.AGENT_GUARD_API_BASE = "http://127.0.0.1:8000";
-</script>
-```
-
-后端默认允许跨域请求；生产环境可通过 `CORS_ALLOW_ORIGINS` 限制允许访问的前端域名。
-
-## 最简启动顺序
-
-```text
-1. 启动主模型 vLLM（8767）
-2. 启动 Qwen3Guard vLLM（8001，可选）
-3. 配置 backend/.env
-4. 启动 FastAPI（8000）
-5. 浏览器打开 http://127.0.0.1:8000
-```
-
-进入页面后，勾选“Qwen3Guard”才会对本轮用户输入调用 Qwen3Guard；未勾选时只运行默认的无防护基线。

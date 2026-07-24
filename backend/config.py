@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BACKEND_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "CoolWatch"
-    vllm_base_url: str = Field(default="http://127.0.0.1:8768/v1", alias="VLLM_BASE_URL")
+    vllm_base_url: str = Field(default="http://127.0.0.1:18087/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
     vllm_model: str = Field(default="Qwen3.5-27B", alias="VLLM_MODEL")
     llm_timeout_seconds: float = Field(default=120.0, alias="LLM_TIMEOUT_SECONDS")
@@ -31,7 +31,9 @@ class Settings(BaseSettings):
     llama_prompt_guard_threshold: float = Field(default=0.5, ge=0, le=1, alias="LLAMA_PROMPT_GUARD_THRESHOLD")
     llama_prompt_guard_max_length: int = Field(default=512, ge=1, le=512, alias="LLAMA_PROMPT_GUARD_MAX_LENGTH")
     llama_prompt_guard_device: str = Field(default="auto", alias="LLAMA_PROMPT_GUARD_DEVICE")
-    safegauge_base_url: str = Field(default="http://127.0.0.1:8900", alias="SAFEGAUGE_BASE_URL")
+    safegauge_processor_path: str = Field(default="", alias="SAFEGAUGE_PROCESSOR_PATH")
+    safegauge_tokenizer_path: str = Field(default="", alias="SAFEGAUGE_TOKENIZER_PATH")
+    safegauge_device: str = Field(default="cpu", alias="SAFEGAUGE_DEVICE")
     safegauge_timeout_seconds: float = Field(default=120.0, alias="SAFEGAUGE_TIMEOUT_SECONDS")
     netease_yidun_api_url: str = Field(default="http://as.dun.163.com/v5/text/check", alias="NETEASE_YIDUN_API_URL")
     netease_yidun_secret_id: str = Field(default="", alias="NETEASE_YIDUN_SECRET_ID")

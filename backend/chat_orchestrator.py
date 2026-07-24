@@ -16,7 +16,7 @@ from backend.watchers import (
     Qwen3GuardClient,
     QwenGuardAssessment,
     SafeGaugeAssessment,
-    SafeGaugeClient,
+    SafeGaugeGuard,
     detect_attack_intent,
     evaluate_input_guard,
 )
@@ -29,13 +29,13 @@ class ChatOrchestrator:
         qwen_guard_client: Qwen3GuardClient,
         llama_prompt_guard_client: LlamaPromptGuardClient,
         netease_yidun_client: NeteaseYidunClient,
-        safegauge_client: SafeGaugeClient,
+        safegauge_guard: SafeGaugeGuard,
     ) -> None:
         self.agent_loop = agent_loop
         self.qwen_guard_client = qwen_guard_client
         self.llama_prompt_guard_client = llama_prompt_guard_client
         self.netease_yidun_client = netease_yidun_client
-        self.safegauge_client = safegauge_client
+        self.safegauge_guard = safegauge_guard
 
     async def run(self, request: ChatRequest) -> ChatResponse:
         input_guard_assessments = await self._run_input_guard_checks(request)
@@ -91,7 +91,7 @@ class ChatOrchestrator:
             assessments["netease_yidun"] = await self.netease_yidun_client.moderate_prompt(request.message)
         if "safegauge" in guard_ids:
             scenario = resolve_scenario(request.scenario_id, request.scenario)
-            assessments["safegauge"] = await self.safegauge_client.moderate_messages(
+            assessments["safegauge"] = await self.safegauge_guard.moderate_messages(
                 [
                     {"role": "system", "content": scenario.system_prompt},
                     {"role": "user", "content": request.message},

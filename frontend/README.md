@@ -1,6 +1,6 @@
 # CoolWatch 前端演示
 
-这是按照 `doc/需求文档.md` 实现的前端页面。默认会请求本地 FastAPI 后端 `http://127.0.0.1:8000/api/chat`。
+这是按照 `doc/需求文档.md` 实现的前端页面。由 CoolWatch 后端托管时，请求地址为 `http://127.0.0.1:18088/api/chat`。
 
 ## 运行
 

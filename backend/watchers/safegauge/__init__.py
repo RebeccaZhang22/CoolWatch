@@ -1,3 +1,3 @@
-from backend.watchers.safegauge.client import SafeGaugeAssessment, SafeGaugeClient
+from backend.watchers.safegauge.client import SafeGaugeAssessment, SafeGaugeGuard
 
-__all__ = ["SafeGaugeAssessment", "SafeGaugeClient"]
+__all__ = ["SafeGaugeAssessment", "SafeGaugeGuard"]

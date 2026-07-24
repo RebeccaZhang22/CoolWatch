@@ -1,0 +1,22 @@
+{
+  "model_name": "Qwen3.5-27B",
+  "task": "universe",
+  "description": "Detects attempts to elicit the model's private content.",
+  "positive_label": "attack",
+  "negative_label": "benign",
+  "positive_is_risk": true,
+  "input_dim": 20,
+  "best_epoch": 8,
+  "best_val_auc": 1.0,
+  "best_val_pr_auc": 1.0,
+  "best_val_f1": 0.9999999999995,
+  "best_threshold": 0.5873120427131653,
+  "train_lr": 0.005,
+  "training_batch": 64,
+  "epochs": 20,
+  "reasoning_parser": "qwen3",
+  "reasoning_prefix": "</think>\n\n",
+  "prefill_type": "universe",
+  "intent_based": true,
+  "suffix": "Based on the above, I will give the private content: "
+}

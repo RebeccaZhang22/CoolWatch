@@ -1,21 +1,7 @@
-"""Standalone SafeGauge inference service.
-
-This file intentionally contains all deployment-time SafeGauge code. It only
-requires the probe checkpoint and its adjacent ``.meta.json`` file at runtime.
-
-Example (recommended, using an existing vLLM server)::
-
-    python backend/watchers/safegauge/service.py \
-      --processor-path backend/watchers/safegauge/models/intent_clear/Llama-3.1-8B-Instruct/sys_prompt/best_model.pt \
-      --base-url http://127.0.0.1:22991/v1 \
-      --port 8900
-
-The vLLM model must match the base model recorded in the probe metadata.
-"""
+"""Core SafeGauge detector used directly by the CoolWatch backend."""
 
 from __future__ import annotations
 
-import argparse
 import copy
 import json
 from pathlib import Path
@@ -24,10 +10,7 @@ from typing import Any
 import numpy as np
 import torch
 import torch.nn as nn
-from fastapi import FastAPI, HTTPException
 from openai import OpenAI
-from pydantic import BaseModel, Field
-from starlette.concurrency import run_in_threadpool
 from transformers import AutoTokenizer
 
 
@@ -82,6 +65,7 @@ class LogProbsPrompt:
         model: str | None = None,
         tokenizer_path: str | None = None,
         llm: Any = None,
+        timeout: float = 120.0,
     ) -> None:
         self.reasoning_prefix = reasoning_prefix
         self.model = model
@@ -91,7 +75,7 @@ class LogProbsPrompt:
 
         if base_url:
             self.mode = "server"
-            self.client = OpenAI(api_key=api_key, base_url=base_url)
+            self.client = OpenAI(api_key=api_key, base_url=base_url, timeout=timeout)
             self._load_server_info()
         elif llm is not None:
             self.mode = "offline"
@@ -217,6 +201,7 @@ class SafeGaugeDetector:
         tokenizer_path: str | None = None,
         llm: Any = None,
         device: str | None = None,
+        timeout: float = 120.0,
     ) -> None:
         checkpoint_path = Path(processor_path)
         if not checkpoint_path.is_file():
@@ -243,6 +228,7 @@ class SafeGaugeDetector:
             model=model,
             tokenizer_path=tokenizer_path,
             llm=llm,
+            timeout=timeout,
         )
 
     def _validate_meta(self, meta_path: Path) -> None:
@@ -330,110 +316,3 @@ def resolve_reasoning_prefix(meta: dict[str, Any]) -> str:
         raise ValueError(f"Unknown reasoning_parser in metadata: {reasoning_parser}")
     return prefix
 
-
-class DetectRequest(BaseModel):
-    messages: list[dict[str, str]] = Field(..., min_length=1, description="OpenAI-format messages")
-    threshold: float | None = Field(default=None, ge=0, le=1)
-
-
-class BatchDetectRequest(BaseModel):
-    messages_list: list[list[dict[str, str]]] = Field(..., min_length=1)
-    threshold: float | None = Field(default=None, ge=0, le=1)
-
-
-class DetectResponse(BaseModel):
-    task: str
-    label: str
-    probability: float
-    threshold: float
-    positive: bool
-    risky: bool
-    logprobs: list[float]
-
-
-app = FastAPI(
-    title="SafeGauge",
-    description="Metadata-driven safety detection using prefill log probabilities",
-    version="1.0.0",
-)
-detector: SafeGaugeDetector | None = None
-
-
-def _get_detector() -> SafeGaugeDetector:
-    if detector is None:
-        raise HTTPException(status_code=503, detail="SafeGauge detector is not initialized")
-    return detector
-
-
-@app.get("/health")
-async def health() -> dict[str, str]:
-    _get_detector()
-    return {"status": "ok"}
-
-
-@app.get("/model/info")
-async def model_info() -> dict[str, Any]:
-    return _get_detector().get_model_info()
-
-
-@app.post("/detect", response_model=DetectResponse)
-async def detect(request: DetectRequest) -> dict[str, Any]:
-    active_detector = _get_detector()
-    try:
-        return await run_in_threadpool(active_detector.detect, request.messages, request.threshold)
-    except Exception as error:
-        raise HTTPException(status_code=500, detail=f"Detection failed: {error}") from error
-
-
-@app.post("/detect/batch")
-async def detect_batch(request: BatchDetectRequest) -> dict[str, Any]:
-    active_detector = _get_detector()
-    results = await run_in_threadpool(active_detector.detect_batch, request.messages_list, request.threshold)
-    return {"results": results, "total": len(results)}
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Standalone SafeGauge API service")
-    parser.add_argument("--processor-path", required=True, help="trained MLP checkpoint (.pt)")
-    parser.add_argument("--base-url", help="vLLM OpenAI-compatible base URL")
-    parser.add_argument("--model-dir", help="local model path for offline vLLM mode")
-    parser.add_argument("--model", help="served model name; otherwise auto-detected")
-    parser.add_argument("--tokenizer-path", help="tokenizer path; otherwise auto-detected")
-    parser.add_argument("--api-key", default="none")
-    parser.add_argument("--device", choices=["cpu", "cuda"], default=None)
-    parser.add_argument("--host", default="0.0.0.0")
-    parser.add_argument("--port", type=int, default=8900)
-    return parser.parse_args()
-
-
-def main() -> None:
-    global detector
-    args = parse_args()
-
-    if bool(args.base_url) == bool(args.model_dir):
-        raise ValueError("Provide exactly one of --base-url and --model-dir")
-
-    llm = None
-    if args.model_dir:
-        from vllm import LLM
-
-        llm = LLM(model=args.model_dir)
-
-    detector = SafeGaugeDetector(
-        processor_path=args.processor_path,
-        base_url=args.base_url,
-        api_key=args.api_key,
-        model=args.model,
-        tokenizer_path=args.tokenizer_path,
-        llm=llm,
-        device=args.device,
-    )
-    print(json.dumps(detector.get_model_info(), ensure_ascii=False, indent=2))
-
-    import uvicorn
-
-    uvicorn.run(app, host=args.host, port=args.port)
-
-
-if __name__ == "__main__":
-    main()

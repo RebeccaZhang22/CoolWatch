@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 import json
+import re
 from dataclasses import dataclass
+from pathlib import Path
 from time import perf_counter
 
-import httpx
-
 from backend.config import Settings
+from backend.watchers.safegauge.detector import SafeGaugeDetector
+
+
+MODELS_DIR = Path(__file__).resolve().parent / "models"
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 @dataclass(frozen=True)
@@ -26,15 +32,21 @@ class SafeGaugeAssessment:
         return self.risky is True
 
 
-class SafeGaugeClient:
-    """Async client for the standalone SafeGauge detection service."""
+class SafeGaugeGuard:
+    """In-process SafeGauge MLP that reuses CoolWatch's existing vLLM API."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self._client = httpx.AsyncClient(timeout=settings.safegauge_timeout_seconds)
+        self._detector: SafeGaugeDetector | None = None
+        self._load_lock = asyncio.Lock()
 
     async def close(self) -> None:
-        await self._client.aclose()
+        detector = self._detector
+        if detector is None:
+            return
+        client = detector.logprobs_extractor.client
+        if client is not None:
+            await asyncio.to_thread(client.close)
 
     async def moderate_messages(
         self,
@@ -42,17 +54,9 @@ class SafeGaugeClient:
         threshold: float | None = None,
     ) -> SafeGaugeAssessment:
         started = perf_counter()
-        base_url = self.settings.safegauge_base_url.rstrip("/")
-        if not base_url:
-            return self._error_assessment("未配置 SAFEGAUGE_BASE_URL", started)
-
         try:
-            request_payload: dict[str, object] = {"messages": messages}
-            if threshold is not None:
-                request_payload["threshold"] = threshold
-            response = await self._client.post(f"{base_url}/detect", json=request_payload)
-            response.raise_for_status()
-            payload = response.json()
+            detector = await self._get_detector()
+            payload = await asyncio.to_thread(detector.detect, messages, threshold)
             return SafeGaugeAssessment(
                 task=str(payload.get("task") or ""),
                 label=str(payload.get("label") or ""),
@@ -64,15 +68,41 @@ class SafeGaugeClient:
                 latency_ms=round((perf_counter() - started) * 1000),
             )
         except Exception as error:
-            return self._error_assessment(describe_http_error(error), started)
+            return self._error_assessment(str(error), started)
 
     async def get_model_info(self) -> dict:
-        base_url = self.settings.safegauge_base_url.rstrip("/")
-        if not base_url:
-            raise RuntimeError("未配置 SAFEGAUGE_BASE_URL")
-        response = await self._client.get(f"{base_url}/model/info")
-        response.raise_for_status()
-        return response.json()
+        detector = await self._get_detector()
+        return detector.get_model_info()
+
+    async def _get_detector(self) -> SafeGaugeDetector:
+        if self._detector is not None:
+            return self._detector
+
+        async with self._load_lock:
+            if self._detector is None:
+                self._detector = await asyncio.to_thread(self._build_detector)
+        return self._detector
+
+    def _build_detector(self) -> SafeGaugeDetector:
+        processor_path = resolve_processor_path(
+            self.settings.safegauge_processor_path,
+            self.settings.vllm_model,
+        )
+        device = self.settings.safegauge_device.strip().lower()
+        if device == "auto":
+            device = None
+        elif device not in {"cpu", "cuda"}:
+            raise ValueError("SAFEGAUGE_DEVICE must be one of: auto, cpu, cuda")
+
+        return SafeGaugeDetector(
+            processor_path=str(processor_path),
+            base_url=self.settings.vllm_base_url,
+            api_key=self.settings.vllm_api_key,
+            model=self.settings.vllm_model,
+            tokenizer_path=self.settings.safegauge_tokenizer_path.strip() or None,
+            device=device,
+            timeout=self.settings.safegauge_timeout_seconds,
+        )
 
     def _error_assessment(self, error: str, started: float) -> SafeGaugeAssessment:
         return SafeGaugeAssessment(
@@ -88,19 +118,40 @@ class SafeGaugeClient:
         )
 
 
+def resolve_processor_path(configured_path: str, model_name: str) -> Path:
+    if configured_path.strip():
+        path = Path(configured_path).expanduser()
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        if not path.is_file():
+            raise FileNotFoundError(f"SafeGauge processor checkpoint not found: {path}")
+        return path
+
+    normalized_model = normalize_model_name(Path(model_name.rstrip("/")).name)
+    matching_groups = [
+        group
+        for group in MODELS_DIR.iterdir()
+        if group.is_dir() and normalize_model_name(group.name) == normalized_model
+    ]
+    checkpoints = [checkpoint for group in matching_groups for checkpoint in group.rglob("best_model.pt")]
+    if len(checkpoints) == 1:
+        return checkpoints[0]
+    if not checkpoints:
+        raise FileNotFoundError(
+            f"No SafeGauge checkpoint matches VLLM_MODEL={model_name!r}; "
+            "set SAFEGAUGE_PROCESSOR_PATH explicitly"
+        )
+    raise RuntimeError(
+        f"Multiple SafeGauge checkpoints match VLLM_MODEL={model_name!r}; "
+        "set SAFEGAUGE_PROCESSOR_PATH explicitly"
+    )
+
+
+def normalize_model_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", value.lower())
+
+
 def optional_float(value: object) -> float | None:
     if value is None:
         return None
     return float(value)
-
-
-def describe_http_error(error: Exception) -> str:
-    if isinstance(error, httpx.HTTPStatusError):
-        try:
-            payload = error.response.json()
-            detail = payload.get("detail") if isinstance(payload, dict) else None
-            if detail:
-                return f"HTTP {error.response.status_code}: {detail}"
-        except ValueError:
-            pass
-    return str(error)

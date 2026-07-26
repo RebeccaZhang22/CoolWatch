@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class ModelParams(BaseModel):
-    model: str = "Qwen3.5-27B"
+    model: str = "qwen3-8b"
     temperature: float = 0.2
     top_p: float = 0.8
     max_tokens: int = 2048
@@ -15,6 +15,10 @@ class OutputGuardConfig(BaseModel):
 
 
 class SafeGaugeConfig(BaseModel):
+    threshold: float | None = Field(default=None, ge=0, le=1)
+
+
+class InlineProbingConfig(BaseModel):
     threshold: float | None = Field(default=None, ge=0, le=1)
 
 
@@ -45,6 +49,7 @@ class ChatRequest(BaseModel):
     model_params: ModelParams = Field(default_factory=ModelParams)
     output_guard: OutputGuardConfig = Field(default_factory=OutputGuardConfig)
     safegauge: SafeGaugeConfig = Field(default_factory=SafeGaugeConfig)
+    inline_probing: InlineProbingConfig = Field(default_factory=InlineProbingConfig)
     scenario_id: str | None = None
     scenario: ScenarioPayload | None = None
 

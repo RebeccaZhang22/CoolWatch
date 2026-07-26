@@ -4,37 +4,44 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CoolWatch 攻防演示台</title>
-    <link rel="stylesheet" href="./src/styles.css?v=safegauge-threshold-20260723" />
+    <link rel="stylesheet" href="./src/styles.css?v=shared-header-20260726-v2" />
   </head>
   <body>
-    <div class="app-shell" id="appShell">
-      <aside class="sidebar" aria-label="演示配置">
-        <div class="sidebar-header">
-          <div class="brand">
-            <div class="brand-mark" aria-hidden="true">
-              <span></span>
-            </div>
-            <div>
-              <div class="brand-title">CoolWatch</div>
-              <div class="brand-subtitle">LLM 安全攻防演示台</div>
-            </div>
-          </div>
-          <button class="nav-icon-button" id="sidebarCollapseButton" type="button" aria-label="收起侧边栏" title="收起侧边栏">
-            ‹
-          </button>
+    <div class="demo-page-shell">
+      <header class="audit-topbar">
+        <a class="audit-brand" href="./index.html" aria-label="CoolWatch 攻防演示台">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <span>
+            <strong>CoolWatch</strong>
+            <small>Security Playground</small>
+          </span>
+        </a>
+        <nav class="audit-nav" aria-label="主导航">
+          <a class="active" href="./index.html" aria-current="page">攻防演示台</a>
+          <a href="./audit.html">实验审计</a>
+        </nav>
+        <div class="audit-runtime">
+          <span class="status-dot"></span>
+          <span id="runtimeStatus">Mock Agent 已就绪</span>
         </div>
+      </header>
 
+      <div class="app-shell" id="appShell">
+        <aside class="sidebar" aria-label="演示配置">
         <div class="sidebar-actions">
-          <button class="button button-primary new-chat-button" id="newSessionButton" type="button">
-            <span class="new-chat-icon" aria-hidden="true">
-              <svg viewBox="0 0 20 20" focusable="false">
-                <path d="M8.5 4.5H5.8A2.3 2.3 0 0 0 3.5 6.8v7.4a2.3 2.3 0 0 0 2.3 2.3h7.4a2.3 2.3 0 0 0 2.3-2.3v-2.7" />
-                <path d="M12.5 3.8 16.2 7.5" />
-                <path d="M16.9 3.1a1.3 1.3 0 0 1 0 1.8l-6.7 6.7-3.2.8.8-3.2 6.7-6.7a1.3 1.3 0 0 1 1.8 0l.6.6Z" />
-              </svg>
-            </span>
-            新聊天
-          </button>
+          <div class="sidebar-action-row">
+            <button class="button button-primary new-chat-button" id="newSessionButton" type="button">
+              <span class="new-chat-icon" aria-hidden="true">
+                <svg viewBox="0 0 20 20" focusable="false">
+                  <path d="M8.5 4.5H5.8A2.3 2.3 0 0 0 3.5 6.8v7.4a2.3 2.3 0 0 0 2.3 2.3h7.4a2.3 2.3 0 0 0 2.3-2.3v-2.7" />
+                  <path d="M12.5 3.8 16.2 7.5" />
+                  <path d="M16.9 3.1a1.3 1.3 0 0 1 0 1.8l-6.7 6.7-3.2.8.8-3.2 6.7-6.7a1.3 1.3 0 0 1 1.8 0l.6.6Z" />
+                </svg>
+              </span>
+              新聊天
+            </button>
+            <button class="nav-icon-button" id="sidebarCollapseButton" type="button" aria-label="收起侧边栏" title="收起侧边栏">‹</button>
+          </div>
         </div>
 
         <section class="panel scenario-panel">
@@ -91,7 +98,7 @@
               </svg>
             </span>
             <div>
-              <strong id="agentConfigModel">Qwen3.5-27B</strong>
+              <strong id="agentConfigModel">qwen3-8b</strong>
               <span id="agentConfigParams">Temperature 0.2 · Top P 0.8 · Max 2048</span>
             </div>
           </div>
@@ -134,10 +141,6 @@
               </span>
             </div>
           </div>
-          <div class="status-strip">
-            <span class="status-dot"></span>
-            <span id="runtimeStatus">Mock Agent 已就绪</span>
-          </div>
         </header>
 
         <section class="chat-surface" aria-label="聊天演示">
@@ -160,7 +163,7 @@
             </div>
           </form>
         </section>
-      </main>
+        </main>
 
       <button class="drawer-backdrop" id="drawerBackdrop" type="button" aria-label="关闭攻击详情"></button>
 
@@ -267,7 +270,7 @@
               <label class="field agent-model-field">
                 <span>模型</span>
                 <select id="modelSelect">
-                  <option value="Qwen3.5-27B">Qwen3.5-27B</option>
+                  <option value="qwen3-8b">Qwen3-8B + Inline Probe</option>
                 </select>
               </label>
               <div class="agent-parameter-grid">
@@ -363,8 +366,9 @@
           </div>
         </section>
       </div>
+      </div>
     </div>
 
-    <script type="module" src="./src/app.js?v=safegauge-threshold-20260723"></script>
+    <script type="module" src="./src/app.js?v=shared-header-20260726-v2"></script>
   </body>
 </html>

@@ -48,6 +48,97 @@ body {
   font-weight: 400;
 }
 
+.demo-page-shell {
+  display: grid;
+  width: 100vw;
+  height: 100vh;
+  min-height: 0;
+  grid-template-rows: 58px minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.audit-topbar {
+  position: relative;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) auto minmax(190px, 1fr);
+  align-items: center;
+  min-height: 58px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.94);
+  padding: 0 28px;
+  backdrop-filter: blur(14px);
+}
+
+.audit-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 10px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.audit-brand > span:last-child {
+  display: grid;
+  gap: 1px;
+}
+
+.audit-brand strong {
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.audit-brand small {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.audit-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-muted);
+  padding: 3px;
+}
+
+.audit-nav a {
+  border-radius: 6px;
+  color: var(--muted);
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.audit-nav a:hover,
+.audit-nav a.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.audit-runtime {
+  display: inline-flex;
+  align-items: center;
+  justify-self: end;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.audit-runtime.ready {
+  color: var(--success);
+}
+
+.audit-runtime.error {
+  color: var(--danger);
+}
+
 button,
 input,
 select,
@@ -71,6 +162,17 @@ strong {
   grid-template-columns: 340px minmax(0, 1fr);
   overflow: hidden;
   transition: grid-template-columns 0.18s ease;
+}
+
+.demo-page-shell .app-shell {
+  width: 100%;
+  height: auto;
+  min-height: 0;
+}
+
+.demo-page-shell .sidebar {
+  height: auto;
+  min-height: 0;
 }
 
 .app-shell.sidebar-collapsed {
@@ -160,6 +262,13 @@ strong {
   display: grid;
 }
 
+.sidebar-action-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+  align-items: center;
+}
+
 .new-chat-button {
   display: inline-flex;
   align-items: center;
@@ -194,6 +303,10 @@ strong {
 
 .new-chat-button:hover {
   background: var(--active-bg);
+}
+
+.audit-entry-link {
+  text-decoration: none;
 }
 
 .nav-icon-button {
@@ -2533,6 +2646,11 @@ strong {
   overflow: hidden;
 }
 
+.demo-page-shell .workspace {
+  height: auto;
+  min-height: 0;
+}
+
 .topbar {
   display: flex;
   align-items: center;
@@ -3762,6 +3880,21 @@ button:disabled {
   }
 }
 
+@media (max-width: 760px) {
+  .audit-topbar {
+    grid-template-columns: 1fr auto;
+    padding: 0 14px;
+  }
+
+  .audit-runtime {
+    display: none;
+  }
+
+  .audit-nav a {
+    padding: 6px 8px;
+  }
+}
+
 @media (max-width: 560px) {
   .sidebar,
   .messages,
@@ -3783,7 +3916,7 @@ button:disabled {
 
 /* Scene prompt and Agent runtime are configured independently. */
 .sidebar {
-  grid-template-rows: auto auto auto auto auto minmax(0, 1fr);
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
 }
 
 .scenario-select-field {

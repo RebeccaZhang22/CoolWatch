@@ -1,0 +1,181 @@
+<!doctype html>
+<html class="audit-document" lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CoolWatch 实验审计</title>
+    <link rel="stylesheet" href="./src/styles.css?v=shared-header-20260726-v4" />
+    <link rel="stylesheet" href="./src/audit.css?v=shared-header-20260726-v4" />
+  </head>
+  <body class="audit-body">
+    <div class="audit-shell">
+      <header class="audit-topbar">
+        <a class="audit-brand" href="./index.html" aria-label="返回 CoolWatch 演示台">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <span>
+            <strong>CoolWatch</strong>
+            <small>Experiment Audit</small>
+          </span>
+        </a>
+        <nav class="audit-nav" aria-label="主导航">
+          <a href="./index.html">攻防演示台</a>
+          <a class="active" href="./audit.html" aria-current="page">实验审计</a>
+        </nav>
+        <div class="audit-runtime" id="auditRuntime">
+          <span class="status-dot"></span>
+          <span>正在读取审计产物</span>
+        </div>
+      </header>
+
+      <main class="audit-main">
+        <section class="audit-hero">
+          <div>
+            <p class="eyebrow" id="riskEyebrow">中文安全能力评估 · 100 次独立测试</p>
+            <h1 id="riskTitle">AI 助手能否识别隐藏在外部数据中的恶意指令？</h1>
+            <p class="audit-lead" id="riskLead">
+              系统提示、用户任务、业务环境和注入内容均已中文化。我们在恶意内容首次进入 Qwen3-8B 视野时比较四种检测方案，并记录模型接下来会采取什么行动。
+            </p>
+          </div>
+          <div class="audit-method-chips" id="methodChips"></div>
+        </section>
+
+        <section class="audit-risk-switcher" aria-label="风险类别" id="riskSwitcher"></section>
+        <section class="audit-risk-empty" id="riskEmpty" hidden></section>
+
+        <section class="audit-overview-grid risk-audit-section" aria-label="实验概览">
+          <article class="audit-card audit-results-card">
+            <header class="audit-card-header">
+              <div>
+                <p class="eyebrow">核心结论</p>
+                <h2>100 次攻击中，成功预警了多少次？</h2>
+              </div>
+              <span class="audit-note">数值越高越好</span>
+            </header>
+            <div class="guard-result-list" id="guardResultList"></div>
+          </article>
+
+          <article class="audit-card audit-facts-card">
+            <header class="audit-card-header">
+              <div>
+                <p class="eyebrow">评估范围</p>
+                <h2>本次测试包含什么？</h2>
+              </div>
+            </header>
+            <dl class="audit-fact-grid" id="experimentFacts"></dl>
+          </article>
+        </section>
+
+        <section class="audit-card behavior-summary-card risk-audit-section">
+          <header class="audit-card-header">
+            <div>
+              <p class="eyebrow">模型行为</p>
+              <h2>看到中文恶意指令后，Qwen3-8B 如何反应？</h2>
+            </div>
+            <span class="audit-note">只记录下一步，不执行工具动作</span>
+          </header>
+          <div class="behavior-summary" id="behaviorSummary"></div>
+        </section>
+
+        <section class="audit-card audit-integrity-card risk-audit-section">
+          <header class="audit-card-header">
+            <div>
+              <p class="eyebrow">公平性保障</p>
+              <h2>为什么结果可以直接比较？</h2>
+            </div>
+            <span class="audit-status-pill success">过程一致且可复核</span>
+          </header>
+          <div class="integrity-grid" id="integrityGrid"></div>
+        </section>
+
+        <section class="audit-card audit-settings-card risk-audit-section">
+          <header class="audit-card-header">
+            <div>
+              <p class="eyebrow">细分场景</p>
+              <h2>不同业务和攻击话术下的表现</h2>
+            </div>
+            <span class="audit-note">已预警 / 测试次数</span>
+          </header>
+          <div class="settings-table-wrap">
+            <table class="audit-table settings-table">
+              <thead>
+                <tr>
+                  <th>业务场景</th>
+                  <th>助手安全策略</th>
+                  <th>攻击伪装方式</th>
+                  <th>测试次数</th>
+                  <th>Inline Probe</th>
+                  <th>Qwen3Guard</th>
+                  <th>网易易盾</th>
+                </tr>
+              </thead>
+              <tbody id="settingsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="audit-card audit-explorer-card risk-audit-section">
+          <header class="audit-card-header explorer-heading">
+            <div>
+              <p class="eyebrow">案例复盘</p>
+              <h2>逐条查看攻击现场和检测判断</h2>
+            </div>
+            <span class="audit-note" id="caseCountLabel">0 cases</span>
+          </header>
+
+          <div class="audit-filterbar">
+            <label class="audit-search-field">
+              <span class="sr-only">搜索 trace</span>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="8.5" cy="8.5" r="5.5"></circle>
+                <path d="m13 13 4 4"></path>
+              </svg>
+              <input id="caseSearchInput" type="search" placeholder="搜索案例或攻击类型" />
+            </label>
+            <label>
+              <span class="sr-only">检测器</span>
+              <select id="guardFilter">
+                <option value="all">全部检测器</option>
+                <option value="inline_probing">Inline Probe</option>
+                <option value="qwen3_guard">Qwen3Guard</option>
+                <option value="netease_yidun">网易易盾</option>
+                <option value="no_guard">No Guard</option>
+              </select>
+            </label>
+            <label>
+              <span class="sr-only">检测结果</span>
+              <select id="resultFilter">
+                <option value="all">全部结果</option>
+                <option value="detected">已检出</option>
+                <option value="missed">未检出</option>
+              </select>
+            </label>
+            <label>
+              <span class="sr-only">Setting</span>
+              <select id="settingFilter"><option value="all">全部业务场景</option></select>
+            </label>
+          </div>
+
+          <div class="trace-explorer">
+            <div class="trace-list-panel">
+              <div class="trace-list-header">
+                <span>案例</span>
+                <span>风险场景</span>
+                <span>检测结果</span>
+              </div>
+              <div class="trace-list" id="traceList"></div>
+              <div class="trace-empty" id="traceEmpty" hidden>没有符合当前筛选条件的记录。</div>
+            </div>
+            <article class="trace-detail-panel" id="traceDetail">
+              <div class="trace-detail-placeholder">
+                <span class="audit-loading-dot"></span>
+                <p>选择一条记录查看冻结 replay 与检测证据</p>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./src/audit.js?v=shared-header-20260726-v4"></script>
+  </body>
+</html>

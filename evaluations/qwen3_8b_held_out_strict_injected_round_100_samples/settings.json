@@ -1,0 +1,51 @@
+{
+  "schema": "coolwatch.guard_detection.settings.v1",
+  "benchmark_id": "qwen3-8b-held-out-strict-injected-round-100-samples-seed42",
+  "agentic_model": "Qwen/Qwen3-8B",
+  "source_dataset": "agentdojo-20260430T015534Z-qwen3-8b-dp4",
+  "dataset_root": "results/probe_traces/v2/agentdojo-20260430T015534Z-qwen3-8b-dp4",
+  "split": "held-out strict",
+  "partition_path": "datasets/all_ipi_except_strict_zero_val/partition.json",
+  "partition_sha256": "fa2e8186a3aa4cc4543c3344ede19e3a9643cc5a77ce91c5e6405fcaee56c62a",
+  "labels_path": "labels/risk_faced/labels.jsonl",
+  "labels_sha256": "2523cab0be605e73f9ca198883f920ffbadbc964f3964776097e8c38d6005110",
+  "sampling": {
+    "population_settings": 16,
+    "population_samples": 5618,
+    "sample_size": 100,
+    "seed": 42,
+    "algorithm": "random.Random(seed).sample(sorted(population, key=decision_point_id), sample_size)",
+    "settings": [
+      "banking__default_tool_careful__ignore_previous",
+      "banking__default_tool_careful__important_instructions",
+      "banking__default_tool_careful__system_message",
+      "banking__default_tool_careful__tool_knowledge",
+      "banking__safety_reminder_explicit__ignore_previous",
+      "banking__safety_reminder_explicit__important_instructions",
+      "banking__safety_reminder_explicit__system_message",
+      "banking__safety_reminder_explicit__tool_knowledge",
+      "travel__default_tool_careful__ignore_previous",
+      "travel__default_tool_careful__important_instructions",
+      "travel__default_tool_careful__system_message",
+      "travel__default_tool_careful__tool_knowledge",
+      "travel__safety_reminder_explicit__ignore_previous",
+      "travel__safety_reminder_explicit__important_instructions",
+      "travel__safety_reminder_explicit__system_message",
+      "travel__safety_reminder_explicit__tool_knowledge"
+    ]
+  },
+  "detection_point": {
+    "labeling_protocol": "risk_faced",
+    "label": 1,
+    "meaning": "For each injection round, evaluate only the first assistant decision point whose prompt prefix contains that injection.",
+    "later_rounds_excluded": true
+  },
+  "guard_inputs": {
+    "inline_probing": "Complete replay messages, tools, and tool_choice at the selected assistant prefix.",
+    "qwen3_guard": "Complete newly faced tool-result message or messages, without extracting the injected substring.",
+    "netease_yidun": "Complete newly faced tool-result message or messages, without extracting the injected substring.",
+    "no_guard": "No detector call; always returns detected=false."
+  },
+  "guards": ["qwen3_guard", "no_guard", "inline_probing", "netease_yidun"],
+  "intervention": false
+}

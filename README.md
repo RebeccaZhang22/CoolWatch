@@ -1,62 +1,56 @@
 # CoolWatch
 
-CoolWatch 是一个 LLM 安全攻防演示项目。Agent 和 SafeGauge 复用同一个 vLLM 服务；SafeGauge MLP 由 CoolWatch 后端进程内加载，不需要单独启动检测服务。
+CoolWatch 是一个 LLM 安全攻防演示项目。默认 Agent 是开启 Inline Probing 的 Qwen3-8B；probe 在工具返回后的首次真实 assistant generation 内执行。
 
 ## 运行架构
 
 ```text
 浏览器：http://127.0.0.1:18088
   └─ CoolWatch / FastAPI
-       ├─ Qwen3.5-27B vLLM：http://127.0.0.1:18087/v1
-       ├─ SafeGauge MLP（进程内加载，复用上述 vLLM）
+       ├─ patched Qwen3-8B vLLM：http://127.0.0.1:8013/v1
+       ├─ Inline Probe（tool result 后首个 assistant 决策点）
+       ├─ SafeGauge MLP（可选，进程内加载）
        ├─ Llama Prompt Guard 2（可选，本地懒加载）
        ├─ Qwen3Guard（可选）
        └─ 网易易盾（可选）
 ```
 
-以下命令直接使用当前 Python/vLLM 环境，只需要启动 vLLM 和 CoolWatch 两个进程。当前机器已经存在完整的 Qwen3.5-27B 权重：
-
-```text
-/share/workspace/models/hub/models--Qwen--Qwen3.5-27B/snapshots/fc05daec18b0a78c049392ed2e771dde82bdf654
-```
-
-## 第一步：启动 Qwen3.5-27B
+## 第一步：启动 patched Qwen3-8B
 
 终端 1：
 
 ```bash
-cd /ssd/workspace/zms/CoolWatch
-
-MODEL=/share/workspace/models/hub/models--Qwen--Qwen3.5-27B/snapshots/fc05daec18b0a78c049392ed2e771dde82bdf654 \
-SERVED_MODEL_NAME=Qwen3.5-27B \
-./start-qwen35.sh --gpus 0,1
+cd /mnt/workspace/zqj/djs/follow-your-heart/coolwatch-detection/CoolWatch
+recipe/inline_probing/qwen3-8b-indirect-prompt-injection-assistant-prefix-probing/\
+vllm_server_control_with_probe_enabled.sh start --gpu 4
 ```
 
-`--gpus` 显式指定物理 GPU 编号，例如单卡使用 `--gpus 0`，四卡使用 `--gpus 0,1,2,3`。脚本会按照所选 GPU 数量自动设置 `tensor-parallel-size`。
+该 recipe 自带 vLLM 0.25.1 overlay 完整性检查、probe checkpoint 配置、状态文件和日志路径。首次使用前按 [recipe README](recipe/inline_probing/qwen3-8b-indirect-prompt-injection-assistant-prefix-probing/README.md) 创建并 patch 专用 vLLM 环境。
 
 等模型加载完成后检查：
 
 ```bash
-curl http://127.0.0.1:18087/v1/models
+curl http://127.0.0.1:8013/v1/models
 ```
 
-返回的模型列表应包含 `Qwen3.5-27B`。vLLM 的 prompt logprobs 能力会同时供 SafeGauge 使用。
+返回的模型列表应包含 `qwen3-8b`。
 
 ## 第二步：启动 CoolWatch
 
 终端 2：
 
 ```bash
-cd /ssd/workspace/zms/CoolWatch
+cd /mnt/workspace/zqj/djs/follow-your-heart/coolwatch-detection/CoolWatch
 ./start-coolwatch.sh
 ```
 
 启动脚本的默认配置已经与模型服务对齐：
 
 ```text
-VLLM_BASE_URL=http://127.0.0.1:18087/v1
+VLLM_BASE_URL=http://127.0.0.1:8013/v1
 VLLM_API_KEY=EMPTY
-VLLM_MODEL=Qwen3.5-27B
+VLLM_MODEL=qwen3-8b
+INLINE_PROBING_EXPECTED_CHECKPOINT_ID=sha256:41f1433346caebc8b2e9ff5640b44e3d162050d6ef7ffee45285badba4798b45
 CoolWatch PORT=18088
 ```
 
@@ -72,12 +66,12 @@ curl http://127.0.0.1:18088/api/health
 http://127.0.0.1:18088
 ```
 
-FastAPI 会直接托管 `frontend/`。页面首次读取 SafeGauge 信息时，后端会自动加载与 `VLLM_MODEL` 同名目录中的 `best_model.pt`；检测时复用 `VLLM_BASE_URL`，没有额外端口。
+FastAPI 会直接托管 `frontend/`。Inline Probing 必须使用上述 patched Qwen3-8B 服务；未选择 Inline Probing 时，其他护栏仍按各自配置运行。
 
 如需指定 checkpoint、tokenizer 或 MLP 设备：
 
 ```dotenv
-SAFEGAUGE_PROCESSOR_PATH=backend/watchers/safegauge/models/Qwen3.5-27B/universe/best_model.pt
+SAFEGAUGE_PROCESSOR_PATH=<compatible-safegauge-checkpoint>
 SAFEGAUGE_TOKENIZER_PATH=
 SAFEGAUGE_DEVICE=cpu
 SAFEGAUGE_TIMEOUT_SECONDS=120
@@ -126,6 +120,6 @@ NETEASE_YIDUN_BUSINESS_ID=your_business_id
 ## 两步启动摘要
 
 ```text
-终端 1：Qwen3.5-27B vLLM            127.0.0.1:18087
-终端 2：CoolWatch + SafeGauge + 前端 0.0.0.0:18088
+终端 1：patched Qwen3-8B vLLM       127.0.0.1:8013
+终端 2：CoolWatch + 前端              0.0.0.0:18088
 ```

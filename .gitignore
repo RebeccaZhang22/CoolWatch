@@ -2,6 +2,9 @@ __pycache__/
 *.py[cod]
 .env
 .venv/
+.runtime/
+logs/
+pytest-of-*/
 node_modules/
 tmp/
 vllm_setups/

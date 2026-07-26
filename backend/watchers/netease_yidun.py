@@ -41,6 +41,8 @@ class NeteaseYidunAssessment:
     raw_output: str
     latency_ms: int
     error: str | None = None
+    chunk_count: int = 1
+    input_chars: int = 0
 
     @property
     def risky(self) -> bool | None:
@@ -63,23 +65,71 @@ class NeteaseYidunClient:
 
     async def moderate_prompt(self, content: str) -> NeteaseYidunAssessment:
         started = time.perf_counter()
+        chunks = _content_chunks(content)
         missing = self._missing_credentials()
         if missing:
-            return self._error_assessment(f"未配置 {', '.join(missing)}", started)
-
-        try:
-            params = self._build_params(content)
-            response = await self._client.post(
-                self.settings.netease_yidun_api_url,
-                headers={"Content-Type": "application/x-www-form-urlencoded"},
-                data=params,
+            return self._error_assessment(
+                f"未配置 {', '.join(missing)}",
+                started,
+                chunk_count=len(chunks),
+                input_chars=len(content),
             )
-            response.raise_for_status()
-            payload = response.json()
-        except Exception as error:
-            return self._error_assessment(str(error), started)
 
-        return self._parse_response(payload, started)
+        payloads: list[dict] = []
+        try:
+            for chunk in chunks:
+                response = await self._client.post(
+                    self.settings.netease_yidun_api_url,
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
+                    data=self._build_params(chunk),
+                )
+                response.raise_for_status()
+                payloads.append(response.json())
+        except Exception as error:
+            return self._error_assessment(
+                str(error),
+                started,
+                chunk_count=len(chunks),
+                input_chars=len(content),
+            )
+
+        assessments = [self._parse_response(payload, started) for payload in payloads]
+        errors = [assessment.error for assessment in assessments if assessment.error]
+        suggestions = [
+            assessment.suggestion
+            for assessment in assessments
+            if assessment.suggestion is not None
+        ]
+        suggestion_levels = [
+            assessment.suggestion_level
+            for assessment in assessments
+            if assessment.suggestion_level is not None
+        ]
+        return NeteaseYidunAssessment(
+            suggestion=max(suggestions) if suggestions else None,
+            suggestion_level=max(suggestion_levels) if suggestion_levels else None,
+            task_id=",".join(
+                assessment.task_id for assessment in assessments if assessment.task_id
+            ),
+            labels=list(
+                dict.fromkeys(
+                    label for assessment in assessments for label in assessment.labels
+                )
+            ),
+            raw_output=json.dumps(
+                {
+                    "schema": "coolwatch.netease_yidun.chunked_response.v1",
+                    "input_chars": len(content),
+                    "chunk_count": len(chunks),
+                    "responses": payloads,
+                },
+                ensure_ascii=False,
+            ),
+            latency_ms=round((time.perf_counter() - started) * 1000),
+            error="; ".join(errors) if errors else None,
+            chunk_count=len(chunks),
+            input_chars=len(content),
+        )
 
     def _missing_credentials(self) -> list[str]:
         missing = []
@@ -99,7 +149,7 @@ class NeteaseYidunClient:
             "timestamp": str(int(time.time() * 1000)),
             "nonce": str(random.randint(0, 10_000_000_000)),
             "dataId": uuid4().hex,
-            "content": content[:10000],
+            "content": content,
         }
         signature_method = self.settings.netease_yidun_signature_method.strip().upper()
         if signature_method:
@@ -124,7 +174,14 @@ class NeteaseYidunClient:
             error=error,
         )
 
-    def _error_assessment(self, error: str, started: float) -> NeteaseYidunAssessment:
+    def _error_assessment(
+        self,
+        error: str,
+        started: float,
+        *,
+        chunk_count: int = 1,
+        input_chars: int = 0,
+    ) -> NeteaseYidunAssessment:
         return NeteaseYidunAssessment(
             suggestion=None,
             suggestion_level=None,
@@ -133,7 +190,17 @@ class NeteaseYidunClient:
             raw_output="",
             latency_ms=round((time.perf_counter() - started) * 1000),
             error=error,
+            chunk_count=chunk_count,
+            input_chars=input_chars,
         )
+
+
+def _content_chunks(content: str, limit: int = 10_000) -> list[str]:
+    if limit <= 0:
+        raise ValueError("content chunk limit must be positive")
+    if not content:
+        return [""]
+    return [content[start : start + limit] for start in range(0, len(content), limit)]
 
 
 def sign_yidun_params(params: dict[str, str], secret_key: str) -> str:

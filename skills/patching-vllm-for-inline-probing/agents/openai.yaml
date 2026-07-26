@@ -1,0 +1,4 @@
+interface:
+  display_name: "Patch vLLM for Inline Probing"
+  short_description: "Port and audit versioned vLLM probing patches"
+  default_prompt: "Use $patching-vllm-for-inline-probing to port and validate inline probing for a target vLLM version."

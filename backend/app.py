@@ -7,6 +7,8 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.agent_loop import AgentLoop
 from backend.attack_library import load_attack_examples
+from backend.gym_client import GymClient
+from backend.gym_dataset import gym_attack_examples, gym_scenarios
 from backend.chat_orchestrator import ChatOrchestrator
 from backend.config import get_settings
 from backend.experiment_audit import list_audit_risks, load_case_detail, load_experiment_overview
@@ -33,7 +35,8 @@ llama_prompt_guard_client = LlamaPromptGuardClient(settings)
 netease_yidun_client = NeteaseYidunClient(settings)
 safegauge_guard = SafeGaugeGuard(settings)
 inline_probing_guard = InlineProbingGuard(settings)
-agent_loop = AgentLoop(llm_client=llm_client, session_store=session_store)
+gym_client = GymClient(settings.nemo_gym_root, settings.nemo_gym_head_url, settings.nemo_gym_timeout_seconds)
+agent_loop = AgentLoop(llm_client=llm_client, session_store=session_store, gym_client=gym_client)
 chat_orchestrator = ChatOrchestrator(
     agent_loop=agent_loop,
     qwen_guard_client=qwen_guard_client,
@@ -59,6 +62,7 @@ async def lifespan(_: FastAPI):
     await netease_yidun_client.close()
     await safegauge_guard.close()
     await inline_probing_guard.close()
+    await gym_client.close()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
@@ -94,12 +98,18 @@ async def health() -> HealthResponse:
 
 @app.get("/api/scenarios")
 async def list_scenarios():
-    return {"scenarios": [scenario.model_dump(by_alias=True) for scenario in DEFAULT_SCENARIOS.values()]}
+    scenarios = gym_scenarios(settings.nemo_gym_root) if settings.use_nemo_gym else DEFAULT_SCENARIOS.values()
+    return {"scenarios": [scenario.model_dump(by_alias=True) for scenario in scenarios]}
 
 
 @app.get("/api/attacks")
 async def list_attacks(language: str = "cn"):
-    return {"attacks": load_attack_examples(language=language)}
+    attacks = (
+        gym_attack_examples(settings.nemo_gym_root)
+        if settings.use_nemo_gym
+        else load_attack_examples(language=language)
+    )
+    return {"attacks": attacks}
 
 
 @app.get("/api/guards/safegauge/info")

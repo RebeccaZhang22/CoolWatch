@@ -7,6 +7,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ATTACKS_ROOT = REPO_ROOT / "data" / "cn" / "attacks"
+GYM_IPI_DATASET = Path("resources_servers/indirect_prompt_injection/data/example.jsonl")
 
 
 def load_attack_examples(language: str = "cn", attacks_root: Path = DEFAULT_ATTACKS_ROOT) -> list[dict[str, Any]]:
@@ -54,6 +55,76 @@ def load_attack_examples(language: str = "cn", attacks_root: Path = DEFAULT_ATTA
             item["id"],
         ),
     )
+
+
+def load_gym_prompt_injection_examples(nemo_gym_root: Path) -> list[dict[str, Any]]:
+    """Load NeMo Gym IPI attacks for the CoolWatch attack picker.
+
+    The UI uses the embedded injection text as the selectable attack prompt.
+    The legitimate user request and sandbox metadata remain attached so a
+    future sandbox view can submit the original JSONL row without flattening it.
+    """
+    dataset_path = nemo_gym_root / GYM_IPI_DATASET
+    if not dataset_path.is_file():
+        return []
+
+    examples: list[dict[str, Any]] = []
+    try:
+        lines = dataset_path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return []
+
+    for index, line in enumerate(lines, start=1):
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        injection = row.get("injection")
+        if not isinstance(injection, dict):
+            continue
+        injection_text = str(injection.get("injection_text") or "").strip()
+        if not injection_text:
+            continue
+
+        domain = str(row.get("domain") or "unknown")
+        category = str(injection.get("category") or "prompt_injection")
+        examples.append(
+            {
+                "id": f"nemo-gym-ipi-{index}",
+                "label": f"{domain} · {category}",
+                "type": "间接提示词注入",
+                "attack_set": "NeMo Gym 间接提示词注入",
+                "attack_set_en": "NeMo Gym Indirect Prompt Injection",
+                "category": category,
+                "category_en": category,
+                "prompt_name": f"ipi_{index:03d}",
+                "query": injection_text,
+                "source": "NVIDIA NeMo Gym",
+                "path": f"{GYM_IPI_DATASET.as_posix()}:{index}",
+                "metadata": {
+                    "domain": domain,
+                    "attack_strategy": injection.get("attack_strategy"),
+                    "attack_difficulty": injection.get("attack_difficulty"),
+                    "vector": injection.get("vector"),
+                    "target_tool": injection.get("target_tool"),
+                    "target_args": injection.get("target_args"),
+                    "legitimate_user_request": _extract_user_request(row),
+                    "gym_dataset_row": index,
+                },
+                "evaluation": {},
+                "latest_eval": {},
+            }
+        )
+    return examples
+
+
+def _extract_user_request(row: dict[str, Any]) -> str:
+    create_params = row.get("responses_create_params")
+    messages = create_params.get("input", []) if isinstance(create_params, dict) else []
+    for message in reversed(messages if isinstance(messages, list) else []):
+        if isinstance(message, dict) and message.get("role") == "user":
+            return str(message.get("content") or "")
+    return ""
 
 
 def _read_prompt_json(prompt_path: Path) -> dict[str, Any]:

@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -35,6 +35,9 @@ class ScenarioPayload(BaseModel):
     target: str = "系统提示词"
     system_prompt: str = Field(default="", alias="systemPrompt")
     documents: list[ScenarioDocument] = Field(default_factory=list)
+    category: str = "gym"
+    description: str = ""
+    normal_prompt: str = Field(default="", alias="normalPrompt")
 
     class Config:
         populate_by_name = True
@@ -114,6 +117,7 @@ class ChatResponse(BaseModel):
     matched_spans: list[MatchedSpan]
     rag_trace: list[RagTraceItem]
     agent_trace: list[AgentTraceItem]
+    gym_result: dict[str, Any] | None = None
 
 
 class SessionCreateRequest(BaseModel):

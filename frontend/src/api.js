@@ -1,4 +1,4 @@
-import { buildMockChatResult, getFallbackAttackExamples } from "./mock-data.js?v=safegauge-threshold-20260723";
+import { buildMockChatResult, getFallbackAttackExamples } from "./mock-data.js?v=merged-20260727";
 
 export function createAgentApiClient({
   apiBase = window.AGENT_GUARD_API_BASE ?? defaultApiBase(),
@@ -8,6 +8,18 @@ export function createAgentApiClient({
 
   return {
     mode: useMock ? "mock" : "fastapi",
+
+    async listScenarios() {
+      if (useMock) {
+        return { scenarios: [] };
+      }
+      const response = await fetch(`${normalizedBase}/api/scenarios`);
+      if (!response.ok) {
+        const message = await readErrorMessage(response);
+        throw new Error(message || `场景加载失败：${response.status}`);
+      }
+      return response.json();
+    },
 
     async listAttacks() {
       if (useMock) {

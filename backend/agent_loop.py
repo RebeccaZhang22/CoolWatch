@@ -5,6 +5,13 @@ from time import perf_counter
 from typing import Any
 
 from backend.llm_client import LlmClient
+from backend.gym_client import (
+    GymClient,
+    build_gym_agent_trace,
+    extract_gym_output,
+    gym_rag_trace,
+    summarize_gym_result,
+)
 from backend.rag import build_rag_context, retrieve_context
 from backend.schemas import AgentTraceItem, ChatRequest, RagTraceItem, ScenarioPayload
 from backend.scenarios import resolve_scenario
@@ -26,6 +33,7 @@ class AgentRunResult:
     rag_trace: list[RagTraceItem]
     agent_trace: list[AgentTraceItem]
     inline_probing_assessment: InlineProbingAssessment | None = None
+    gym_result: dict | None = None
 
 
 @dataclass
@@ -40,11 +48,15 @@ class AgentRunPrepared:
 
 
 class AgentLoop:
-    def __init__(self, llm_client: LlmClient, session_store: SessionStore) -> None:
+    def __init__(self, llm_client: LlmClient, session_store: SessionStore, gym_client: GymClient) -> None:
         self.llm_client = llm_client
         self.session_store = session_store
+        self.gym_client = gym_client
 
     async def stream(self, request: ChatRequest) -> AsyncIterator[tuple[str, str | AgentRunResult]]:
+        if (request.scenario_id or "").startswith("gym-ipi-"):
+            yield "final", await self._run_gym(request)
+            return
         prepared = self._prepare_run(request)
 
         if self._inline_probing_enabled(request, prepared.messages):
@@ -80,6 +92,8 @@ class AgentLoop:
         request: ChatRequest,
         prepared: AgentRunPrepared | None = None,
     ) -> AgentRunResult:
+        if (request.scenario_id or "").startswith("gym-ipi-"):
+            return await self._run_gym(request)
         prepared = prepared or self._prepare_run(request)
 
         started = perf_counter()
@@ -114,6 +128,28 @@ class AgentLoop:
             rag_trace=prepared.rag_trace,
             agent_trace=prepared.agent_trace,
             inline_probing_assessment=generation.inline_probing,
+        )
+
+    async def _run_gym(self, request: ChatRequest) -> AgentRunResult:
+        scenario = request.scenario
+        if scenario is None:
+            raise ValueError("Gym 沙盒请求缺少场景配置")
+        started = perf_counter()
+        result = await self.gym_client.run_task(
+            task_id=request.scenario_id or scenario.id,
+            system_prompt=scenario.system_prompt,
+            user_message=request.message,
+            model_params=request.model_params,
+        )
+        elapsed_ms = round((perf_counter() - started) * 1000)
+        raw_output = extract_gym_output(result)
+        return AgentRunResult(
+            scenario=scenario,
+            assistant_message=raw_output,
+            raw_output=raw_output,
+            rag_trace=gym_rag_trace(result),
+            agent_trace=build_gym_agent_trace(result, elapsed_ms),
+            gym_result=summarize_gym_result(result),
         )
 
     def _prepare_run(self, request: ChatRequest) -> AgentRunPrepared:

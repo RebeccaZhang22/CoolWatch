@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     netease_yidun_signature_method: str = Field(default="", alias="NETEASE_YIDUN_SIGNATURE_METHOD")
     netease_yidun_timeout_seconds: float = Field(default=2.0, alias="NETEASE_YIDUN_TIMEOUT_SECONDS")
     netease_yidun_check_labels: str = Field(default="", alias="NETEASE_YIDUN_CHECK_LABELS")
+    nemo_gym_root: Path = Field(
+        default=Path(__file__).resolve().parents[2] / "nemo-gym",
+        alias="NEMO_GYM_ROOT",
+    )
+    nemo_gym_head_url: str = Field(default="http://127.0.0.1:11000", alias="NEMO_GYM_HEAD_URL")
+    nemo_gym_timeout_seconds: float = Field(default=600.0, alias="NEMO_GYM_TIMEOUT_SECONDS")
+    use_nemo_gym: bool = Field(default=False, alias="USE_NEMO_GYM")
     cors_allow_origins: str = Field(default="*", alias="CORS_ALLOW_ORIGINS")
 
     @property

@@ -1,10 +1,14 @@
-import { createAgentApiClient } from "./api.js?v=safegauge-threshold-20260723";
+import { createAgentApiClient } from "./api.js?v=merged-20260727";
 import {
   getFallbackAttackExamples,
   guards,
-  scenarioCategories,
-  scenarios,
-} from "./mock-data.js?v=safegauge-threshold-20260723";
+  scenarioCategories as defaultScenarioCategories,
+  scenarios as defaultScenarios,
+} from "./mock-data.js?v=merged-20260727";
+
+const useNemoGym = new URLSearchParams(window.location.search).get("gym") === "1";
+let scenarios = defaultScenarios.map((scenario) => ({ ...scenario }));
+let scenarioCategories = defaultScenarioCategories.map((category) => ({ ...category }));
 
 const QWEN_LABEL_NAMES = {
   Violent: "暴力",
@@ -50,7 +54,7 @@ const LLAMA_PROMPT_GUARD_LABEL_NAMES = {
   prompt_injection_jailbreak: "提示注入 / 越狱",
 };
 
-const defaultSystemPrompts = new Map(scenarios.map((scenario) => [scenario.id, scenario.systemPrompt]));
+let defaultSystemPrompts = new Map(scenarios.map((scenario) => [scenario.id, scenario.systemPrompt]));
 
 const elements = {
   appShell: document.querySelector("#appShell"),
@@ -164,8 +168,11 @@ const state = {
 
 const agentApi = createAgentApiClient();
 
-function init() {
+async function init() {
   setSidebarCollapsed(false);
+  if (useNemoGym) {
+    await loadGymScenarios();
+  }
   renderGuardList();
   renderModelParams();
   renderAgentConfigSummary();
@@ -174,6 +181,42 @@ function init() {
   applyScenario(scenarios[0].id, { resetMessages: true });
   loadAttackExamples();
   loadSafeGaugeInfo();
+}
+
+async function loadGymScenarios() {
+  try {
+    const payload = await agentApi.listScenarios();
+    const loaded = (payload.scenarios ?? []).map(normalizeScenario).filter((scenario) => scenario.id);
+    if (!loaded.length) {
+      return;
+    }
+    scenarios = loaded;
+    scenarioCategories = buildGymScenarioCategories(loaded);
+    defaultSystemPrompts = new Map(loaded.map((scenario) => [scenario.id, scenario.systemPrompt]));
+    state.scenarioId = loaded[0].id;
+    state.scenarioCategory = loaded[0].category;
+  } catch (error) {
+    console.warn("Gym 场景加载失败，继续使用默认示例数据。", error);
+  }
+}
+
+function normalizeScenario(scenario) {
+  return {
+    id: String(scenario.id ?? ""),
+    category: String(scenario.category ?? "prompt"),
+    name: String(scenario.name ?? "Gym 沙盒任务"),
+    target: String(scenario.target ?? "System Prompt"),
+    description: String(scenario.description ?? ""),
+    systemPrompt: String(scenario.systemPrompt ?? scenario.system_prompt ?? ""),
+    documents: Array.isArray(scenario.documents) ? scenario.documents : [],
+    normalPrompt: String(scenario.normalPrompt ?? scenario.normal_prompt ?? ""),
+  };
+}
+
+function buildGymScenarioCategories(items) {
+  return [
+    { id: "prompt", name: "System Prompt", summary: `${items.length} 个 Gym 沙盒任务` },
+  ];
 }
 
 function bindEvents() {
@@ -1099,6 +1142,10 @@ function selectAttackExample(attackId) {
   if (!attack) {
     return;
   }
+  const linkedScenarioId = useNemoGym ? String(attack.metadata?.scenario_id ?? "") : "";
+  if (linkedScenarioId && linkedScenarioId !== state.scenarioId) {
+    applyScenario(linkedScenarioId, { resetMessages: true });
+  }
   state.selectedAttackId = attack.id;
   elements.messageInput.value = getAttackQuery(attack);
   resizeMessageInput();
@@ -1623,7 +1670,7 @@ function renderSummary() {
       <strong>${escapeHtml(getGuardSummaryText())}</strong>
     </span>
   `;
-  elements.runtimeStatus.textContent = agentApi.mode === "fastapi" ? "FastAPI 已配置" : "Mock Agent 已就绪";
+  elements.runtimeStatus.textContent = getReadyStatusText();
 }
 
 function getExecutedGuardIds() {
@@ -2068,7 +2115,10 @@ function setBusy(isBusy) {
 }
 
 function getReadyStatusText() {
-  return agentApi.mode === "fastapi" ? "FastAPI 已配置" : "Mock Agent 已就绪";
+  if (agentApi.mode !== "fastapi") {
+    return "Mock Agent 已就绪";
+  }
+  return useNemoGym ? "Gym 沙盒已连接" : "FastAPI 已配置";
 }
 
 function getCurrentScenario() {

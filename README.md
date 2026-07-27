@@ -12,7 +12,9 @@ CoolWatch 是一个 LLM 安全攻防演示项目。默认 Agent 是开启 Inline
        ├─ SafeGauge MLP（可选，进程内加载）
        ├─ Llama Prompt Guard 2（可选，本地懒加载）
        ├─ Qwen3Guard（可选）
-       └─ 网易易盾（可选）
+       ├─ 网易易盾（可选）
+       └─ NeMo Gym Head Server（可选）：http://127.0.0.1:11000
+            └─ 开启 USE_NEMO_GYM 时创建独立 Docker 沙盒并执行工具
 ```
 
 ## 第一步：启动 patched Qwen3-8B
@@ -157,3 +159,30 @@ curl http://127.0.0.1:18088/v1/moderations \
 终端 1：patched Qwen3-8B vLLM       127.0.0.1:8013
 终端 2：CoolWatch + 前端              0.0.0.0:18088
 ```
+进入页面后，勾选“Qwen3Guard”才会对本轮用户输入调用 Qwen3Guard；未勾选时只运行默认的无防护基线。
+
+## NeMo Gym 沙盒后端
+
+项目旁边的 `nemo-gym` 仓库已增加 `coolwatch_prompt_injection` 环境。它直接复用 NeMo Gym 的
+Prompt Injection JSONL 数据，并为每个 rollout 创建一个无网络、丢弃 Linux capabilities 的独立
+Docker 容器。工具状态和调用 trace 都在容器内保存，verifier 只依据实际执行 trace 判定是否命中注入。
+
+首次安装：
+
+```bash
+cd ../nemo-gym
+UV_PYTHON=python3.12 uv sync --extra dev --extra sandbox
+```
+
+之后从 CoolWatch 根目录启动整套 Gym 沙盒环境：
+
+```bash
+./scripts/start_gym_sandbox.sh
+```
+
+脚本默认复用 `backend/.env` 对应的主模型地址 `http://127.0.0.1:8767/v1`。也可以通过
+`NEMO_GYM_ROOT`、`VLLM_BASE_URL`、`VLLM_MODEL` 和 `VLLM_API_KEY` 覆盖。CoolWatch 的
+默认 `USE_NEMO_GYM=false`，页面继续使用项目原有的客服助手、内部知识助手和攻击示例。
+需要重新接入 Gym 时，将 `backend/.env` 中的 `USE_NEMO_GYM` 改成 `true`，启动上述 Gym
+沙盒服务，并访问 `http://127.0.0.1:8000/?gym=1`。后端会切换 `/api/scenarios`、
+`/api/attacks` 和 `gym-ipi-*` 任务执行链路；不带 `?gym=1` 的页面仍使用原始示例界面。

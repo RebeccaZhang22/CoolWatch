@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ModelParams(BaseModel):
@@ -128,3 +128,64 @@ class HealthResponse(BaseModel):
     vllm_reachable: bool
     models: list[str] = Field(default_factory=list)
     error: str | None = None
+
+
+class ModerationMessage(BaseModel):
+    role: Literal["system", "user", "assistant", "tool"]
+    content: str = Field(min_length=1)
+
+
+class ModerationRequest(BaseModel):
+    text: str | None = None
+    messages: list[ModerationMessage] | None = None
+    guards: list[str] = Field(default_factory=lambda: ["safegauge"])
+    threshold: float | None = Field(default=None, ge=0, le=1)
+
+    @model_validator(mode="after")
+    def validate_input(self) -> "ModerationRequest":
+        if (self.text is None) == (self.messages is None):
+            raise ValueError("exactly one of 'text' or 'messages' must be provided")
+        if self.text is not None and not self.text.strip():
+            raise ValueError("text must not be empty")
+        if self.messages is not None and not self.messages:
+            raise ValueError("messages must not be empty")
+        if not self.guards:
+            raise ValueError("guards must not be empty")
+        return self
+
+    def to_messages(self) -> list[dict[str, str]]:
+        if self.text is not None:
+            return [{"role": "user", "content": self.text}]
+        assert self.messages is not None
+        return [message.model_dump() for message in self.messages]
+
+    def prompt_text(self) -> str:
+        if self.text is not None:
+            return self.text
+        assert self.messages is not None
+        for message in reversed(self.messages):
+            if message.role == "user":
+                return message.content
+        return self.messages[-1].content
+
+
+class ModerationGuardResult(BaseModel):
+    guard_id: str
+    guard_name: str
+    label: str | None = None
+    risky: bool | None = None
+    blocked: bool = False
+    connected: bool = True
+    labels: list[str] = Field(default_factory=list)
+    probability: float | None = None
+    threshold: float | None = None
+    latency_ms: int = 0
+    error: str | None = None
+
+
+class ModerationResponse(BaseModel):
+    label: Literal["risk", "safe", "unknown"]
+    risky: bool | None
+    blocked: bool
+    labels: list[str] = Field(default_factory=list)
+    results: dict[str, ModerationGuardResult]

@@ -1,6 +1,6 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,8 +10,17 @@ from backend.attack_library import load_attack_examples
 from backend.chat_orchestrator import ChatOrchestrator
 from backend.config import get_settings
 from backend.llm_client import LlmClient
+from backend.moderation import ModerationService, SUPPORTED_GUARDS
 from backend.scenarios import DEFAULT_SCENARIOS
-from backend.schemas import ChatRequest, ChatResponse, HealthResponse, SessionCreateRequest, SessionCreateResponse
+from backend.schemas import (
+    ChatRequest,
+    ChatResponse,
+    HealthResponse,
+    ModerationRequest,
+    ModerationResponse,
+    SessionCreateRequest,
+    SessionCreateResponse,
+)
 from backend.session_store import SessionStore
 from backend.watchers import LlamaPromptGuardClient, NeteaseYidunClient, Qwen3GuardClient, SafeGaugeGuard
 
@@ -25,6 +34,12 @@ safegauge_guard = SafeGaugeGuard(settings)
 agent_loop = AgentLoop(llm_client=llm_client, session_store=session_store)
 chat_orchestrator = ChatOrchestrator(
     agent_loop=agent_loop,
+    qwen_guard_client=qwen_guard_client,
+    llama_prompt_guard_client=llama_prompt_guard_client,
+    netease_yidun_client=netease_yidun_client,
+    safegauge_guard=safegauge_guard,
+)
+moderation_service = ModerationService(
     qwen_guard_client=qwen_guard_client,
     llama_prompt_guard_client=llama_prompt_guard_client,
     netease_yidun_client=netease_yidun_client,
@@ -86,6 +101,20 @@ async def list_attacks(language: str = "cn"):
 @app.get("/api/guards/safegauge/info")
 async def safegauge_info():
     return await safegauge_guard.get_model_info()
+
+
+@app.get("/api/moderation/guards")
+async def moderation_guards():
+    return {"guards": list(SUPPORTED_GUARDS)}
+
+
+@app.post("/v1/moderations", response_model=ModerationResponse)
+@app.post("/api/moderate", response_model=ModerationResponse, include_in_schema=False)
+async def moderate(request: ModerationRequest) -> ModerationResponse:
+    try:
+        return await moderation_service.moderate(request)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 @app.post("/api/sessions", response_model=SessionCreateResponse)

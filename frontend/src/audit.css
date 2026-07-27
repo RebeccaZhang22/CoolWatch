@@ -99,7 +99,7 @@
   gap: 18px;
   width: min(1440px, calc(100% - 48px));
   margin: 0 auto;
-  padding: 36px 0 64px;
+  padding: 26px 0 64px;
 }
 
 .audit-hero {
@@ -107,7 +107,7 @@
   align-items: end;
   justify-content: space-between;
   gap: 24px;
-  padding: 8px 2px 12px;
+  padding: 2px 2px 6px;
 }
 
 .eyebrow {
@@ -121,7 +121,7 @@
 
 .audit-hero h1 {
   margin: 0;
-  font-size: clamp(25px, 3vw, 38px);
+  font-size: clamp(22px, 2.5vw, 32px);
   font-weight: 590;
   letter-spacing: -0.035em;
 }
@@ -315,13 +315,19 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 17px;
+  margin-bottom: 13px;
 }
 
 .audit-card-header h2 {
   margin: 0;
   font-size: 15px;
   font-weight: 620;
+}
+
+.case-count {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
 }
 
 .behavior-summary {
@@ -441,6 +447,10 @@
 
 .guard-result-row[data-guard="qwen3_guard"] .result-fill {
   background: #2e7d5b;
+}
+
+.guard-result-row.leakage .result-fill {
+  background: #c95656;
 }
 
 .guard-result-value {
@@ -576,6 +586,22 @@
 
 .audit-table tbody tr:hover {
   background: #fafafa;
+}
+
+.attack-query-cell {
+  width: 42%;
+  min-width: 280px;
+  max-width: 520px;
+  white-space: normal !important;
+}
+
+.attack-query-cell > span {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--muted-strong);
+  line-height: 1.45;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .setting-score {
@@ -881,6 +907,99 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.prompt-query-section blockquote {
+  margin: 0;
+  border-left: 3px solid #6178c2;
+  border-radius: 0 8px 8px 0;
+  background: #f7f8fc;
+  padding: 12px 14px;
+  color: var(--muted-strong);
+  font-size: 11px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+}
+
+.prompt-guard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.prompt-guard-card {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafafa;
+  padding: 12px;
+}
+
+.prompt-guard-card.leaked {
+  border-color: #efc4c4;
+  background: #fff8f8;
+}
+
+.prompt-guard-card.safe {
+  border-color: #b9dfcf;
+  background: #f6fbf8;
+}
+
+.prompt-guard-card > span,
+.prompt-guard-card > small {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.prompt-guard-card > strong {
+  margin-top: 3px;
+  font-size: 24px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+}
+
+.prompt-guard-card > b {
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.prompt-example-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fafafa;
+  padding: 12px;
+}
+
+.prompt-example-card > div {
+  display: grid;
+  gap: 3px;
+}
+
+.prompt-example-card > div > span {
+  color: var(--muted);
+  font-size: 8px;
+}
+
+.prompt-example-card > div > strong {
+  font-size: 10px;
+  font-weight: 620;
+}
+
+.prompt-example-card > p {
+  grid-column: 1 / -1;
+  max-height: 260px;
+  margin: 5px 0 0;
+  overflow: auto;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  color: var(--muted-strong);
+  font-size: 10px;
+  line-height: 1.65;
+  white-space: pre-wrap;
 }
 
 .detector-detail-card {
@@ -1400,6 +1519,7 @@
 
   .integrity-grid,
   .detector-detail-grid,
+  .prompt-guard-grid,
   .evidence-grid,
   .case-overview-grid,
   .behavior-summary {
@@ -1419,4 +1539,162 @@
     gap: 8px;
   }
 
+}
+
+/* Keep the audit page readable: remove secondary copy and enlarge retained labels. */
+.audit-method-chips,
+.audit-chip,
+.audit-note,
+.eyebrow,
+.risk-tab small,
+.guard-result-label small,
+.behavior-summary-item small,
+.integrity-item small,
+.trace-setting small,
+.trace-meta-chips,
+.story-explainer,
+.technical-evidence > summary small {
+  display: none !important;
+}
+
+.audit-nav a,
+.audit-runtime,
+.case-count {
+  font-size: 13px;
+}
+
+.risk-tab {
+  min-height: 58px;
+  padding: 11px 14px;
+}
+
+.risk-tab strong {
+  font-size: 14px;
+}
+
+.risk-tab em {
+  padding: 4px 7px;
+  font-size: 12px;
+}
+
+.audit-card-header h2 {
+  font-size: 17px;
+}
+
+.guard-result-label strong {
+  font-size: 13px;
+}
+
+.guard-result-value span {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.behavior-summary-item {
+  min-height: 66px;
+}
+
+.behavior-summary-item b {
+  font-size: 13px;
+}
+
+.audit-fact-grid dt,
+.integrity-item strong {
+  font-size: 12px;
+}
+
+.audit-fact-grid dd {
+  font-size: 13px;
+}
+
+.audit-table,
+.audit-table th {
+  font-size: 12px;
+}
+
+.audit-table th,
+.audit-table td {
+  padding: 11px 13px;
+}
+
+.audit-filterbar select,
+.audit-search-field input {
+  font-size: 13px;
+}
+
+.trace-list-header {
+  min-height: 38px;
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.trace-row {
+  min-height: 58px;
+}
+
+.trace-index,
+.trace-setting strong {
+  font-size: 12px;
+}
+
+.trace-empty,
+.trace-detail-placeholder,
+.trace-detail-loading {
+  font-size: 13px;
+}
+
+.trace-detail-header h3 {
+  font-size: 16px;
+}
+
+.trace-section h4 {
+  font-size: 14px;
+}
+
+.detector-detail-head strong,
+.case-overview-item strong,
+.story-event-body > strong,
+.technical-evidence > summary span {
+  font-size: 13px;
+}
+
+.detector-verdict,
+.behavior-verdict,
+.model-behavior-head > span:last-child,
+.detector-explanation,
+.behavior-reason,
+.behavior-actions > span,
+.behavior-answer strong,
+.behavior-answer p,
+.case-overview-item p,
+.story-event-body > p,
+.business-response p,
+.business-action span,
+.business-action strong,
+.business-response summary {
+  font-size: 12px;
+}
+
+.story-marker {
+  font-size: 11px;
+}
+
+.technical-evidence-body pre,
+.raw-result summary,
+.raw-result pre,
+.message-content,
+.evidence-item span:first-child,
+.evidence-value,
+.error-detail {
+  font-size: 12px;
+}
+
+.error-detail {
+  margin-top: 6px;
+}
+
+.trace-row.prompt-extraction-row .trace-setting small {
+  display: block !important;
 }

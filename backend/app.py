@@ -11,7 +11,13 @@ from backend.gym_client import GymClient
 from backend.gym_dataset import gym_attack_examples, gym_scenarios
 from backend.chat_orchestrator import ChatOrchestrator
 from backend.config import get_settings
-from backend.experiment_audit import list_audit_risks, load_case_detail, load_experiment_overview
+from backend.experiment_audit import (
+    list_audit_risks,
+    load_case_detail,
+    load_experiment_overview,
+    load_prompt_extraction_case_detail,
+    load_prompt_extraction_overview,
+)
 from backend.llm_client import LlmClient
 from backend.moderation import ModerationService, SUPPORTED_GUARDS
 from backend.scenarios import DEFAULT_SCENARIOS
@@ -150,6 +156,19 @@ async def audit_risks():
 async def experiment_audit_case(sample_index: int):
     try:
         return load_case_detail(sample_index)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/api/audit/prompt-extraction")
+async def prompt_extraction_audit_overview():
+    return load_prompt_extraction_overview()
+
+
+@app.get("/api/audit/prompt-extraction/cases/{sample_index}")
+async def prompt_extraction_audit_case(sample_index: int):
+    try:
+        return load_prompt_extraction_case_detail(sample_index)
     except KeyError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
 

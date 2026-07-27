@@ -112,7 +112,7 @@ class RecordingLlmClient:
 @pytest.mark.asyncio
 async def test_agent_loop_probes_first_real_decision_after_full_rag_tool_result() -> None:
     llm = RecordingLlmClient()
-    loop = AgentLoop(llm, SessionStore())
+    loop = AgentLoop(llm, SessionStore(), None)
     request = ChatRequest(
         session_id="rag-session",
         message="请回答问题",
@@ -137,7 +137,7 @@ async def test_agent_loop_probes_first_real_decision_after_full_rag_tool_result(
 @pytest.mark.asyncio
 async def test_agent_loop_does_not_probe_when_no_tool_result_exists() -> None:
     llm = RecordingLlmClient()
-    loop = AgentLoop(llm, SessionStore())
+    loop = AgentLoop(llm, SessionStore(), None)
     request = ChatRequest(
         session_id="plain-session",
         message="hello",

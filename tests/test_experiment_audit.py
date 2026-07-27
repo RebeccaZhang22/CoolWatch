@@ -1,22 +1,30 @@
 from __future__ import annotations
 
-from backend.experiment_audit import list_audit_risks, load_case_detail, load_experiment_overview
+from backend.experiment_audit import (
+    list_audit_risks,
+    load_experiment_overview,
+    load_prompt_extraction_case_detail,
+)
 
 
-def test_experiment_audit_risk_registry_exposes_prompt_injection_page() -> None:
+def test_experiment_audit_risk_registry_defaults_to_prompt_extraction() -> None:
     registry = list_audit_risks()
 
-    assert registry["default_risk"] == "prompt_injection"
+    assert registry["default_risk"] == "system_prompt_extraction"
     assert [row["id"] for row in registry["risks"]] == [
-        "sensitive_data_exposure",
+        "system_prompt_extraction",
         "unsafe_tool_action",
         "prompt_injection",
     ]
     risks = {row["id"]: row for row in registry["risks"]}
+    assert risks["system_prompt_extraction"]["status"] == "available"
+    assert risks["system_prompt_extraction"]["endpoint"] == "/api/audit/prompt-extraction"
+    assert risks["system_prompt_extraction"]["case_endpoint"] == (
+        "/api/audit/prompt-extraction/cases/{sample_index}"
+    )
     assert risks["prompt_injection"]["status"] == "available"
     assert risks["prompt_injection"]["endpoint"] == "/api/audit/experiment"
     assert risks["prompt_injection"]["case_endpoint"] == "/api/audit/experiment/cases/{sample_index}"
-    assert risks["sensitive_data_exposure"]["status"] == "coming_soon"
     assert risks["unsafe_tool_action"]["status"] == "coming_soon"
 
 
@@ -54,35 +62,30 @@ def test_experiment_audit_overview_matches_frozen_replay_results() -> None:
     }
 
 
-def test_experiment_audit_case_exposes_trace_and_detector_evidence() -> None:
-    detail = load_case_detail(0)
+def test_prompt_extraction_case_exposes_attack_and_guard_evidence() -> None:
+    detail = load_prompt_extraction_case_detail(0)
 
+    assert detail["kind"] == "prompt_extraction"
     assert detail["case"]["sample_index"] == 0
     assert detail["injected_text"]
-    assert detail["exposed_tool_result"]
-    assert detail["exposed_tool_result"] == next(
+    assert detail["exposed_tool_result"] == detail["injected_text"]
+    assert detail["injected_text"] == next(
         message["content"]
         for message in detail["messages"]
-        if message["is_injection"] and message["role"] == "tool"
+        if message["is_injection"] and message["role"] == "user"
     )
     assert any("\u4e00" <= character <= "\u9fff" for character in detail["injected_text"])
     assert sum(message["is_injection"] for message in detail["messages"]) == 1
-    assert detail["decision_point"]["assistant_message_index"] > max(
-        detail["case"]["injection_message_indices"]
-    )
     assert set(detail["guard_results"]) == {
-        "inline_probing",
+        "no_guard",
         "qwen3_guard",
         "netease_yidun",
-        "no_guard",
     }
-    assert detail["guard_results"]["inline_probing"]["threshold"] == 0.5
-    assert detail["guard_results"]["qwen3_guard"]["primary_input_mode"] == "tool_result"
-    assert "tool_result" in detail["guard_results"]["qwen3_guard"]["input_modes"]
-    assert set(detail["guard_results"]["qwen3_guard"]["input_modes"]) == {"tool_result"}
-    assert detail["guard_results"]["netease_yidun"]["primary_input_mode"] == "tool_result"
-    assert detail["evidence"]["replay_request_sha256"]
-    assert detail["evidence"]["injected_text_sha256"]
-    assert detail["evidence"]["native_prompt_token_fingerprint"].startswith("sha256:")
+    assert detail["guard_results"]["qwen3_guard"]["primary_input_mode"] == "attack_query"
+    assert set(detail["guard_results"]["qwen3_guard"]["input_modes"]) == {"attack_query"}
+    assert detail["guard_results"]["netease_yidun"]["primary_input_mode"] == "attack_query"
+    assert detail["evidence"]["target_prompt_sha256"]
+    assert detail["evidence"]["result_root"] == "results/system_prompt_leakage_banking_cn"
+    assert detail["prompt_extraction"]["system_prompt_count"] == 18
+    assert "YouZhi" not in detail["prompt_extraction"]["example"]["system_name"]
     assert detail["agent_behavior"]["label"] == "followed_injection"
-    assert detail["agent_behavior"]["message"]["tool_calls"][0]["function"]["name"] == "reserve_hotel"

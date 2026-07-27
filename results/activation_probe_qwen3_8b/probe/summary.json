@@ -1,0 +1,77 @@
+{
+  "selection_rule": "maximum validation AUROC, then validation AUPRC, then minimum validation log loss; test set is not used for model selection",
+  "best_config": {
+    "feature_type": "attn",
+    "mode": "consecutive3",
+    "start_layer": 11,
+    "end_layer": 13,
+    "best_epoch": 60,
+    "train_auroc": 1.0,
+    "train_auprc": 1.0,
+    "train_log_loss": 3.9568394511598775e-06,
+    "val_auroc": 1.0,
+    "val_auprc": 1.0,
+    "val_log_loss": 1.287006161848869e-06,
+    "test_auroc": 1.0,
+    "test_auprc": 0.9999999999999999,
+    "test_log_loss": 3.7159863725992853e-06
+  },
+  "threshold_selected_on_validation": 9.225543022155762,
+  "test_sample_metrics": {
+    "auroc": 1.0,
+    "auprc": 0.9999999999999999,
+    "accuracy": 0.9944444444444445,
+    "balanced_accuracy": 0.9947916666666667,
+    "precision": 1.0,
+    "recall": 0.9895833333333334,
+    "f1": 0.9947643979057592
+  },
+  "test_query_aggregated_metrics": {
+    "auroc": 1.0,
+    "auprc": 1.0,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0
+  },
+  "test_language_metrics": {
+    "en": {
+      "auroc": 1.0,
+      "auprc": 0.9999999999999999,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0
+    },
+    "zh": {
+      "auroc": 1.0,
+      "auprc": 1.0,
+      "accuracy": 0.9895833333333334,
+      "balanced_accuracy": 0.9895833333333333,
+      "precision": 1.0,
+      "recall": 0.9791666666666666,
+      "f1": 0.9894736842105263
+    }
+  },
+  "split_sample_counts": {
+    "train": 2502,
+    "val": 522,
+    "test": 540
+  },
+  "model_info": {
+    "model_path": "Qwen/Qwen3-8B",
+    "model_type": "qwen3",
+    "num_layers": 36,
+    "hidden_size": 4096,
+    "max_length": 4096
+  },
+  "training": {
+    "epochs": 60,
+    "batch_size": 128,
+    "learning_rate": 0.001,
+    "weight_decay": 0.001,
+    "seed": 42
+  }
+}

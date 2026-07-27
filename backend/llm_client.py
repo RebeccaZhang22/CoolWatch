@@ -1,9 +1,25 @@
 import json
+from dataclasses import dataclass
 from collections.abc import AsyncIterator
+from time import perf_counter
+from typing import Any
 
 import httpx
 from backend.config import Settings
 from backend.schemas import ModelParams
+from backend.watchers.inline_probing.client import (
+    InlineProbingAssessment,
+    assessment_from_probe_result,
+    build_inline_probing_request,
+    parse_inline_probing_response,
+)
+
+
+@dataclass(frozen=True)
+class LlmGeneration:
+    content: str
+    message: dict[str, Any]
+    inline_probing: InlineProbingAssessment | None = None
 
 
 class LlmClient:
@@ -20,10 +36,23 @@ class LlmClient:
         payload = response.json()
         return [item["id"] for item in payload.get("data", []) if item.get("id")]
 
-    async def chat(self, messages: list[dict[str, str]], model_params: ModelParams) -> str:
+    async def chat(self, messages: list[dict[str, Any]], model_params: ModelParams) -> str:
+        generation = await self.generate(messages, model_params)
+        return generation.content
+
+    async def generate(
+        self,
+        messages: list[dict[str, Any]],
+        model_params: ModelParams,
+        *,
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: Any | None = None,
+        enable_inline_probing: bool = False,
+        inline_probing_threshold: float | None = None,
+    ) -> LlmGeneration:
         model = model_params.model or self.settings.vllm_model
 
-        payload = {
+        payload: dict[str, Any] = {
             "model": model,
             "messages": messages,
             "temperature": model_params.temperature,
@@ -32,6 +61,22 @@ class LlmClient:
             "stream": False,
             "chat_template_kwargs": {"enable_thinking": False},
         }
+        if tools is not None:
+            payload["tools"] = tools
+        if tool_choice is not None:
+            payload["tool_choice"] = tool_choice
+        threshold = (
+            self.settings.inline_probing_threshold
+            if inline_probing_threshold is None
+            else float(inline_probing_threshold)
+        )
+        if enable_inline_probing:
+            payload["inline_probing_request"] = build_inline_probing_request(
+                payload,
+                expected_checkpoint_id=self.settings.inline_probing_expected_checkpoint_id,
+                timeout_seconds=self.settings.inline_probing_timeout_seconds,
+            )
+        started = perf_counter()
         response = await self._client.post(
             f"{self.settings.vllm_base_url}/chat/completions",
             headers=self._headers(),
@@ -40,9 +85,31 @@ class LlmClient:
         response.raise_for_status()
         data = response.json()
         message = data["choices"][0]["message"]
-        return message.get("content") or message.get("reasoning") or ""
+        assessment = None
+        if enable_inline_probing:
+            result = parse_inline_probing_response(
+                data,
+                expected_checkpoint_id=self.settings.inline_probing_expected_checkpoint_id,
+            )
+            assessment = assessment_from_probe_result(
+                result,
+                threshold=threshold,
+                latency_ms=round((perf_counter() - started) * 1000),
+            )
+        return LlmGeneration(
+            content=message.get("content") or message.get("reasoning") or "",
+            message=message,
+            inline_probing=assessment,
+        )
 
-    async def stream_chat(self, messages: list[dict[str, str]], model_params: ModelParams) -> AsyncIterator[str]:
+    async def stream_chat(
+        self,
+        messages: list[dict[str, Any]],
+        model_params: ModelParams,
+        *,
+        tools: list[dict[str, Any]] | None = None,
+        tool_choice: Any | None = None,
+    ) -> AsyncIterator[str]:
         model = model_params.model or self.settings.vllm_model
         payload = {
             "model": model,
@@ -53,6 +120,10 @@ class LlmClient:
             "stream": True,
             "chat_template_kwargs": {"enable_thinking": False},
         }
+        if tools is not None:
+            payload["tools"] = tools
+        if tool_choice is not None:
+            payload["tool_choice"] = tool_choice
 
         async with self._client.stream(
             "POST",

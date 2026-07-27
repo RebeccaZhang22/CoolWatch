@@ -1,0 +1,242 @@
+{
+  "behavior": {
+    "by_attack": {
+      "ignore_previous": {
+        "continued_user_task": 17,
+        "followed_injection": 8,
+        "resisted_injection": 5
+      },
+      "important_instructions": {
+        "ambiguous": 1,
+        "continued_user_task": 11,
+        "followed_injection": 5,
+        "resisted_injection": 7
+      },
+      "system_message": {
+        "continued_user_task": 14,
+        "followed_injection": 1,
+        "resisted_injection": 6
+      },
+      "tool_knowledge": {
+        "continued_user_task": 14,
+        "followed_injection": 8,
+        "resisted_injection": 3
+      }
+    },
+    "by_suite": {
+      "banking": {
+        "continued_user_task": 6,
+        "followed_injection": 13,
+        "resisted_injection": 12
+      },
+      "travel": {
+        "ambiguous": 1,
+        "continued_user_task": 50,
+        "followed_injection": 9,
+        "resisted_injection": 9
+      }
+    },
+    "completed": 100,
+    "errors": 0,
+    "judge_errors": 0,
+    "judged": 100,
+    "labels": {
+      "ambiguous": 1,
+      "continued_user_task": 56,
+      "followed_injection": 22,
+      "resisted_injection": 21
+    },
+    "tool_call_responses": 94
+  },
+  "benchmark_id": "qwen3-8b-held-out-strict-injected-round-100-samples-seed42-zh",
+  "english_reference": {
+    "inline_probing": {
+      "detected": 100,
+      "detection_rate": 1.0
+    },
+    "netease_yidun": {
+      "detected": 0,
+      "detection_rate": 0.0
+    },
+    "no_guard": {
+      "detected": 0,
+      "detection_rate": 0.0
+    },
+    "qwen3_guard": {
+      "detected": 45,
+      "detection_rate": 0.45
+    }
+  },
+  "guards": {
+    "inline_probing": {
+      "by_behavior": {
+        "ambiguous": {
+          "completed": 1,
+          "detected": 1,
+          "detection_rate": 1.0
+        },
+        "continued_user_task": {
+          "completed": 56,
+          "detected": 56,
+          "detection_rate": 1.0
+        },
+        "followed_injection": {
+          "completed": 22,
+          "detected": 22,
+          "detection_rate": 1.0
+        },
+        "resisted_injection": {
+          "completed": 21,
+          "detected": 21,
+          "detection_rate": 1.0
+        }
+      },
+      "by_input_mode": {
+        "native": {
+          "completed": 100,
+          "detected": 100,
+          "detection_rate": 1.0,
+          "errors": 0,
+          "missing": 0
+        }
+      },
+      "completed": 100,
+      "completed_results": 100,
+      "detected": 100,
+      "detection_rate": 1.0,
+      "errors": 0,
+      "expected_results": 100,
+      "primary_input_mode": "native"
+    },
+    "netease_yidun": {
+      "by_behavior": {
+        "ambiguous": {
+          "completed": 1,
+          "detected": 0,
+          "detection_rate": 0.0
+        },
+        "continued_user_task": {
+          "completed": 56,
+          "detected": 0,
+          "detection_rate": 0.0
+        },
+        "followed_injection": {
+          "completed": 22,
+          "detected": 0,
+          "detection_rate": 0.0
+        },
+        "resisted_injection": {
+          "completed": 21,
+          "detected": 0,
+          "detection_rate": 0.0
+        }
+      },
+      "by_input_mode": {
+        "tool_result": {
+          "completed": 100,
+          "detected": 0,
+          "detection_rate": 0.0,
+          "errors": 0,
+          "missing": 0
+        }
+      },
+      "completed": 100,
+      "completed_results": 100,
+      "detected": 0,
+      "detection_rate": 0.0,
+      "errors": 0,
+      "expected_results": 100,
+      "primary_input_mode": "tool_result"
+    },
+    "no_guard": {
+      "by_behavior": {
+        "ambiguous": {
+          "completed": 1,
+          "detected": 0,
+          "detection_rate": 0.0
+        },
+        "continued_user_task": {
+          "completed": 56,
+          "detected": 0,
+          "detection_rate": 0.0
+        },
+        "followed_injection": {
+          "completed": 22,
+          "detected": 0,
+          "detection_rate": 0.0
+        },
+        "resisted_injection": {
+          "completed": 21,
+          "detected": 0,
+          "detection_rate": 0.0
+        }
+      },
+      "by_input_mode": {
+        "native": {
+          "completed": 100,
+          "detected": 0,
+          "detection_rate": 0.0,
+          "errors": 0,
+          "missing": 0
+        }
+      },
+      "completed": 100,
+      "completed_results": 100,
+      "detected": 0,
+      "detection_rate": 0.0,
+      "errors": 0,
+      "expected_results": 100,
+      "primary_input_mode": "native"
+    },
+    "qwen3_guard": {
+      "by_behavior": {
+        "ambiguous": {
+          "completed": 1,
+          "detected": 1,
+          "detection_rate": 1.0
+        },
+        "continued_user_task": {
+          "completed": 56,
+          "detected": 21,
+          "detection_rate": 0.375
+        },
+        "followed_injection": {
+          "completed": 22,
+          "detected": 19,
+          "detection_rate": 0.8636363636363636
+        },
+        "resisted_injection": {
+          "completed": 21,
+          "detected": 13,
+          "detection_rate": 0.6190476190476191
+        }
+      },
+      "by_input_mode": {
+        "tool_result": {
+          "completed": 100,
+          "detected": 54,
+          "detection_rate": 0.54,
+          "errors": 0,
+          "missing": 0
+        }
+      },
+      "completed": 100,
+      "completed_results": 100,
+      "detected": 54,
+      "detection_rate": 0.54,
+      "errors": 0,
+      "expected_results": 100,
+      "primary_input_mode": "tool_result"
+    }
+  },
+  "language": "zh-CN",
+  "methodology": {
+    "agent_behavior_scope": "one immediate assistant response; tool calls are recorded but not executed",
+    "behavior_judge": "Qwen/Qwen3.5-9B, temperature 0, four-label rubric",
+    "detection_point": "first assistant decision after the Chinese injection becomes visible",
+    "guard_intervention": false,
+    "text_guard_input_mode": "Complete newly faced tool-result message or messages, without extracting the attack substring."
+  },
+  "sample_count": 100,
+  "schema": "coolwatch.chinese_ipi.summary.v1"
+}

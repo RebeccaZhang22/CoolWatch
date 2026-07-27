@@ -17,6 +17,8 @@ from backend.watchers import (
     QwenGuardAssessment,
     SafeGaugeAssessment,
     SafeGaugeGuard,
+    InlineProbingAssessment,
+    InlineProbingGuard,
     detect_attack_intent,
     evaluate_input_guard,
 )
@@ -30,12 +32,14 @@ class ChatOrchestrator:
         llama_prompt_guard_client: LlamaPromptGuardClient,
         netease_yidun_client: NeteaseYidunClient,
         safegauge_guard: SafeGaugeGuard,
+        inline_probing_guard: InlineProbingGuard,
     ) -> None:
         self.agent_loop = agent_loop
         self.qwen_guard_client = qwen_guard_client
         self.llama_prompt_guard_client = llama_prompt_guard_client
         self.netease_yidun_client = netease_yidun_client
         self.safegauge_guard = safegauge_guard
+        self.inline_probing_guard = inline_probing_guard
 
     async def run(self, request: ChatRequest) -> ChatResponse:
         input_guard_assessments = await self._run_input_guard_checks(request)
@@ -44,6 +48,8 @@ class ChatOrchestrator:
             agent_result = await self.agent_loop.run(request)
         except Exception as error:
             return build_error_response(request, error)
+        if agent_result.inline_probing_assessment is not None:
+            input_guard_assessments["inline_probing"] = agent_result.inline_probing_assessment
 
         guard_results, matched_spans = run_external_guard_evaluation(request, agent_result, input_guard_assessments)
         leakage_summary = summarize_leakage(guard_results, request.output_guard)
@@ -73,6 +79,8 @@ class ChatOrchestrator:
                     continue
 
                 if event_type == "final" and isinstance(payload, AgentRunResult):
+                    if payload.inline_probing_assessment is not None:
+                        input_guard_assessments["inline_probing"] = payload.inline_probing_assessment
                     response = build_chat_response(request, payload, input_guard_assessments)
                     yield sse_event("final", response.model_dump(mode="json"))
                     yield sse_event("done", {"ok": True})
@@ -179,6 +187,34 @@ def run_external_guard_evaluation(
                 assessment=assessment,
                 raw_output=agent_result.raw_output,
                 leakage=leakage,
+            )
+            continue
+        if guard_id == "inline_probing" and guard_id in input_guard_assessments:
+            assessment = input_guard_assessments[guard_id]
+            if not isinstance(assessment, InlineProbingAssessment):
+                continue
+            guard_results[guard_id] = build_inline_probing_result(
+                assessment=assessment,
+                raw_output=agent_result.raw_output,
+                leakage=leakage,
+            )
+            continue
+        if guard_id == "inline_probing":
+            guard_results[guard_id] = GuardResult(
+                guard_id="inline_probing",
+                guard_name=GUARD_NAMES["inline_probing"],
+                status="未触发",
+                blocked=False,
+                latency_ms=0,
+                output=agent_result.raw_output,
+                raw_output=agent_result.raw_output,
+                leakage=leakage,
+                query_risk=None,
+                matched_labels=[],
+                connected=True,
+                note="本轮 assistant 决策前没有新的工具返回，未运行 Inline Probing。",
+                task="runtime_hidden_state_probe",
+                threshold=request.inline_probing.threshold,
             )
             continue
 
@@ -303,6 +339,33 @@ def build_safegauge_result(
     )
 
 
+def build_inline_probing_result(
+    assessment: InlineProbingAssessment,
+    raw_output: str,
+    leakage: LeakageMetrics,
+) -> GuardResult:
+    labels = [value for value in ["runtime_hidden_state", assessment.label] if value]
+    return GuardResult(
+        guard_id="inline_probing",
+        guard_name=GUARD_NAMES["inline_probing"],
+        status=inline_probing_status(assessment),
+        blocked=assessment.blocked,
+        latency_ms=assessment.latency_ms,
+        output=raw_output,
+        raw_output=raw_output,
+        leakage=leakage,
+        query_risk=assessment.risky,
+        matched_labels=labels,
+        connected=assessment.error is None,
+        note=inline_probing_note(assessment),
+        safety_label=assessment.label,
+        task="runtime_hidden_state_probe",
+        probability=assessment.score,
+        threshold=assessment.threshold,
+        raw_guard_output=assessment.raw_output,
+    )
+
+
 def qwen_guard_status(assessment: QwenGuardAssessment) -> str:
     if assessment.error:
         return "检测失败"
@@ -362,6 +425,29 @@ def safegauge_note(assessment: SafeGaugeAssessment) -> str:
         f"任务 {assessment.task or '-'}；标签 {assessment.label or '-'}；"
         f"概率 {assessment.probability:.4f}；阈值 {assessment.threshold:.4f}。"
     )
+
+
+def inline_probing_status(assessment: InlineProbingAssessment) -> str:
+    if assessment.error or assessment.risky is None:
+        return "检测失败"
+    return "命中风险" if assessment.risky else "未命中"
+
+
+def inline_probing_note(assessment: InlineProbingAssessment) -> str:
+    if assessment.error:
+        return f"Inline Probing 调用失败：{assessment.error}"
+    if assessment.score is None:
+        return "Inline Probing 检测已完成。"
+    details = [
+        f"score {assessment.score:.4f}",
+        f"阈值 {assessment.threshold:.4f}",
+        f"protocol {assessment.protocol}",
+    ]
+    if assessment.layer is not None:
+        details.append(f"layer {assessment.layer}")
+    if assessment.effective_position is not None:
+        details.append(f"position {assessment.effective_position}")
+    return "；".join(details) + "。"
 
 
 def normalize_guard_ids(selected_guards: list[str]) -> list[str]:

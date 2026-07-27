@@ -1,0 +1,56 @@
+[project]
+name = "ipi-aware"
+version = "0.1.0"
+description = "Minimal release code for probing prompt-injection awareness in agentic LLMs."
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "httpx>=0.28.1",
+    "msgspec>=0.19.0",
+    "numpy>=2.0",
+    "openai>=1.0",
+    "PyYAML>=6.0",
+    "requests>=2.32",
+    "scikit-learn>=1.5",
+    "tqdm>=4.66",
+]
+
+[project.optional-dependencies]
+agentdojo = [
+    "agentdojo>=0.1.35",
+]
+models = [
+    "torch>=2.5",
+    "transformers>=4.45",
+]
+vllm = [
+    "torch>=2.5",
+    "transformers>=4.45",
+    "vllm==0.19.0",
+]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.scripts]
+ipi-signal-probe = "ipi_aware.probes.cli:main"
+ipi-aware-explain = "ipi_aware.explanation.pipeline.cli:main"
+ipi-aware-intervene = "ipi_aware.intervention.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+package = true
+
+[tool.hatch.build]
+exclude = [
+    "/.pytest_cache",
+    "/.venv",
+    "/logs",
+    "/results",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["ipi_aware"]

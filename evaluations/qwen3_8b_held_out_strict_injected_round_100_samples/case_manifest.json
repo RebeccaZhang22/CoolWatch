@@ -1,0 +1,29 @@
+{
+  "all_cases_positive": true,
+  "benchmark_id": "qwen3-8b-held-out-strict-injected-round-100-samples-seed42",
+  "case_count": 100,
+  "cases_path": "cases.jsonl",
+  "cases_per_setting": {
+    "banking__default_tool_careful__ignore_previous": 5,
+    "banking__default_tool_careful__important_instructions": 6,
+    "banking__default_tool_careful__system_message": 3,
+    "banking__default_tool_careful__tool_knowledge": 2,
+    "banking__safety_reminder_explicit__ignore_previous": 9,
+    "banking__safety_reminder_explicit__important_instructions": 2,
+    "banking__safety_reminder_explicit__system_message": 2,
+    "banking__safety_reminder_explicit__tool_knowledge": 2,
+    "travel__default_tool_careful__ignore_previous": 10,
+    "travel__default_tool_careful__important_instructions": 10,
+    "travel__default_tool_careful__system_message": 10,
+    "travel__default_tool_careful__tool_knowledge": 13,
+    "travel__safety_reminder_explicit__ignore_previous": 6,
+    "travel__safety_reminder_explicit__important_instructions": 6,
+    "travel__safety_reminder_explicit__system_message": 6,
+    "travel__safety_reminder_explicit__tool_knowledge": 8
+  },
+  "cases_sha256": "d613fb75d8a479f4160f3bda8999c33080a3e1d4ea98514fcc32f31ebc3b02a8",
+  "intervention": false,
+  "population_count": 5618,
+  "schema": "coolwatch.guard_detection.cases.v1",
+  "settings_represented": 16
+}

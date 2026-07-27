@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BACKEND_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "CoolWatch"
-    vllm_base_url: str = Field(default="http://127.0.0.1:18087/v1", alias="VLLM_BASE_URL")
+    vllm_base_url: str = Field(default="http://127.0.0.1:8013/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
-    vllm_model: str = Field(default="Qwen3.5-27B", alias="VLLM_MODEL")
+    vllm_model: str = Field(default="qwen3-8b", alias="VLLM_MODEL")
     llm_timeout_seconds: float = Field(default=120.0, alias="LLM_TIMEOUT_SECONDS")
     qwen3_guard_backend: str = Field(default="auto", alias="QWEN3_GUARD_BACKEND")
     qwen3_guard_base_url: str = Field(default="", alias="QWEN3_GUARD_BASE_URL")
@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     safegauge_tokenizer_path: str = Field(default="", alias="SAFEGAUGE_TOKENIZER_PATH")
     safegauge_device: str = Field(default="cpu", alias="SAFEGAUGE_DEVICE")
     safegauge_timeout_seconds: float = Field(default=120.0, alias="SAFEGAUGE_TIMEOUT_SECONDS")
+    inline_probing_protocol: str = Field(default="inline_probing", alias="INLINE_PROBING_PROTOCOL")
+    inline_probing_expected_checkpoint_id: str = Field(
+        default="sha256:41f1433346caebc8b2e9ff5640b44e3d162050d6ef7ffee45285badba4798b45",
+        alias="INLINE_PROBING_EXPECTED_CHECKPOINT_ID",
+    )
+    inline_probing_threshold: float = Field(default=0.5, ge=0, le=1, alias="INLINE_PROBING_THRESHOLD")
+    inline_probing_timeout_seconds: float = Field(default=120.0, alias="INLINE_PROBING_TIMEOUT_SECONDS")
     netease_yidun_api_url: str = Field(default="http://as.dun.163.com/v5/text/check", alias="NETEASE_YIDUN_API_URL")
     netease_yidun_secret_id: str = Field(default="", alias="NETEASE_YIDUN_SECRET_ID")
     netease_yidun_secret_key: str = Field(default="", alias="NETEASE_YIDUN_SECRET_KEY")

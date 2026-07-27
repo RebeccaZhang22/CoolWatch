@@ -37,6 +37,13 @@ const SAFEGAUGE_LABEL_NAMES = {
   benign: "正常",
 };
 
+const INLINE_PROBING_LABEL_NAMES = {
+  runtime_hidden_state_probe: "Runtime 隐层 Probe",
+  runtime_hidden_state: "Runtime 隐层",
+  risk: "风险",
+  safe: "正常",
+};
+
 const LLAMA_PROMPT_GUARD_LABEL_NAMES = {
   MALICIOUS: "恶意提示",
   BENIGN: "正常提示",
@@ -581,10 +588,16 @@ function getGuardDetailText(guard) {
   if (guard.id === "safegauge") {
     return "在 query 进入 Agent Loop 前调用 SafeGauge，由所选模型的 meta 和 suffix 决定检测任务。";
   }
+  if (guard.id === "inline_probing") {
+    return "工具返回会作为完整 tool result 进入上下文；仅在紧随其后的首次 assistant 生成请求中携带 inline_probing_request。回答与 probe 分数来自同一次 patched vLLM 生成。";
+  }
   return guard.description;
 }
 
 function getGuardExecutionText(guard) {
+  if (guard.id === "inline_probing") {
+    return "工具返回后的首次 assistant 决策点";
+  }
   return "Agent Loop 前";
 }
 
@@ -600,7 +613,7 @@ function renderSecurityFlow() {
       id: "pre",
       eyebrow: "生成前",
       title: "输入安全检测",
-      stateClass: `${getFlowStageState("pre")} ${state.selectedGuards.length ? "configured" : ""}`,
+      stateClass: `${getFlowStageState("pre")} ${selectedPreGenerationGuardIds().length ? "configured" : ""}`,
       methods: preMethods.map((guard) => renderPreGenerationMethod(guard)).join(""),
     })}
     ${renderFlowConnector(getFlowConnectorState("pre"))}
@@ -619,6 +632,7 @@ function renderSecurityFlow() {
       <span class="flow-node-copy">
         <span class="flow-node-eyebrow">Agent 生成</span>
         <strong>${escapeHtml(state.modelParams.model)}</strong>
+        ${state.selectedGuards.includes("inline_probing") ? "<small>Inline Probe · 工具返回后首个决策点</small>" : ""}
       </span>
     </div>
     ${renderFlowConnector(getFlowConnectorState("generation"))}
@@ -727,7 +741,7 @@ function getFlowStageState(stage) {
     return "running";
   }
   if (stage === "pre" && state.flowResult && ["post", "complete"].includes(state.flowPhase)) {
-    const selectedResults = state.selectedGuards.map((guardId) => getFlowGuardResult(guardId)).filter(Boolean);
+    const selectedResults = selectedPreGenerationGuardIds().map((guardId) => getFlowGuardResult(guardId)).filter(Boolean);
     if (selectedResults.some((result) => !result.connected || result.status === "检测失败")) {
       return "error";
     }
@@ -764,12 +778,18 @@ function getFlowConnectorState(afterStage) {
   return "idle";
 }
 
+function selectedPreGenerationGuardIds() {
+  return guards
+    .filter((guard) => guard.stage === "pre_generation" && state.selectedGuards.includes(guard.id))
+    .map((guard) => guard.id);
+}
+
 function getFlowStageStatusText(stage) {
   const stateClass = getFlowStageState(stage);
   if (stage === "post" && state.flowResult && state.flowPhase === "complete") {
     return state.flowResult.leakage_summary ?? "检测完成";
   }
-  if (stage === "pre" && !state.selectedGuards.length && ["complete", "generation", "post"].includes(state.flowPhase)) {
+  if (stage === "pre" && !selectedPreGenerationGuardIds().length && ["complete", "generation", "post"].includes(state.flowPhase)) {
     return "已跳过";
   }
   if (stage === "pre" && state.flowResult && ["post", "complete"].includes(state.flowPhase)) {
@@ -781,7 +801,7 @@ function getFlowStageStatusText(stage) {
     }
     return "检测通过";
   }
-  if (stage === "pre" && state.selectedGuards.length && state.flowPhase === "idle") {
+  if (stage === "pre" && selectedPreGenerationGuardIds().length && state.flowPhase === "idle") {
     return "已配置";
   }
   if (stateClass === "running") {
@@ -793,7 +813,7 @@ function getFlowStageStatusText(stage) {
   if (stateClass === "error") {
     return "异常";
   }
-  if (stage === "pre" && !state.selectedGuards.length) {
+  if (stage === "pre" && !selectedPreGenerationGuardIds().length) {
     return "未启用";
   }
   return "待运行";
@@ -1312,6 +1332,7 @@ async function sendChatRequest({ scenario, message, isAttack, attackType, onStat
     model_params: modelParams,
     output_guard: { ...state.outputDetectionConfig },
     safegauge: { threshold: state.safeGaugeThreshold },
+    inline_probing: { threshold: null },
     scenario_id: scenario.id,
     scenario: {
       id: scenario.id,
@@ -1672,11 +1693,15 @@ function renderInputGuardMeta(item) {
 }
 
 function renderGuardScore(item) {
-  if (!["safegauge", "llama_prompt_guard"].includes(item.guard_id)) {
+  if (!["safegauge", "inline_probing", "llama_prompt_guard"].includes(item.guard_id)) {
     return "";
   }
 
-  const labelNames = item.guard_id === "safegauge" ? SAFEGAUGE_LABEL_NAMES : LLAMA_PROMPT_GUARD_LABEL_NAMES;
+  const labelNames = item.guard_id === "safegauge"
+    ? SAFEGAUGE_LABEL_NAMES
+    : item.guard_id === "inline_probing"
+      ? INLINE_PROBING_LABEL_NAMES
+      : LLAMA_PROMPT_GUARD_LABEL_NAMES;
   const task = labelNames[item.task] ?? item.task ?? "-";
   const label = labelNames[item.safety_label] ?? item.safety_label ?? "-";
   const probability = formatProbability(item.probability);
@@ -1690,7 +1715,7 @@ function renderGuardScore(item) {
 }
 
 function renderRawGuardOutput(item) {
-  if (!["qwen_guard", "llama_prompt_guard", "netease_yidun", "safegauge"].includes(item.guard_id)) {
+  if (!["qwen_guard", "llama_prompt_guard", "netease_yidun", "safegauge", "inline_probing"].includes(item.guard_id)) {
     return "";
   }
 
@@ -1778,6 +1803,9 @@ function formatGuardLabel(guardId, label) {
   }
   if (guardId === "safegauge") {
     return SAFEGAUGE_LABEL_NAMES[value] ?? value;
+  }
+  if (guardId === "inline_probing") {
+    return INLINE_PROBING_LABEL_NAMES[value] ?? value;
   }
   if (guardId === "llama_prompt_guard") {
     return LLAMA_PROMPT_GUARD_LABEL_NAMES[value] ?? value;

@@ -1,0 +1,14 @@
+{
+  "all_cases_positive": true,
+  "benchmark_id": "qwen3-8b-held-out-strict-injected-round-100-samples-seed42-zh",
+  "case_count": 100,
+  "cases_path": "cases.jsonl",
+  "cases_sha256": "dab33d616f0f2c0b7990e02ae517df02bf661889edba423bd1ff1704de19bf19",
+  "intervention": false,
+  "language": "zh-CN",
+  "schema": "coolwatch.guard_detection.translated_cases_manifest.v1",
+  "source_case_count": 100,
+  "source_cases_sha256": "d613fb75d8a479f4160f3bda8999c33080a3e1d4ea98514fcc32f31ebc3b02a8",
+  "translation_cache_sha256": "cb7a0bbcff5bd8c8005442ab0f2f5f0fa290dd96ffc44c7cd478bd338624df35",
+  "unique_translated_strings": 371
+}

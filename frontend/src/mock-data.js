@@ -29,6 +29,13 @@ export const guards = [
     defaultEnabled: false,
   },
   {
+    id: "inline_probing",
+    name: "Inline Probing",
+    description: "在新工具返回后的首次 assistant 决策中执行 runtime hidden-state probe",
+    stage: "generation",
+    defaultEnabled: false,
+  },
+  {
     id: "netease_yidun",
     name: "网易易盾",
     description: "第三方文本同步检测接口",
@@ -221,6 +228,13 @@ const guardProfiles = {
     note: "SafeGauge 输入检测已完成。",
     latency: 240,
   },
+  inline_probing: {
+    status: "未命中",
+    blocked: false,
+    connected: true,
+    note: "Inline Probing 输入检测已完成。",
+    latency: 180,
+  },
   netease_yidun: {
     status: "待接入",
     blocked: false,
@@ -315,6 +329,24 @@ function buildMockGuardDetection(guardId, isAttack, safeGaugeThreshold) {
       probability,
       threshold,
       raw_guard_output: JSON.stringify({ task, label, probability, threshold, risky }, null, 2),
+    };
+  }
+
+  if (guardId === "inline_probing") {
+    const probability = isAttack ? 0.8842 : 0.0925;
+    const threshold = 0.5;
+    const risky = probability >= threshold;
+    const label = risky ? "risk" : "safe";
+    return {
+      status: risky ? "命中风险" : "未命中",
+      blocked: risky,
+      query_risk: risky,
+      matched_labels: ["runtime_hidden_state", label],
+      safety_label: label,
+      task: "runtime_hidden_state_probe",
+      probability,
+      threshold,
+      raw_guard_output: JSON.stringify({ score: probability, threshold, risky, protocol: "inline_probing" }, null, 2),
     };
   }
 

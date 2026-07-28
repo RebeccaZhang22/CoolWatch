@@ -261,7 +261,7 @@ def guard_settings(args: argparse.Namespace) -> Settings:
         )
     elif args.mode == "qwen3_guard":
         overrides.update(
-            QWEN3_GUARD_BACKEND="openai",
+            QWEN3_GUARD_BACKEND=args.qwen_guard_backend,
             QWEN3_GUARD_BASE_URL=args.qwen_guard_base_url,
             QWEN3_GUARD_MODEL=args.qwen_guard_model,
         )
@@ -568,6 +568,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--probe-threshold", type=float, default=0.5)
     parser.add_argument("--qwen-guard-base-url", default="http://127.0.0.1:8011/v1")
     parser.add_argument("--qwen-guard-model", default="qwen3guard-8b")
+    parser.add_argument(
+        "--qwen-guard-backend",
+        choices=("openai", "transformers"),
+        default="openai",
+        help="Use a running OpenAI-compatible server or load Qwen3Guard locally.",
+    )
     return parser
 
 

@@ -1,14 +1,15 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.agent_loop import AgentLoop
 from backend.attack_library import load_attack_examples
 from backend.chat_orchestrator import ChatOrchestrator
 from backend.config import get_settings
+from backend.case_studies import case_study_pdf, list_case_studies, load_case_study
 from backend.experiment_audit import list_audit_risks, load_case_detail, load_experiment_overview
 from backend.llm_client import LlmClient
 from backend.scenarios import DEFAULT_SCENARIOS
@@ -107,12 +108,47 @@ async def audit_risks():
     return list_audit_risks()
 
 
+def _prefers_html(request: Request) -> bool:
+    accept = request.headers.get("accept", "")
+    return "text/html" in accept and "application/json" not in accept
+
+
 @app.get("/api/audit/experiment/cases/{sample_index}")
-async def experiment_audit_case(sample_index: int):
+async def experiment_audit_case(sample_index: int, request: Request):
+    if _prefers_html(request):
+        return RedirectResponse(url=f"/cases.html?case={sample_index}", status_code=303)
     try:
         return load_case_detail(sample_index)
     except KeyError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/api/case-studies")
+async def case_studies():
+    return list_case_studies()
+
+
+@app.get("/api/case-studies/{case_study_id}")
+async def case_study(case_study_id: str, request: Request):
+    if _prefers_html(request):
+        return RedirectResponse(url=f"/cases.html?case=study%3A{case_study_id}", status_code=303)
+    try:
+        return load_case_study(case_study_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+
+
+@app.get("/api/case-studies/{case_study_id}/pdf")
+async def case_study_document(case_study_id: str):
+    try:
+        path = case_study_pdf(case_study_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    return FileResponse(
+        path,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{path.name}"'},
+    )
 
 
 @app.post("/api/sessions", response_model=SessionCreateResponse)

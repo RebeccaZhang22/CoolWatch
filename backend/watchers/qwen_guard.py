@@ -1,4 +1,5 @@
 import asyncio
+import importlib.util
 import re
 import threading
 from dataclasses import dataclass
@@ -134,10 +135,12 @@ class Qwen3GuardClient:
             from transformers import AutoModelForCausalLM, AutoTokenizer
 
             self._tokenizer = AutoTokenizer.from_pretrained(self.settings.qwen3_guard_model)
+            load_kwargs = {"torch_dtype": "auto"}
+            if importlib.util.find_spec("accelerate") is not None:
+                load_kwargs["device_map"] = "auto"
             self._model = AutoModelForCausalLM.from_pretrained(
                 self.settings.qwen3_guard_model,
-                torch_dtype="auto",
-                device_map="auto",
+                **load_kwargs,
             )
             self._model.eval()
 

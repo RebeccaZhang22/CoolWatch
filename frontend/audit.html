@@ -1,0 +1,186 @@
+<!doctype html>
+<html class="audit-document" lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Perspective Watch 实验审计</title>
+    <link rel="stylesheet" href="./src/styles.css?v=shared-header-20260726-v4" />
+    <link rel="stylesheet" href="./src/audit.css?v=prompt-probe-model-switch-20260804-v69" />
+  </head>
+  <body class="audit-body">
+    <div class="audit-shell">
+      <header class="audit-topbar">
+        <a class="audit-brand" href="./index.html" aria-label="返回 Perspective Watch 演示台">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <strong>Perspective Watch</strong>
+        </a>
+        <nav class="audit-nav" aria-label="主导航">
+          <a href="./index.html">攻防演示台</a>
+          <a class="active" href="./audit.html" aria-current="page">实验审计</a>
+          <a href="./cases.html">案例研究</a>
+        </nav>
+      </header>
+
+      <main class="audit-main">
+        <section class="audit-hero">
+          <div>
+            <h1 id="riskTitle">AI 助手能否识别隐藏在外部数据中的恶意指令？</h1>
+          </div>
+        </section>
+
+        <section class="audit-risk-switcher" aria-label="风险类别" id="riskSwitcher"></section>
+        <section class="finvault-model-bar" id="finvaultModelBar" hidden aria-label="被测模型">
+          <span>被测模型</span>
+          <div id="finvaultModelButtons"></div>
+        </section>
+        <section class="audit-risk-empty" id="riskEmpty" hidden></section>
+
+        <section class="audit-overview-grid risk-audit-section" aria-label="实验概览">
+          <article class="audit-card audit-results-card">
+            <header class="audit-card-header">
+              <h2 id="guardResultTitle">检测结果</h2>
+            </header>
+            <div class="guard-result-list" id="guardResultList"></div>
+          </article>
+
+          <article class="audit-card audit-facts-card">
+            <header class="audit-card-header">
+              <h2>实验信息</h2>
+            </header>
+            <dl class="audit-fact-grid" id="experimentFacts"></dl>
+          </article>
+        </section>
+
+        <section class="audit-card behavior-summary-card risk-audit-section">
+          <header class="audit-card-header">
+            <h2>模型行为</h2>
+          </header>
+          <div class="behavior-summary" id="behaviorSummary"></div>
+        </section>
+
+        <section class="audit-card audit-integrity-card risk-audit-section" id="integritySection">
+          <header class="audit-card-header">
+            <h2>实验一致性</h2>
+          </header>
+          <div class="integrity-grid" id="integrityGrid"></div>
+        </section>
+
+        <section class="audit-card audit-settings-card risk-audit-section">
+          <header class="audit-card-header">
+              <h2 id="settingsTitle">分类结果</h2>
+              <div class="finvault-view-switcher" id="finvaultViewSwitcher" hidden aria-label="FinVault 分类视图">
+                <button class="active" data-finvault-view="domain" type="button">按金融领域</button>
+                <button data-finvault-view="risk" type="button">按风险类型</button>
+              </div>
+          </header>
+          <div class="settings-table-wrap">
+            <table class="audit-table settings-table">
+              <thead id="settingsTableHead">
+                <tr>
+                  <th>业务场景</th>
+                  <th>助手安全策略</th>
+                  <th>攻击伪装方式</th>
+                  <th>测试次数</th>
+                  <th>Inline Probe</th>
+                  <th>Activation Probe (Ours)</th>
+                  <th>Llama Prompt Guard 2</th>
+                  <th>Qwen3Guard</th>
+                  <th>网易易盾</th>
+                </tr>
+              </thead>
+              <tbody id="settingsTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="audit-card audit-explorer-card risk-audit-section">
+          <header class="audit-card-header explorer-heading">
+            <h2 id="explorerTitle">案例记录</h2>
+            <span class="case-count" id="caseCountLabel">0 条</span>
+          </header>
+
+          <div class="audit-filterbar">
+            <label class="audit-search-field">
+              <span class="sr-only">搜索 trace</span>
+              <svg viewBox="0 0 20 20" aria-hidden="true">
+                <circle cx="8.5" cy="8.5" r="5.5"></circle>
+                <path d="m13 13 4 4"></path>
+              </svg>
+              <input id="caseSearchInput" type="search" placeholder="搜索案例或攻击类型" />
+            </label>
+            <label id="guardFilterLabel">
+              <span class="sr-only">检测器</span>
+              <select id="guardFilter">
+                <option value="all">全部检测器</option>
+                <option value="inline_probing">Inline Probe</option>
+                <option value="llama_prompt_guard">Llama Prompt Guard 2</option>
+                <option value="qwen3_guard">Qwen3Guard</option>
+                <option value="netease_yidun">网易易盾</option>
+                <option value="no_guard">No Guard</option>
+              </select>
+            </label>
+            <label id="resultFilterLabel">
+              <span class="sr-only">检测结果</span>
+              <select id="resultFilter">
+                <option value="all">全部结果</option>
+                <option value="detected">已检出</option>
+                <option value="missed">未检出</option>
+              </select>
+            </label>
+            <label>
+              <span class="sr-only">Setting</span>
+              <select id="settingFilter"><option value="all">全部业务场景</option></select>
+            </label>
+            <label id="riskTypeFilterLabel" hidden>
+              <span class="sr-only">风险类型</span>
+              <select id="riskTypeFilter"><option value="all">全部风险类型</option></select>
+            </label>
+          </div>
+
+          <div class="trace-explorer">
+            <div class="trace-list-panel">
+              <div class="trace-list-header">
+                <span>案例</span>
+                <span id="traceSubjectTitle">风险场景</span>
+                <span id="traceResultTitle">检测结果</span>
+              </div>
+              <div class="trace-list" id="traceList"></div>
+              <div class="trace-empty" id="traceEmpty" hidden>没有符合当前筛选条件的记录。</div>
+              <nav class="finvault-pagination" id="finvaultPagination" hidden aria-label="案例分页">
+                <button id="finvaultPrevPage" type="button">上一页</button>
+                <span id="finvaultPageLabel">第 1 页</span>
+                <button id="finvaultNextPage" type="button">下一页</button>
+              </nav>
+            </div>
+            <article class="trace-detail-panel" id="traceDetail">
+              <div class="trace-detail-placeholder">
+                <span class="audit-loading-dot"></span>
+                <p>选择一条记录查看风险输入、判定规则与执行证据</p>
+              </div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="method-dialog" id="methodDialog" aria-labelledby="methodDialogTitle">
+      <article>
+        <header>
+          <div>
+            <span id="methodDialogType">检测方法</span>
+            <h2 id="methodDialogTitle">方法说明</h2>
+          </div>
+          <button id="methodDialogClose" type="button" aria-label="关闭方法说明">×</button>
+        </header>
+        <p class="method-dialog-summary" id="methodDialogSummary"></p>
+        <dl class="method-dialog-facts" id="methodDialogFacts"></dl>
+        <section>
+          <h3>怎么做</h3>
+          <ol id="methodDialogSteps"></ol>
+        </section>
+      </article>
+    </dialog>
+
+    <script type="module" src="./src/audit.js?v=shared-method-details-20260804-v75"></script>
+  </body>
+</html>

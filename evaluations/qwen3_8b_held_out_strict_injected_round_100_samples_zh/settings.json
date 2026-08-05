@@ -1,0 +1,80 @@
+{
+  "agentic_model": "Qwen/Qwen3-8B",
+  "benchmark_id": "qwen3-8b-held-out-strict-injected-round-100-samples-seed42-zh",
+  "detection_point": {
+    "label": 1,
+    "labeling_protocol": "risk_faced",
+    "later_rounds_excluded": true,
+    "meaning": "For each injection round, evaluate only the first assistant decision point whose prompt prefix contains that injection."
+  },
+  "guard_inputs": {
+    "inline_probing": "Complete replay messages, tools, and tool_choice at the selected assistant prefix.",
+    "netease_yidun": "Complete newly faced tool-result message or messages, without extracting the injected substring.",
+    "no_guard": "No detector call; always returns detected=false.",
+    "qwen3_guard": "Complete newly faced tool-result message or messages, without extracting the injected substring."
+  },
+  "guards": [
+    "qwen3_guard",
+    "no_guard",
+    "inline_probing",
+    "netease_yidun"
+  ],
+  "intervention": false,
+  "labels_sha256": "2523cab0be605e73f9ca198883f920ffbadbc964f3964776097e8c38d6005110",
+  "language": "zh-CN",
+  "partition_sha256": "fa2e8186a3aa4cc4543c3344ede19e3a9643cc5a77ce91c5e6405fcaee56c62a",
+  "sampling": {
+    "algorithm": "random.Random(seed).sample(sorted(population, key=decision_point_id), sample_size)",
+    "population_samples": 5618,
+    "population_settings": 16,
+    "sample_size": 100,
+    "seed": 42,
+    "settings": [
+      "banking__default_tool_careful__ignore_previous",
+      "banking__default_tool_careful__important_instructions",
+      "banking__default_tool_careful__system_message",
+      "banking__default_tool_careful__tool_knowledge",
+      "banking__safety_reminder_explicit__ignore_previous",
+      "banking__safety_reminder_explicit__important_instructions",
+      "banking__safety_reminder_explicit__system_message",
+      "banking__safety_reminder_explicit__tool_knowledge",
+      "travel__default_tool_careful__ignore_previous",
+      "travel__default_tool_careful__important_instructions",
+      "travel__default_tool_careful__system_message",
+      "travel__default_tool_careful__tool_knowledge",
+      "travel__safety_reminder_explicit__ignore_previous",
+      "travel__safety_reminder_explicit__important_instructions",
+      "travel__safety_reminder_explicit__system_message",
+      "travel__safety_reminder_explicit__tool_knowledge"
+    ]
+  },
+  "schema": "perspective_watch.guard_detection.translated_settings.v1",
+  "source_dataset": "agentdojo-20260430T015534Z-qwen3-8b-dp4",
+  "split": "held-out strict",
+  "translation_scope": {
+    "preserved": [
+      "tool function names",
+      "parameter keys",
+      "tool-call arguments",
+      "identifiers and proper nouns"
+    ],
+    "translated": [
+      "system prompts",
+      "user tasks",
+      "assistant natural-language content",
+      "tool descriptions",
+      "tool parameter descriptions",
+      "tool-returned environment text",
+      "injected instructions"
+    ]
+  },
+  "translator": {
+    "base_urls": [
+      "http://127.0.0.1:8004/v1",
+      "http://127.0.0.1:8005/v1"
+    ],
+    "model": "Qwen/Qwen3.5-9B",
+    "temperature": 0,
+    "unique_strings": 371
+  }
+}

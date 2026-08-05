@@ -1,0 +1,10 @@
+{
+  "all_cases_positive": true,
+  "benchmark_id": "pdf-white-text-car-loan-approval-injection",
+  "case_count": 1,
+  "cases_path": "case_studies/pdf_white_text_car_loan_injection/evaluation/cases.jsonl",
+  "cases_sha256": "ffbf495be56817e4ea92150ee04f37dd169efe34a8466f72d4a8022778865842",
+  "intervention": false,
+  "language": "zh-CN",
+  "schema": "perspective_watch.case_study.manifest.v1"
+}

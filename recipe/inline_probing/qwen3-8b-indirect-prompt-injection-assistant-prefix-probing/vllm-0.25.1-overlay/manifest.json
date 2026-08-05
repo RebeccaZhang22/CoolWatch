@@ -1,0 +1,66 @@
+{
+  "files": [
+    {
+      "patched_sha256": "fd5a15522619971590f9afc788d9f3ea5cd15019c9c34dc47db31fedd4ec531a",
+      "path": "entrypoints/openai/chat_completion/protocol.py",
+      "upstream_sha256": "ce7d0f91bbbe883c94e9a9257704365e943d0088d6c9fddd67e2fdecf9effbe7"
+    },
+    {
+      "patched_sha256": "1241f5eb062cf5ac26dd421140b5ea373b2b321b1a5f29e78f5fa3a5d608ef0a",
+      "path": "entrypoints/openai/chat_completion/serving.py",
+      "upstream_sha256": "6239fae503211193942d0e2037f7b0edcf71ed70271604701283bfc0453d202b"
+    },
+    {
+      "patched_sha256": "65ee3c5aea89f1812a69fc0848e9ec3321ba051bf501741231dbf5323c0e3608",
+      "path": "outputs.py",
+      "upstream_sha256": "991c0960770a619066ccbf469cc08ce1e9523e7fe19e3a116c4cd13c1e1750a0"
+    },
+    {
+      "patched_sha256": "62e987c17dec424bea5c4d6247151d44bbe60fe21a3783f7849266e98390d205",
+      "path": "v1/core/sched/output.py",
+      "upstream_sha256": "f2816589726053556dc6eef90e09b901c51f1e08ba41c9b79106d9f4acb89f6d"
+    },
+    {
+      "patched_sha256": "d93bc1898b5aaf98b804d10d114d0b837e8d953073da92746405e1bd5e0247ac",
+      "path": "v1/core/sched/scheduler.py",
+      "upstream_sha256": "e25d4c9a95abdbe8e516714ed02574d929ca0d5e8c11c4cc73b84d3a3b905443"
+    },
+    {
+      "patched_sha256": "184e3041c8e22d42c9f5bc07d7f421e00bee637e9dc6871e1dda84d5ed8d63e8",
+      "path": "v1/engine/__init__.py",
+      "upstream_sha256": "9e4e81babe115eaf1f864f8f44d0a667260fe4b6d007dd650ce45d0a2eb9c150"
+    },
+    {
+      "patched_sha256": "04ee733b12be429f4ee0ae4fb3cef647cfce85808f88fd43fbd101d1156f45ac",
+      "path": "v1/engine/input_processor.py",
+      "upstream_sha256": "c5673988c0f7cfec268220e3f044e718702c015a4f236c020937cfd40a793f15"
+    },
+    {
+      "patched_sha256": "b0d2db9f3c5fe4866bbafe1aab4a9092ae3d6b10809584ed613585e58e508ba2",
+      "path": "v1/engine/output_processor.py",
+      "upstream_sha256": "464c3cda347512cf1090f8e6471d0d3f0f65e286eb9a7b97be52efbc1ffd572a"
+    },
+    {
+      "patched_sha256": "c677c56dd7ba4790ca0eecd6fc1b3b1249175f14e6c0b75710ff830680c13008",
+      "path": "v1/inline_probing.py",
+      "upstream_sha256": null
+    },
+    {
+      "patched_sha256": "a5c08c0fa67dbc06fb503ad53f35c1ef198611a1351cd15d6376488318ab5649",
+      "path": "v1/outputs.py",
+      "upstream_sha256": "1e87bf44162452c1908d3a5003685937dbdc56f5634e35e11ed7b6a5322a1c15"
+    },
+    {
+      "patched_sha256": "d9bc99f19fe400ad749a665de6e6941fc52a4bc82b18dc46a7fac93c72ebafa9",
+      "path": "v1/request.py",
+      "upstream_sha256": "06b1c6ad3cc0223c2036b4a2e317868fa4988391b4b024bc5e5f54672b7d2c80"
+    },
+    {
+      "patched_sha256": "3b2924ae9a5ceed55c8fee6cc01d571bd81ba704fabeb8c42d49d040618b4429",
+      "path": "v1/worker/gpu_model_runner.py",
+      "upstream_sha256": "6c92ded8468f44d6df863a617ce588f132fa6df7031feecc0cc421702a41610e"
+    }
+  ],
+  "schema": "perspective_watch.inline_probing.vllm_overlay.v1",
+  "vllm_version": "0.25.1"
+}

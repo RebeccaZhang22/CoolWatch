@@ -1,0 +1,13 @@
+{
+  "all_cases_positive": true,
+  "benchmark_id": "qwen3-8b-held-out-strict-injected-round-100-samples-seed42-zh",
+  "case_count": 100,
+  "cases_path": "evaluations/qwen3_8b_held_out_strict_injected_round_100_samples_zh/cases.jsonl",
+  "cases_sha256": "42cc15ccffd16ad3ee8a7cf668d74a668b797f9c8b509ec5c5a89216f34a08be",
+  "intervention": false,
+  "language": "zh-CN",
+  "schema": "perspective_watch.guard_detection.translated_cases_manifest.v1",
+  "source_case_count": 100,
+  "source_cases_sha256": "d613fb75d8a479f4160f3bda8999c33080a3e1d4ea98514fcc32f31ebc3b02a8",
+  "unique_translated_strings": 371
+}

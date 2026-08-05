@@ -1,0 +1,82 @@
+# OS and editor state
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python environments, caches and packaging output
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.ipynb_checkpoints/
+.coverage
+htmlcov/
+build/
+dist/
+
+# Local credentials. Keep the safe template in version control.
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+
+# Runtime state and local services
+.runtime/
+logs/
+*.log
+*.pid
+tmp/
+node_modules/
+
+# Local model/download caches
+.cache/
+/models/
+*.safetensors
+*.gguf
+pytorch_model*.bin
+wandb/
+runs/
+
+# Research and training workspaces excluded from the runnable release
+exp/
+scripts/
+tests/
+
+# Regenerable probe tensors and checkpoints. Runtime checkpoints below are
+# explicit exceptions because the demo loads them directly.
+results/**/*.pt
+!results/suffix_probe/**/probe/model.pt
+!results/activation_probe/finvault-qwen3-8b/best_probe.pt
+!results/activation_probe/finvault-qwen3-32b/best_probe.pt
+!results/activation_probe/prompt-extraction-qwen3-8b/probe/best_probe.pt
+!results/activation_probe/prompt-extraction-qwen3-32b/probe/best_probe.pt
+!recipe/**/probe.pt
+results/system_prompt_leakage_banking_cn/
+results/guard_detection/
+
+# Training-only artifacts are not part of the runnable release.
+results/activation_probe/**/features/
+results/activation_probe/**/generated/
+results/activation_probe/**/dataset/
+results/activation_probe/**/logs/
+results/activation_probe/**/train.console.log
+results/activation_probe/**/case-turn-*/
+results/activation_probe/**/case-audit-*/
+results/suffix_probe/**/features/
+results/suffix_probe/**/dataset/
+results/suffix_probe/**/logs/
+results/suffix_probe/**/probe/*_predictions.jsonl
+results/audit_data/**/guarded_case_results.jsonl
+
+# Local benchmark/evaluation scratch output
+results/evaluations/**/logs/
+results/evaluations/**/features/

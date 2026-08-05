@@ -1,0 +1,73 @@
+<!doctype html>
+<html class="case-document" lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>间接提示词注入案例回放 · Perspective Watch</title>
+    <link rel="stylesheet" href="./src/styles.css?v=case-research-20260804-v18" />
+    <link rel="stylesheet" href="./src/cases.css?v=clean-case-header-20260804-v21" />
+  </head>
+  <body class="case-body">
+    <div class="case-shell">
+      <header class="audit-topbar">
+        <a class="audit-brand" href="./index.html" aria-label="Perspective Watch 攻防演示台">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <span>
+            <strong>Perspective Watch</strong>
+            <small>Case Replay</small>
+          </span>
+        </a>
+        <nav class="audit-nav" aria-label="主导航">
+          <a href="./index.html">攻防演示台</a>
+          <a href="./audit.html">实验审计</a>
+          <a class="active" href="./cases.html" aria-current="page">案例研究</a>
+        </nav>
+        <a class="case-header-back" href="./cases.html"><span aria-hidden="true">←</span> 返回案例研究</a>
+      </header>
+
+      <main class="case-main">
+        <section class="case-hero">
+          <div>
+            <p class="case-eyebrow">间接提示词注入 · 案例回放</p>
+            <h1>看一次攻击如何进入 AI 的决策链路</h1>
+            <p>基于真实测试案例，逐条展示完整消息、每次工具调用与返回、隐藏指令、护栏判断，以及 AI 的最终行动。</p>
+          </div>
+          <label class="case-picker">
+            <span>选择回放轨迹</span>
+            <select id="caseSelect" aria-label="选择攻击成功案例"></select>
+          </label>
+        </section>
+
+        <section class="replay-card" aria-live="polite">
+          <header class="replay-header">
+            <div>
+              <span class="case-badge" id="suiteBadge">业务场景</span>
+              <span class="case-badge subtle" id="attackBadge">正在载入攻击方式</span>
+              <h2 id="caseTitle">正在准备案例回放…</h2>
+            </div>
+            <div class="replay-controls">
+              <span class="autoplay-status"><i></i><span id="autoplayLabel">自动播放中</span></span>
+              <button class="control-button primary" id="playButton" type="button">暂停</button>
+              <button class="control-button" id="restartButton" type="button">重播</button>
+            </div>
+          </header>
+
+          <div class="case-summary-strip" id="caseSummary"></div>
+
+          <div class="replay-progress" aria-hidden="true"><span id="progressFill"></span></div>
+          <div class="step-tabs" id="stepTabs" aria-label="回放步骤"></div>
+
+          <div class="replay-stage" id="replayStage">
+            <div class="stage-placeholder"><span class="case-loader"></span><p>正在从审计数据中构建攻击现场</p></div>
+          </div>
+
+          <footer class="replay-footer">
+            <span id="stepCounter">步骤 0 / 0</span>
+            <p id="stepCaption">逐步还原外部恶意指令如何影响 AI 的业务决策。</p>
+          </footer>
+        </section>
+      </main>
+    </div>
+    <script type="module" src="./src/cases.js?v=clean-case-header-20260804-v21"></script>
+  </body>
+</html>

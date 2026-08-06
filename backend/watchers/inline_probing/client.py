@@ -65,6 +65,8 @@ class InlineProbingGuard:
         *,
         tools: list[dict[str, Any]] | None = None,
         tool_choice: Any | None = None,
+        model: str | None = None,
+        base_url: str | None = None,
     ) -> InlineProbingAssessment:
         started = perf_counter()
         resolved_threshold = (
@@ -79,6 +81,8 @@ class InlineProbingGuard:
                 messages,
                 tools=tools,
                 tool_choice=tool_choice,
+                model=model,
+                base_url=base_url,
             )
             return InlineProbingAssessment(
                 score=float(result["score"]),
@@ -111,6 +115,8 @@ class InlineProbingGuard:
         *,
         tools: list[dict[str, Any]] | None = None,
         tool_choice: Any | None = None,
+        model: str | None = None,
+        base_url: str | None = None,
     ) -> dict[str, Any]:
         protocol = self.settings.inline_probing_protocol.strip().lower()
         if protocol != "inline_probing":
@@ -119,6 +125,8 @@ class InlineProbingGuard:
             messages,
             tools=tools,
             tool_choice=tool_choice,
+            model=model,
+            base_url=base_url,
         )
 
     async def _probe_once(
@@ -127,9 +135,11 @@ class InlineProbingGuard:
         *,
         tools: list[dict[str, Any]] | None = None,
         tool_choice: Any | None = None,
+        model: str | None = None,
+        base_url: str | None = None,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
-            "model": self.settings.vllm_model,
+            "model": model or self.settings.vllm_model,
             "messages": messages,
             "temperature": 0,
             "top_p": 1,
@@ -149,7 +159,7 @@ class InlineProbingGuard:
             timeout_seconds=self.settings.inline_probing_timeout_seconds,
         )
         response = await self._client.post(
-            f"{self.settings.vllm_base_url.rstrip('/')}/chat/completions",
+            f"{(base_url or self.settings.vllm_base_url).rstrip('/')}/chat/completions",
             headers={"Authorization": f"Bearer {self.settings.vllm_api_key}"},
             json=payload,
         )
@@ -165,6 +175,7 @@ class InlineProbingGuard:
             "base_url": self.settings.vllm_base_url,
             "model": self.settings.vllm_model,
             "protocol": self.settings.inline_probing_protocol,
+            "task": self.settings.inline_probing_task,
             "threshold": self.settings.inline_probing_threshold,
             "expected_checkpoint_id": self.settings.inline_probing_expected_checkpoint_id,
         }
@@ -177,12 +188,17 @@ def input_attempt_fingerprint(chat: Mapping[str, Any]) -> str:
             for key in (
                 "model",
                 "messages",
+                "prompt",
                 "tools",
                 "tool_choice",
                 "temperature",
                 "top_p",
                 "max_tokens",
                 "max_completion_tokens",
+                "prompt_logprobs",
+                "return_token_ids",
+                "add_special_tokens",
+                "cache_salt",
             )
             if key in chat
         },
@@ -199,9 +215,16 @@ def build_inline_probing_request(
     *,
     expected_checkpoint_id: str,
     timeout_seconds: float,
+    target_token_index: int | None = None,
 ) -> dict[str, Any]:
     if not expected_checkpoint_id.strip():
         raise RuntimeError("INLINE_PROBING_EXPECTED_CHECKPOINT_ID is required")
+    if target_token_index is not None and (
+        isinstance(target_token_index, bool)
+        or not isinstance(target_token_index, int)
+        or target_token_index < 0
+    ):
+        raise ValueError("target_token_index must be a non-negative integer")
     return {
         "schema": INLINE_PROBING_REQUEST_SCHEMA,
         "required": True,
@@ -210,6 +233,7 @@ def build_inline_probing_request(
         "expected_checkpoint_id": expected_checkpoint_id,
         "input_attempt_fingerprint": input_attempt_fingerprint(chat),
         "deadline_ms": max(1, int(timeout_seconds * 1000)),
+        "target_token_index": target_token_index,
     }
 
 

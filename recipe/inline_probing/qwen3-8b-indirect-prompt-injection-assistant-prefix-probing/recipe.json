@@ -89,8 +89,8 @@
     "overlay": {
       "path": "vllm-0.25.1-overlay",
       "manifest": "vllm-0.25.1-overlay/manifest.json",
-      "manifest_sha256": "650106bfd274d1e308c734119be108e957a6359bd8f662fa0d03ba899130951d",
-      "patched_files": 12,
+      "manifest_sha256": "31324ac20fe680f266a919b55c3ad4227b42b9f9baf13d71edc3a1dc58154dc6",
+      "patched_files": 14,
       "patch_tool": "patch-vllm.sh"
     },
     "server": {

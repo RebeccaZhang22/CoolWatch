@@ -8,11 +8,20 @@ from pathlib import Path
 from time import perf_counter
 
 from backend.config import Settings
-from backend.watchers.safegauge.detector import SafeGaugeDetector
+from backend.watchers.safegauge.detector import (
+    SafeGaugeDetector,
+    SafeGaugePrefillPlan,
+)
+from backend.watchers.inline_probing.client import (
+    InlineProbingAssessment,
+    assessment_from_probe_result,
+    build_inline_probing_request,
+    parse_inline_probing_response,
+)
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
-RESULTS_DIR = PROJECT_ROOT / "results" / "suffix_probe"
+RESULTS_DIR = PROJECT_ROOT / "results" / "gauge_probe"
 TASK_CHECKPOINTS = {
     "system_prompt_leakage_intent": {
         "qwen38b": RESULTS_DIR / "prompt-extraction-qwen3-8b-system-prompt-leakage" / "probe" / "model.pt",
@@ -42,6 +51,12 @@ class SafeGaugeAssessment:
         return self.risky is True
 
 
+@dataclass(frozen=True)
+class SafeGaugeInlineAssessment:
+    safegauge: SafeGaugeAssessment
+    inline_probing: InlineProbingAssessment
+
+
 class SafeGaugeGuard:
     """In-process SafeGauge MLP that reuses Perspective Watch's existing vLLM API."""
 
@@ -57,6 +72,16 @@ class SafeGaugeGuard:
                 await asyncio.to_thread(client.close)
         self._detectors.clear()
 
+    def can_fuse_inline(self, task: str | None) -> bool:
+        configured_task = self.settings.inline_probing_task.strip()
+        return bool(
+            task
+            and configured_task
+            and task.strip() == configured_task
+            and self.settings.inline_probing_protocol.strip().lower()
+            == "inline_probing"
+        )
+
     async def moderate_messages(
         self,
         messages: list[dict[str, str]],
@@ -70,18 +95,102 @@ class SafeGaugeGuard:
         try:
             detector = await self._get_detector(task=task, model=model, base_url=base_url)
             payload = await asyncio.to_thread(detector.detect, messages, threshold)
-            return SafeGaugeAssessment(
-                task=str(payload.get("task") or ""),
-                label=str(payload.get("label") or ""),
-                probability=optional_float(payload.get("probability")),
-                threshold=optional_float(payload.get("threshold")),
-                logprobs=[float(value) for value in payload.get("logprobs", [])],
-                risky=payload.get("risky") if isinstance(payload.get("risky"), bool) else None,
-                raw_output=json.dumps(payload, ensure_ascii=False),
-                latency_ms=round((perf_counter() - started) * 1000),
-            )
+            return self._assessment_from_payload(payload, started)
         except Exception as error:
             return self._error_assessment(str(error), started)
+
+    async def moderate_messages_with_inline(
+        self,
+        messages: list[dict[str, str]],
+        threshold: float | None = None,
+        *,
+        inline_threshold: float | None = None,
+        task: str | None = None,
+        model: str | None = None,
+        base_url: str | None = None,
+    ) -> SafeGaugeInlineAssessment:
+        """Score SafeGauge and Inline Probing from one suffix-prefill request."""
+
+        started = perf_counter()
+        resolved_inline_threshold = float(
+            self.settings.inline_probing_threshold
+            if inline_threshold is None
+            else inline_threshold
+        )
+        try:
+            if not self.can_fuse_inline(task):
+                raise ValueError(
+                    "SafeGauge/Inline Probing fusion requires matching tasks and "
+                    "INLINE_PROBING_PROTOCOL=inline_probing"
+                )
+            detector = await self._get_detector(task=task, model=model, base_url=base_url)
+
+            def run_fused() -> tuple[SafeGaugePrefillPlan, dict, dict]:
+                plan = detector.prepare_fused_request(messages)
+                request_payload = dict(plan.request_payload)
+                request_payload["inline_probing_request"] = build_inline_probing_request(
+                    request_payload,
+                    expected_checkpoint_id=(
+                        self.settings.inline_probing_expected_checkpoint_id
+                    ),
+                    timeout_seconds=self.settings.inline_probing_timeout_seconds,
+                    target_token_index=plan.target_token_index,
+                )
+                safegauge_payload, response = detector.detect_fused(
+                    plan,
+                    request_payload,
+                    threshold,
+                )
+                return plan, safegauge_payload, response
+
+            plan, safegauge_payload, response = await asyncio.to_thread(run_fused)
+            elapsed_ms = round((perf_counter() - started) * 1000)
+            safegauge = self._assessment_from_payload(
+                safegauge_payload,
+                started,
+                latency_ms=elapsed_ms,
+            )
+            try:
+                result = parse_inline_probing_response(
+                    response,
+                    expected_checkpoint_id=(
+                        self.settings.inline_probing_expected_checkpoint_id
+                    ),
+                )
+                if int(result.get("captured_token_index", -1)) != plan.target_token_index:
+                    raise RuntimeError(
+                        "inline probing captured a different token than the "
+                        "SafeGauge context boundary"
+                    )
+                inline = assessment_from_probe_result(
+                    result,
+                    threshold=resolved_inline_threshold,
+                    latency_ms=elapsed_ms,
+                )
+            except Exception as error:
+                inline = self._inline_error_assessment(
+                    str(error),
+                    resolved_inline_threshold,
+                    elapsed_ms,
+                )
+            return SafeGaugeInlineAssessment(
+                safegauge=safegauge,
+                inline_probing=inline,
+            )
+        except Exception as error:
+            elapsed_ms = round((perf_counter() - started) * 1000)
+            return SafeGaugeInlineAssessment(
+                safegauge=self._error_assessment(
+                    str(error),
+                    started,
+                    latency_ms=elapsed_ms,
+                ),
+                inline_probing=self._inline_error_assessment(
+                    str(error),
+                    resolved_inline_threshold,
+                    elapsed_ms,
+                ),
+            )
 
     async def get_model_info(
         self,
@@ -140,7 +249,39 @@ class SafeGaugeGuard:
             timeout=self.settings.safegauge_timeout_seconds,
         )
 
-    def _error_assessment(self, error: str, started: float) -> SafeGaugeAssessment:
+    def _assessment_from_payload(
+        self,
+        payload: dict,
+        started: float,
+        *,
+        latency_ms: int | None = None,
+    ) -> SafeGaugeAssessment:
+        return SafeGaugeAssessment(
+            task=str(payload.get("task") or ""),
+            label=str(payload.get("label") or ""),
+            probability=optional_float(payload.get("probability")),
+            threshold=optional_float(payload.get("threshold")),
+            logprobs=[float(value) for value in payload.get("logprobs", [])],
+            risky=(
+                payload.get("risky")
+                if isinstance(payload.get("risky"), bool)
+                else None
+            ),
+            raw_output=json.dumps(payload, ensure_ascii=False),
+            latency_ms=(
+                round((perf_counter() - started) * 1000)
+                if latency_ms is None
+                else latency_ms
+            ),
+        )
+
+    def _error_assessment(
+        self,
+        error: str,
+        started: float,
+        *,
+        latency_ms: int | None = None,
+    ) -> SafeGaugeAssessment:
         return SafeGaugeAssessment(
             task="",
             label="",
@@ -149,7 +290,30 @@ class SafeGaugeGuard:
             logprobs=[],
             risky=None,
             raw_output="",
-            latency_ms=round((perf_counter() - started) * 1000),
+            latency_ms=(
+                round((perf_counter() - started) * 1000)
+                if latency_ms is None
+                else latency_ms
+            ),
+            error=error,
+        )
+
+    def _inline_error_assessment(
+        self,
+        error: str,
+        threshold: float,
+        latency_ms: int,
+    ) -> InlineProbingAssessment:
+        return InlineProbingAssessment(
+            score=None,
+            logit=None,
+            threshold=threshold,
+            checkpoint_id=None,
+            layer=None,
+            effective_position=None,
+            protocol=self.settings.inline_probing_protocol,
+            raw_output="",
+            latency_ms=latency_ms,
             error=error,
         )
 

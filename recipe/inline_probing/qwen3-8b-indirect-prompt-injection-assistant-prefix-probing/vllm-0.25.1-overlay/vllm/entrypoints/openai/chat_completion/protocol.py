@@ -202,6 +202,7 @@ class InlineProbingRequestParam(OpenAIBaseModel):
     expected_checkpoint_id: str
     input_attempt_fingerprint: str
     deadline_ms: int
+    target_token_index: int | None = None
 
 
 class ChatCompletionRequest(OpenAIBaseModel):

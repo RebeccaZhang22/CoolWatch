@@ -113,12 +113,25 @@ class InlineProbingRequest:
     expected_checkpoint_id: str
     input_attempt_fingerprint: str
     deadline_ms: int
+    target_token_index: int | None = None
 
     @classmethod
     def from_mapping(cls, value: Mapping[str, Any]) -> "InlineProbingRequest":
-        expected = {field.name for field in cls.__dataclass_fields__.values()}
-        if set(value) != expected:
-            raise InlineProbingError("incompatible", "probe request fields mismatch")
+        fields = cls.__dataclass_fields__
+        unknown = set(value) - set(fields)
+        missing = {
+            name
+            for name, field in fields.items()
+            if field.default is MISSING
+            and field.default_factory is MISSING
+            and name not in value
+        }
+        if unknown or missing:
+            raise InlineProbingError(
+                "incompatible",
+                f"probe request fields mismatch; missing={sorted(missing)}, "
+                f"unknown={sorted(unknown)}",
+            )
         try:
             request = cls(**dict(value))
         except (TypeError, ValueError) as exc:
@@ -134,6 +147,14 @@ class InlineProbingRequest:
                 raise InlineProbingError("incompatible", f"{name} must be sha256:<hex>")
         if not isinstance(request.deadline_ms, int) or request.deadline_ms <= 0:
             raise InlineProbingError("incompatible", "deadline_ms must be positive")
+        if request.target_token_index is not None and (
+            isinstance(request.target_token_index, bool)
+            or not isinstance(request.target_token_index, int)
+            or request.target_token_index < 0
+        ):
+            raise InlineProbingError(
+                "incompatible", "target_token_index must be a non-negative integer"
+            )
         return request
 
     def effective_deadline_ms(self, server_max_ms: int) -> int:
@@ -291,7 +312,11 @@ def make_capture_spec(
         validate_expected_checkpoint_id(request, config)
         if prompt_token_ids is None:
             raise InlineProbingError("incompatible", "inline probing requires token-id prompts")
-        target = len(prompt_token_ids) + config.effective_position
+        target = (
+            request.target_token_index
+            if request.target_token_index is not None
+            else len(prompt_token_ids) + config.effective_position
+        )
         if target < 0 or target >= len(prompt_token_ids):
             raise InlineProbingError("incompatible", "effective target position outside prompt")
         if not (scheduled_start <= target < scheduled_start + scheduled_count):

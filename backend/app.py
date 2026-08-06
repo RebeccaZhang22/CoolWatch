@@ -76,6 +76,7 @@ moderation_service = ModerationService(
     llama_prompt_guard_client=llama_prompt_guard_client,
     netease_yidun_client=netease_yidun_client,
     safegauge_guard=safegauge_guard,
+    inline_probing_guard=inline_probing_guard,
 )
 finvault_replay_service = FinVaultReplayService(settings)
 

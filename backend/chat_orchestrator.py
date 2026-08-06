@@ -103,6 +103,20 @@ class ChatOrchestrator:
     async def _run_input_guard_checks(self, request: ChatRequest) -> dict[str, object]:
         guard_ids = normalize_guard_ids(request.selected_guards)
         assessments: dict[str, object] = {}
+        scenario = (
+            resolve_scenario(request.scenario_id, request.scenario)
+            if {"safegauge", "inline_probing"}.intersection(guard_ids)
+            else None
+        )
+        task = (
+            "financially_malicious_action"
+            if scenario is not None and scenario.category == "finvault"
+            else "system_prompt_leakage_intent"
+            if scenario is not None and scenario.category == "prompt"
+            else None
+        )
+        port = request.model_params.vllm_port
+        base_url = f"http://127.0.0.1:{port}/v1" if port is not None else None
 
         if "qwen_guard" in guard_ids:
             assessments["qwen_guard"] = await self.qwen_guard_client.moderate_prompt(request.message)
@@ -110,16 +124,30 @@ class ChatOrchestrator:
             assessments["llama_prompt_guard"] = await self.llama_prompt_guard_client.moderate_prompt(request.message)
         if "netease_yidun" in guard_ids:
             assessments["netease_yidun"] = await self.netease_yidun_client.moderate_prompt(request.message)
-        if "safegauge" in guard_ids:
-            scenario = resolve_scenario(request.scenario_id, request.scenario)
-            task = (
-                "financially_malicious_action"
-                if scenario.category == "finvault"
-                else "system_prompt_leakage_intent"
-                if scenario.category == "prompt"
-                else None
+        if (
+            "safegauge" in guard_ids
+            and "inline_probing" in guard_ids
+            and scenario is not None
+            and self.safegauge_guard.can_fuse_inline(task)
+        ):
+            fused = await self.safegauge_guard.moderate_messages_with_inline(
+                [
+                    {"role": "system", "content": scenario.system_prompt},
+                    {"role": "user", "content": request.message},
+                ],
+                threshold=request.safegauge.threshold,
+                inline_threshold=request.inline_probing.threshold,
+                task=task,
+                model=request.model_params.model,
+                base_url=base_url,
             )
-            port = request.model_params.vllm_port
+            if fused.safegauge.error is None:
+                assessments["safegauge"] = fused.safegauge
+            if fused.inline_probing.error is None:
+                assessments["inline_probing"] = fused.inline_probing
+
+        if "safegauge" in guard_ids and "safegauge" not in assessments:
+            assert scenario is not None
             assessments["safegauge"] = await self.safegauge_guard.moderate_messages(
                 [
                     {"role": "system", "content": scenario.system_prompt},
@@ -128,10 +156,10 @@ class ChatOrchestrator:
                 threshold=request.safegauge.threshold,
                 task=task,
                 model=request.model_params.model,
-                base_url=f"http://127.0.0.1:{port}/v1" if port is not None else None,
+                base_url=base_url,
             )
-        if "inline_probing" in guard_ids:
-            scenario = resolve_scenario(request.scenario_id, request.scenario)
+        if "inline_probing" in guard_ids and "inline_probing" not in assessments:
+            assert scenario is not None
             if scenario.category in {"finvault", "prompt"}:
                 assessments["inline_probing"] = await self.activation_probe_guard.moderate_messages(
                     system_prompt=scenario.system_prompt,

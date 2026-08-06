@@ -17,7 +17,7 @@ LLAMA_PROMPT_GUARD_DEVICE=auto
 
 ## SafeGauge / Suffix Probe
 
-选择 SafeGauge 时，Perspective Watch 后端会按场景和模型，从 `results/suffix_probe/` 选择对应 MLP，并在 Agent Loop 前检测当前场景的 System Prompt 和本轮用户 Query。生成 prefill logprobs 时复用本轮 Qwen vLLM 端口，不需要独立 SafeGauge 服务。
+选择 SafeGauge 时，Perspective Watch 后端会按场景和模型，从 `results/gauge_probe/` 选择对应 MLP，并在 Agent Loop 前检测当前场景的 System Prompt 和本轮用户 Query。生成 prefill logprobs 时复用本轮 Qwen vLLM 端口，不需要独立 SafeGauge 服务。
 
 ```dotenv
 SAFEGAUGE_PROCESSOR_PATH=
@@ -29,6 +29,30 @@ SAFEGAUGE_TIMEOUT_SECONDS=120
 当前任务路由为：FinVault → `financially_malicious_action`，系统提示词 → `system_prompt_leakage_intent`。每个任务再按 `qwen3-8b` / `qwen3-32b` 选择 checkpoint；只有不带任务的旧接口才回退到 `SAFEGAUGE_PROCESSOR_PATH`。
 
 SafeGauge 返回的任务、标签、概率、阈值和原始响应会写入 `guard_results.safegauge`。当前框架仍采用检测对比模式，即风险命中只给出拦截建议，不会跳过 Agent Loop。
+
+当统一 moderation 请求同时选择 `safegauge` 和 `inline_probing`，并且
+`INLINE_PROBING_TASK` 与 SafeGauge task 一致时，后端会把两项检测融合为
+一次 raw-token `/completions` prefill。该请求在原始上下文末尾捕获 activation，
+同时读取后续固定 suffix 的 prompt logprobs；suffix 不会进入真实 Agent generation。
+
+```json
+{
+  "text": "request to inspect",
+  "guards": ["safegauge", "inline_probing"],
+  "task": "system_prompt_leakage_intent",
+  "model": "qwen3-8b"
+}
+```
+
+如果任务不一致，后端不会融合，防止把间接提示词注入 checkpoint 当成泄露意图
+checkpoint。若融合请求中的某一项失败，聊天路径只对失败项回退到原检测服务。
+启用泄露意图融合时，需要部署与该任务配套的 inline checkpoint，并同时设置
+`INLINE_PROBING_TASK=system_prompt_leakage_intent` 和对应的
+`INLINE_PROBING_EXPECTED_CHECKPOINT_ID`。仓库提供了一个只验证 residual 捕获与
+融合通路、固定输出 safe 的
+[System Prompt Leakage holder recipe](../recipe/inline_probing/qwen3-8b-system-prompt-leakage-placeholder/README.md)；
+它没有训练过，不能作为泄露检测器。仓库默认的真实 checkpoint 仍是
+`indirect_prompt_injection`，不会被静默用于泄露任务。
 
 ## Activation Probe
 
@@ -82,12 +106,16 @@ Perspective Watch 后端不接收 raw hidden states，也不加载 probe checkpo
 
 ```dotenv
 INLINE_PROBING_PROTOCOL=inline_probing
+INLINE_PROBING_TASK=indirect_prompt_injection
 INLINE_PROBING_EXPECTED_CHECKPOINT_ID=sha256:<probe-checkpoint-sha256>
 INLINE_PROBING_THRESHOLD=0.5
 INLINE_PROBING_TIMEOUT_SECONDS=120
 ```
 
 该集成只使用 `inline_probing` 命名。如果 vLLM server 尚未暴露 `inline_probing_request` / `inline_probing`，需要先迁移 server patch 的 OpenAI protocol 字段。
+
+融合 SafeGauge 时，patched vLLM 的 `/v1/completions` 还需支持同一个字段，
+并允许请求通过 `target_token_index` 指定 suffix 之前的原始上下文边界。
 
 仓库内置了
 `qwen3-8b-indirect-prompt-injection-assistant-prefix-probing` golden recipe：

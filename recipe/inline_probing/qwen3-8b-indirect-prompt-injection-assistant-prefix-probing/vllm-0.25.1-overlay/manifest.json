@@ -1,9 +1,19 @@
 {
   "files": [
     {
-      "patched_sha256": "fd5a15522619971590f9afc788d9f3ea5cd15019c9c34dc47db31fedd4ec531a",
+      "patched_sha256": "de6bbcfdb1a628ade50ff533fce104a7a20e1d6dc03e6b8bb60bc601287bac0e",
       "path": "entrypoints/openai/chat_completion/protocol.py",
       "upstream_sha256": "ce7d0f91bbbe883c94e9a9257704365e943d0088d6c9fddd67e2fdecf9effbe7"
+    },
+    {
+      "patched_sha256": "27a36cc74f2d9b6a21adf1b959b42bd29772434caf85bd28b34e07307d1a51c6",
+      "path": "entrypoints/openai/completion/protocol.py",
+      "upstream_sha256": "843dd7469886fbc2a61a565ee59604b6f65a6de09aed323eab1920e1fc47d410"
+    },
+    {
+      "patched_sha256": "bbec7d8f08cf77ddbff1972f4a80b8f8b22164e75aed2133906f372f06c64584",
+      "path": "entrypoints/openai/completion/serving.py",
+      "upstream_sha256": "7990cc0a665e915381b225964a545ef4ca5052e7e6a5530a908a39dd5f294f35"
     },
     {
       "patched_sha256": "1241f5eb062cf5ac26dd421140b5ea373b2b321b1a5f29e78f5fa3a5d608ef0a",
@@ -41,7 +51,7 @@
       "upstream_sha256": "464c3cda347512cf1090f8e6471d0d3f0f65e286eb9a7b97be52efbc1ffd572a"
     },
     {
-      "patched_sha256": "c677c56dd7ba4790ca0eecd6fc1b3b1249175f14e6c0b75710ff830680c13008",
+      "patched_sha256": "f54a2a2a112772bb967b1eff4134c8060b875714739c5a52b125662f85da5928",
       "path": "v1/inline_probing.py",
       "upstream_sha256": null
     },

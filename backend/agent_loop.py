@@ -224,13 +224,15 @@ class AgentLoop:
             }
         ]
 
-    @staticmethod
     def _inline_probing_enabled(
+        self,
         request: ChatRequest,
         messages: list[dict[str, Any]],
     ) -> bool:
         return (
             "inline_probing" in request.selected_guards
+            and self.llm_client.settings.inline_probing_task
+            == "indirect_prompt_injection"
             and is_first_assistant_decision_after_tool_result(messages)
         )
 

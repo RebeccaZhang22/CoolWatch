@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     safegauge_device: str = Field(default="cpu", alias="SAFEGAUGE_DEVICE")
     safegauge_timeout_seconds: float = Field(default=120.0, alias="SAFEGAUGE_TIMEOUT_SECONDS")
     inline_probing_protocol: str = Field(default="inline_probing", alias="INLINE_PROBING_PROTOCOL")
+    inline_probing_task: str = Field(
+        default="indirect_prompt_injection",
+        alias="INLINE_PROBING_TASK",
+    )
     inline_probing_expected_checkpoint_id: str = Field(
         default="sha256:41f1433346caebc8b2e9ff5640b44e3d162050d6ef7ffee45285badba4798b45",
         alias="INLINE_PROBING_EXPECTED_CHECKPOINT_ID",

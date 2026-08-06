@@ -1,0 +1,41 @@
+{
+  "schema": "perspective_watch.inline_probing.placeholder_recipe.v1",
+  "recipe_id": "qwen3-8b-system-prompt-leakage-placeholder",
+  "purpose": "Exercise System Prompt Leakage residual capture and worker-side Inline Probe scoring while SafeGauge reads suffix logprobs from the same vLLM prefill.",
+  "task": {
+    "id": "system_prompt_leakage_intent",
+    "threat_model": "system_prompt_leakage",
+    "activation_kind": "residual_stream_block_output",
+    "classifier_status": "placeholder_non_detecting"
+  },
+  "model": {
+    "model_family": "qwen3",
+    "model_revision": "Qwen3-8B",
+    "model_id": "Qwen/Qwen3-8B",
+    "hidden_width": 4096
+  },
+  "probe": {
+    "path": "probe.pt",
+    "sha256": "6bf38a15533e94cc187cbb15d974cd616f898068a706912a3de1f41277fd11d3",
+    "checkpoint_schema": "inline_probing.probe_checkpoint.v2",
+    "checkpoint_layer": 4,
+    "vllm_aux_layer": 5,
+    "requested_position": -1,
+    "effective_position": -1,
+    "threshold": 0.5,
+    "constant_score": 0.000001,
+    "trained": false
+  },
+  "placeholder_contract": {
+    "captures_real_residual": true,
+    "scores_inside_vllm_worker": true,
+    "security_detector": false,
+    "expected_decision": "safe",
+    "warning": "This checkpoint validates plumbing only and must not be used to evaluate System Prompt Leakage detection quality."
+  },
+  "runtime_contract": {
+    "protocol": "inline_probing",
+    "vllm_version": "0.25.1",
+    "launcher": "../qwen3-8b-indirect-prompt-injection-assistant-prefix-probing/vllm_server_control_with_probe_enabled.sh"
+  }
+}

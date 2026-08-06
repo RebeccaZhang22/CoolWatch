@@ -11,7 +11,7 @@ safegauge/
 每个 checkpoint 由相邻文件组成：
 
 ```text
-results/suffix_probe/<task-and-model>/probe/
+results/gauge_probe/<task-and-model>/probe/
 ├── model.pt
 └── model.meta.json
 ```
@@ -47,8 +47,8 @@ SAFEGAUGE_TIMEOUT_SECONDS=120
 
 | 场景任务 | Qwen3-8B | Qwen3-32B |
 |---|---|---|
-| `financially_malicious_action` | `results/suffix_probe/finvault-qwen3-8b-financially-malicious-action/probe/model.pt` | `results/suffix_probe/finvault-qwen3-32b-financially-malicious-action/probe/model.pt` |
-| `system_prompt_leakage_intent` | `results/suffix_probe/prompt-extraction-qwen3-8b-system-prompt-leakage/probe/model.pt` | `results/suffix_probe/prompt-extraction-qwen3-32b-system-prompt-leakage/probe/model.pt` |
+| `financially_malicious_action` | `results/gauge_probe/finvault-qwen3-8b-financially-malicious-action/probe/model.pt` | `results/gauge_probe/finvault-qwen3-32b-financially-malicious-action/probe/model.pt` |
+| `system_prompt_leakage_intent` | `results/gauge_probe/prompt-extraction-qwen3-8b-system-prompt-leakage/probe/model.pt` | `results/gauge_probe/prompt-extraction-qwen3-32b-system-prompt-leakage/probe/model.pt` |
 
 任务路由优先于旧的全局 `SAFEGAUGE_PROCESSOR_PATH`，确保 FinVault 和提示词泄露不会共用 checkpoint。没有传任务时，才使用该显式路径或 `models/<base-model>/` 的兼容自动发现逻辑。
 

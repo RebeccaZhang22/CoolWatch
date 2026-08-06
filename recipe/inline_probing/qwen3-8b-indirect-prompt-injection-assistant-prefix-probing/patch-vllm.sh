@@ -49,7 +49,9 @@ BASE_VERSION="${VERSION%%+*}"
 [[ "$BASE_VERSION" == "0.25.1" ]] || die "expected vLLM 0.25.1, found ${VERSION:-unknown}"
 
 mapfile -t FILE_ROWS < <(jq -r '.files[] | [.path, (.upstream_sha256 // "ABSENT"), .patched_sha256] | @tsv' "$MANIFEST")
-[[ ${#FILE_ROWS[@]} -eq 12 ]] || die "expected 12 overlay manifest entries"
+EXPECTED_FILES="$(jq -r '.files | length' "$MANIFEST")"
+[[ "$EXPECTED_FILES" -gt 0 && ${#FILE_ROWS[@]} -eq "$EXPECTED_FILES" ]] || \
+  die "overlay manifest file count mismatch"
 
 for row in "${FILE_ROWS[@]}"; do
   IFS=$'\t' read -r relative upstream patched <<<"$row"

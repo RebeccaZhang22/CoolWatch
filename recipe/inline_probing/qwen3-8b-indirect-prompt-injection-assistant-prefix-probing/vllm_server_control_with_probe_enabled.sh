@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PERSPECTIVE_WATCH_DIR="$(cd -- "$SCRIPT_DIR/../../.." && pwd)"
-RECIPE_JSON="$SCRIPT_DIR/recipe.json"
+DEFAULT_PROBE_RECIPE="$SCRIPT_DIR/recipe.json"
 DEFAULT_VENV="$PERSPECTIVE_WATCH_DIR/.runtime/vllm-0.25.1-inline-probing"
 DEFAULT_STATE_DIR="$PERSPECTIVE_WATCH_DIR/.runtime/qwen3-8b-inline-probing-server"
 PREFERRED_LIBSTDCXX="${PREFERRED_LIBSTDCXX:-}"
@@ -19,6 +19,7 @@ shift
 
 VENV="$DEFAULT_VENV"
 STATE_DIR="$DEFAULT_STATE_DIR"
+PROBE_RECIPE="$DEFAULT_PROBE_RECIPE"
 MODEL="Qwen/Qwen3-8B"
 SERVED_MODEL_NAME="qwen3-8b"
 GPU="0"
@@ -35,6 +36,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --venv) VENV="$2"; shift 2 ;;
     --state-dir) STATE_DIR="$2"; shift 2 ;;
+    --probe-recipe) PROBE_RECIPE="$2"; shift 2 ;;
     --model) MODEL="$2"; shift 2 ;;
     --served-model-name) SERVED_MODEL_NAME="$2"; shift 2 ;;
     --gpu) GPU="$2"; shift 2 ;;
@@ -53,6 +55,7 @@ done
 
 VENV="$(realpath -m "$VENV")"
 STATE_DIR="$(realpath -m "$STATE_DIR")"
+PROBE_RECIPE="$(realpath -m "$PROBE_RECIPE")"
 PID_FILE="$STATE_DIR/run.pid"
 PGID_FILE="$STATE_DIR/run.pgid"
 RUN_JSON="$STATE_DIR/run.json"
@@ -60,22 +63,32 @@ PID=""
 [[ -f "$PID_FILE" ]] && PID="$(<"$PID_FILE")"
 
 status_json() {
-  local state="stopped" pgid="" gpu="" base_url="" log_path=""
+  local state="stopped" pgid="" gpu="" base_url="" log_path="" probe_recipe="" recipe_id="" checkpoint_id="" probe_task=""
   is_running "$PID" && state="running"
   [[ -f "$PGID_FILE" ]] && pgid="$(<"$PGID_FILE")"
   if [[ -f "$RUN_JSON" ]]; then
     gpu="$(jq -r '.gpu // ""' "$RUN_JSON")"
     base_url="$(jq -r '.base_url // ""' "$RUN_JSON")"
     log_path="$(jq -r '.log_path // ""' "$RUN_JSON")"
+    probe_recipe="$(jq -r '.probe_recipe // ""' "$RUN_JSON")"
+    recipe_id="$(jq -r '.recipe_id // ""' "$RUN_JSON")"
+    checkpoint_id="$(jq -r '.checkpoint_id // ""' "$RUN_JSON")"
+    probe_task="$(jq -r '.probe_task // ""' "$RUN_JSON")"
   fi
   jq -n --arg action status --arg status "$state" --arg pid "$PID" \
     --arg pgid "$pgid" --arg gpu "$gpu" --arg base_url "$base_url" \
-    --arg log_path "$log_path" --arg state_dir "$STATE_DIR" \
+    --arg log_path "$log_path" --arg state_dir "$STATE_DIR" --arg probe_recipe "$probe_recipe" \
+    --arg recipe_id "$recipe_id" --arg checkpoint_id "$checkpoint_id" --arg probe_task "$probe_task" \
     --arg stop_command "$SCRIPT_DIR/vllm_server_control_with_probe_enabled.sh stop --state-dir $STATE_DIR" \
     '{action:$action,status:$status,pid:(if $pid=="" then null else ($pid|tonumber) end),
       pgid:(if $pgid=="" then null else ($pgid|tonumber) end),gpu:(if $gpu=="" then null else $gpu end),
       base_url:(if $base_url=="" then null else $base_url end),
-      log_path:(if $log_path=="" then null else $log_path end),state_dir:$state_dir,stop_command:$stop_command}'
+      log_path:(if $log_path=="" then null else $log_path end),
+      probe_recipe:(if $probe_recipe=="" then null else $probe_recipe end),
+      recipe_id:(if $recipe_id=="" then null else $recipe_id end),
+      checkpoint_id:(if $checkpoint_id=="" then null else $checkpoint_id end),
+      probe_task:(if $probe_task=="" then null else $probe_task end),
+      state_dir:$state_dir,stop_command:$stop_command}'
 }
 
 if [[ "$ACTION" == "status" ]]; then
@@ -107,8 +120,20 @@ VENV_PYTHON="$VENV/bin/python"
 TARGET="$($VENV_PYTHON -c "import pathlib,sysconfig; print(pathlib.Path(sysconfig.get_paths()['purelib'])/'vllm')")"
 PYTHON_BIN="$VENV_PYTHON" "$SCRIPT_DIR/patch-vllm.sh" check --target "$TARGET" >/dev/null
 
-PROBE_PATH="$SCRIPT_DIR/$(jq -r '.probe.path' "$RECIPE_JSON")"
-PROBE_SHA="$(jq -r '.probe.sha256' "$RECIPE_JSON")"
+[[ -f "$PROBE_RECIPE" ]] || die "probe recipe missing: $PROBE_RECIPE"
+jq -e '.probe.path and .probe.sha256 and .probe.checkpoint_layer != null and .task.activation_kind and .model.hidden_width' \
+  "$PROBE_RECIPE" >/dev/null || die "invalid probe recipe: $PROBE_RECIPE"
+PROBE_RECIPE_DIR="$(dirname "$PROBE_RECIPE")"
+PROBE_RELATIVE_PATH="$(jq -r '.probe.path' "$PROBE_RECIPE")"
+if [[ "$PROBE_RELATIVE_PATH" = /* ]]; then
+  PROBE_PATH="$(realpath -m "$PROBE_RELATIVE_PATH")"
+else
+  PROBE_PATH="$(realpath -m "$PROBE_RECIPE_DIR/$PROBE_RELATIVE_PATH")"
+fi
+PROBE_SHA="$(jq -r '.probe.sha256' "$PROBE_RECIPE")"
+RECIPE_ID="$(jq -r '.recipe_id // "custom-inline-probe"' "$PROBE_RECIPE")"
+PROBE_TASK="$(jq -r '.task.id // .task.threat_model // ""' "$PROBE_RECIPE")"
+[[ -f "$PROBE_PATH" ]] || die "probe checkpoint missing: $PROBE_PATH"
 [[ "$(sha256sum "$PROBE_PATH" | awk '{print $1}')" == "$PROBE_SHA" ]] || die "probe sha256 mismatch"
 PROBE_CONFIG="$(jq -c --arg checkpoint_path "$PROBE_PATH" '
   {schema:"inline_probing.probe_config.v1",checkpoint_schema:"inline_probing.probe_checkpoint.v2",
@@ -119,8 +144,8 @@ PROBE_CONFIG="$(jq -c --arg checkpoint_path "$PROBE_PATH" '
    hidden_width:.model.hidden_width,normalization:"checkpoint",tensor_parallel_size:1,
    pipeline_parallel_size:1,required:true,transport:"inline",disable_ubatching:true,
    disable_speculative_decoding:true,disable_async_scheduling:true,
-   disable_pipeline_batch_queues:true,max_deadline_ms:120000}' "$RECIPE_JSON")"
-THRESHOLD="$(jq -r '.probe.threshold' "$RECIPE_JSON")"
+   disable_pipeline_batch_queues:true,max_deadline_ms:120000}' "$PROBE_RECIPE")"
+THRESHOLD="$(jq -r '.probe.threshold' "$PROBE_RECIPE")"
 
 mkdir -p "$STATE_DIR"
 LOG_DIR="$PERSPECTIVE_WATCH_DIR/logs/$(date -u +%F)"
@@ -147,10 +172,13 @@ printf '%s\n' "$PID" > "$PGID_FILE"
 COMMAND_JSON="$(printf '%s\n' "${COMMAND[@]}" | jq -R . | jq -s .)"
 jq -n --argjson pid "$PID" --arg gpu "$GPU" --arg base_url "http://$HOST:$PORT/v1" \
   --arg model "$MODEL" --arg served_model_name "$SERVED_MODEL_NAME" --arg log_path "$LOG_PATH" \
+  --arg probe_recipe "$PROBE_RECIPE" --arg recipe_id "$RECIPE_ID" \
+  --arg checkpoint_id "sha256:$PROBE_SHA" --arg probe_task "$PROBE_TASK" \
   --arg started_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson command "$COMMAND_JSON" \
   '{schema:"perspective_watch.inline_probing.server_state.v1",pid:$pid,pgid:$pid,gpu:$gpu,
     base_url:$base_url,model:$model,served_model_name:$served_model_name,log_path:$log_path,
-    command:$command,started_at:$started_at}' > "$RUN_JSON"
+    probe_recipe:$probe_recipe,recipe_id:$recipe_id,checkpoint_id:$checkpoint_id,
+    probe_task:$probe_task,command:$command,started_at:$started_at}' > "$RUN_JSON"
 sleep 0.5
 is_running "$PID" || die "vLLM exited during startup; inspect $LOG_PATH"
 status_json | jq '.action="start"'

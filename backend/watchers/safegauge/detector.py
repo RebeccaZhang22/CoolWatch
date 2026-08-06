@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import copy
 import json
+import uuid
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -67,6 +69,14 @@ def _as_token_ids(value: Any) -> list[int]:
     if value and isinstance(value[0], list):
         value = value[0]
     return list(value)
+
+
+@dataclass(frozen=True)
+class SafeGaugePrefillPlan:
+    prompt_tokens: list[int]
+    prefill_length: int
+    target_token_index: int
+    request_payload: dict[str, Any]
 
 
 class LogProbsPrompt:
@@ -139,6 +149,85 @@ class LogProbsPrompt:
         return result
 
     def get_logprobs(self, messages: list[dict[str, str]], logprobs_num: int = 2) -> list[float]:
+        context_tokens, prefill_tokens = self._build_prompt_tokens(messages)
+        prompt_tokens = context_tokens + prefill_tokens
+
+        if self.mode == "server":
+            return self._get_server_logprobs(prompt_tokens, len(prefill_tokens), logprobs_num)
+        return self._get_offline_logprobs(prompt_tokens, len(prefill_tokens), logprobs_num)
+
+    def prepare_fused_request(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        logprobs_num: int,
+    ) -> SafeGaugePrefillPlan:
+        if self.mode != "server" or self.client is None or self.model is None:
+            raise RuntimeError("fused SafeGauge/Inline Probing requires server mode")
+        context_tokens, prefill_tokens = self._build_prompt_tokens(messages)
+        if not context_tokens or not prefill_tokens:
+            raise RuntimeError("fused prefill requires non-empty context and suffix tokens")
+        prompt_tokens = context_tokens + prefill_tokens
+        request_payload: dict[str, Any] = {
+            "model": self.model,
+            "prompt": prompt_tokens,
+            "max_tokens": 1,
+            "temperature": 0,
+            "top_p": 0.95,
+            "prompt_logprobs": int(logprobs_num),
+            "return_token_ids": True,
+            "add_special_tokens": False,
+            # A unique salt prevents the target activation from being skipped by
+            # prefix caching. The target can be earlier than the suffix tail.
+            "cache_salt": f"perspective-watch-fused-{uuid.uuid4()}",
+        }
+        return SafeGaugePrefillPlan(
+            prompt_tokens=prompt_tokens,
+            prefill_length=len(prefill_tokens),
+            target_token_index=len(context_tokens) - 1,
+            request_payload=request_payload,
+        )
+
+    def execute_fused_request(
+        self,
+        plan: SafeGaugePrefillPlan,
+        request_payload: dict[str, Any],
+    ) -> tuple[list[float], dict[str, Any]]:
+        assert self.client is not None
+        inline_request = request_payload.get("inline_probing_request")
+        if not isinstance(inline_request, dict):
+            raise ValueError("fused request is missing inline_probing_request")
+        response = self.client.completions.create(
+            model=str(request_payload["model"]),
+            prompt=list(request_payload["prompt"]),
+            max_tokens=int(request_payload["max_tokens"]),
+            temperature=float(request_payload["temperature"]),
+            top_p=float(request_payload["top_p"]),
+            extra_body={
+                "prompt_logprobs": int(request_payload["prompt_logprobs"]),
+                "return_token_ids": True,
+                "add_special_tokens": False,
+                "cache_salt": str(request_payload["cache_salt"]),
+                "inline_probing_request": inline_request,
+            },
+        )
+        choice = response.choices[0]
+        prompt_token_ids = getattr(choice, "prompt_token_ids", None)
+        if prompt_token_ids is None or list(prompt_token_ids) != plan.prompt_tokens:
+            raise RuntimeError("vLLM fused prefill token IDs do not match SafeGauge input")
+        token_entries = getattr(choice, "prompt_logprobs", None)
+        if token_entries is None:
+            raise RuntimeError("vLLM fused prefill did not return prompt_logprobs")
+        raw_logprobs = [
+            _first_logprob(entry)
+            for entry in token_entries[-plan.prefill_length :]
+        ]
+        return raw_logprobs, response.model_dump(mode="json")
+
+    def _build_prompt_tokens(
+        self,
+        messages: list[dict[str, str]],
+    ) -> tuple[list[int], list[int]]:
         context_tokens = self.tokenizer.apply_chat_template(
             messages[:-1],
             tokenize=True,
@@ -148,11 +237,7 @@ class LogProbsPrompt:
             messages[-1]["content"],
             add_special_tokens=False,
         )
-        prompt_tokens = _as_token_ids(context_tokens) + _as_token_ids(prefill_tokens)
-
-        if self.mode == "server":
-            return self._get_server_logprobs(prompt_tokens, len(prefill_tokens), logprobs_num)
-        return self._get_offline_logprobs(prompt_tokens, len(prefill_tokens), logprobs_num)
+        return _as_token_ids(context_tokens), _as_token_ids(prefill_tokens)
 
     def _get_server_logprobs(
         self,
@@ -267,6 +352,39 @@ class SafeGaugeDetector:
             prefilled_messages,
             logprobs_num=int(self.meta.get("logprobs_num", 2)),
         )
+
+        return self._score_logprobs(raw_logprobs, threshold_override)
+
+    def prepare_fused_request(
+        self,
+        messages: list[dict[str, str]],
+    ) -> SafeGaugePrefillPlan:
+        if not messages:
+            raise ValueError("messages must not be empty")
+        prefilled_messages = self.logprobs_extractor.apply_prefill(
+            messages, self.meta["suffix"]
+        )
+        return self.logprobs_extractor.prepare_fused_request(
+            prefilled_messages,
+            logprobs_num=int(self.meta.get("logprobs_num", 2)),
+        )
+
+    def detect_fused(
+        self,
+        plan: SafeGaugePrefillPlan,
+        request_payload: dict[str, Any],
+        threshold_override: float | None = None,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        raw_logprobs, response = self.logprobs_extractor.execute_fused_request(
+            plan, request_payload
+        )
+        return self._score_logprobs(raw_logprobs, threshold_override), response
+
+    def _score_logprobs(
+        self,
+        raw_logprobs: list[float],
+        threshold_override: float | None,
+    ) -> dict[str, Any]:
 
         input_dim = int(self.meta.get("input_dim", 20))
         values = np.asarray(raw_logprobs[:input_dim], dtype=np.float32)

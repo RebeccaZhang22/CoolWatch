@@ -10,7 +10,7 @@
 | `evaluations/qwen3_8b_held_out_strict_injected_round_100_samples_zh/` | 间接提示词注入审计的冻结中文 case | `backend/experiment_audit.py` |
 | `results/activation_probe/finvault-qwen3-{8b,32b}/` | FinVault 前端逐 case 结果、摘要和两种模型的实时 checkpoint | 审计 API；checkpoint 由 `backend.activation_probe_server` 按模型加载 |
 | `results/activation_probe/prompt-extraction-qwen3-{8b,32b}/` | 提示词泄露前端统计所需预测和两种模型的实时 checkpoint | 审计 API；checkpoint 由 Activation Probe 服务按模型加载 |
-| `results/suffix_probe/*/probe/` | 四个任务/模型组合的 SafeGauge MLP 与运行元数据 | `backend/watchers/safegauge/client.py` |
+| `results/gauge_probe/*/probe/` | 四个任务/模型组合的 SafeGauge MLP 与运行元数据 | `backend/watchers/safegauge/client.py` |
 | `case_studies/pdf_white_text_car_loan_injection/` | Case Study 的 PDF、固定轨迹与四种护栏结果 | `backend/case_studies.py` |
 | `recipe/inline_probing/` | 间接注入 Inline Probing 的 vLLM patch、probe 和回归 case | patched vLLM、`backend/watchers/inline_probing/` |
 

@@ -6,6 +6,7 @@ This folder contains the self-contained inputs used by the published demo.
 
 ```text
 data/
+  TRAINING_DATA.md
   finvault/
     cases.jsonl
     system_prompts.jsonl
@@ -37,3 +38,9 @@ The prompt-extraction directory uses Chinese display names. Attack metadata keep
 ## FinVault
 
 `data/finvault/` is a self-contained export for the financial-agent audit UI. See `data/finvault/README.md` for its schema. Runtime code does not read any `exp/` checkout.
+
+### Probe training data
+
+`finvault/cases.jsonl` 是源案例目录，不是可以直接训练的二分类数据。
+如何展开逐轮对话、进行语义标注、按 source group 切分并生成
+SafeGauge/Activation Probe 共用监督数据，见 [TRAINING_DATA.md](TRAINING_DATA.md)。

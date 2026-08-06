@@ -39,7 +39,7 @@ the embedding output, so the same activation is auxiliary layer `N + 1`.
   across 16 strict grid points. Cases contain messages, tools, labels, expected
   prompt fingerprints, and reference scores. They do not contain token arrays,
   hidden states, or saved feature tensors.
-- `vllm-0.25.1-overlay/`: the exact 12-file source overlay plus upstream and
+- `vllm-0.25.1-overlay/`: the exact 14-file source overlay plus upstream and
   patched SHA-256 values in `manifest.json`.
 - `patch-vllm.sh`: pure-Bash `apply`, `check`, and recoverable `restore` logic.
 - `vllm_server_control_with_probe_enabled.sh`: controls a vLLM server that
@@ -121,6 +121,19 @@ Pick an idle GPU and start the server:
 ./vllm_server_control_with_probe_enabled.sh status
 ```
 
+脚本默认加载本目录的间接提示词注入 checkpoint。要复用同一套 vLLM overlay
+加载其他兼容 checkpoint，可传入其 `recipe.json`：
+
+```bash
+./vllm_server_control_with_probe_enabled.sh start \
+  --probe-recipe ../qwen3-8b-system-prompt-leakage-placeholder/recipe.json \
+  --state-dir ../../../.runtime/qwen3-8b-system-prompt-leakage-holder-server \
+  --gpu 0
+```
+
+`--state-dir` 应与同机运行的其他 vLLM 实例区分开。System Prompt Leakage
+holder 只验证 residual 捕获和融合通路，不是训练完成的检测器。
+
 The recipe defaults to `Qwen/Qwen3-8B`, served name `qwen3-8b`, port 8013,
 checkpoint layer 4, effective position -1, and threshold 0.76. `start` verifies
 the patch and checkpoint before launch. It sets `VLLM_USE_V2_MODEL_RUNNER=0`,
@@ -133,6 +146,12 @@ This is not a hot-plug controller. The probe checkpoint and capture
 configuration are loaded while the vLLM workers start. Requests can opt in by
 sending `inline_probing_request`, but changing, adding, or removing the loaded
 probe requires stopping and restarting this dedicated server.
+
+The patched `/v1/completions` route also accepts `inline_probing_request` for
+raw token-id prompts. A request may therefore return prompt logprobs for a
+SafeGauge suffix and an Inline Probe score from an explicit earlier prompt
+token in one prefill. The request must be non-streaming, contain exactly one
+token-id prompt, use `n=1`, and request returned token IDs.
 
 ## Perspective Watch live Agent integration
 
@@ -153,7 +172,7 @@ the known injected decision points.
 Logs are written under `Perspective Watch/logs/YYYY-MM-DD/`. Runtime state owns
 `run.pid`, `run.pgid`, and `run.json` under
 `Perspective Watch/.runtime/qwen3-8b-inline-probing-server/`. `status` prints the exact
-log path and stop command.
+log path, loaded recipe, checkpoint ID, task, and stop command.
 
 On hosts that need the NVIDIA forward-compatibility libraries, add:
 

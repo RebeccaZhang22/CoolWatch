@@ -1,0 +1,104 @@
+{
+  "checkpoint": "results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt",
+  "threshold_from_training_validation": -0.9827097654342651,
+  "sample_count": 1139,
+  "unique_query_count": 308,
+  "system_prompt_count": 103,
+  "sample_metrics": {
+    "auroc": 0.9998751961203822,
+    "auprc": 0.9997324767008811,
+    "accuracy": 0.9956101843722563,
+    "balanced_accuracy": 0.9945496362858366,
+    "precision": 0.9944289693593314,
+    "recall": 0.9916666666666667,
+    "f1": 0.9930458970792768,
+    "false_positive_rate": 0.0025673940949935813
+  },
+  "query_metrics": {
+    "auroc": 1.0,
+    "auprc": 1.0,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "false_positive_rate": 0.0
+  },
+  "worst_context_query_metrics": {
+    "auroc": 0.999070553443177,
+    "auprc": 0.9950205170629842,
+    "accuracy": 0.9902597402597403,
+    "balanced_accuracy": 0.9850866075200676,
+    "precision": 0.9565217391304348,
+    "recall": 0.9777777777777777,
+    "f1": 0.967032967032967,
+    "false_positive_rate": 0.0076045627376425855
+  },
+  "queries_with_any_context_error": 3,
+  "context_error_count": 5,
+  "query_metrics_by_language": {
+    "en": {
+      "auroc": 1.0,
+      "auprc": 1.0,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "zh": {
+      "auroc": 1.0,
+      "auprc": 0.9999999999999999,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "query_metrics_by_category": {
+    "cot": {
+      "auroc": 1.0,
+      "auprc": 0.9999999999999999,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "rag": {
+      "auroc": 1.0,
+      "auprc": 0.9999999999999999,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "skill": {
+      "auroc": 1.0,
+      "auprc": 1.0,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    },
+    "system_prompt": {
+      "auroc": 1.0,
+      "auprc": 1.0,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "query_errors": []
+}

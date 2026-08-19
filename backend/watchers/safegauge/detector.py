@@ -1,4 +1,4 @@
-"""Core SafeGauge detector used directly by the Perspective Watch backend."""
+"""Core SafeGauge detector used directly by the ProspectMonitor backend."""
 
 from __future__ import annotations
 

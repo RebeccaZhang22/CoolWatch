@@ -3,11 +3,11 @@ from dataclasses import dataclass
 
 GUARD_NAMES = {
     "baseline": "无防护",
-    "qwen_guard": "Qwen3Guard",
-    "llama_prompt_guard": "Llama Prompt Guard 2",
-    "netease_yidun": "网易易盾",
-    "safegauge": "SafeGauge",
-    "inline_probing": "Inline Probing",
+    "qwen_guard": "Qwen3 安全护栏",
+    "llama_prompt_guard": "Llama 安全护栏",
+    "netease_yidun": "易盾文本安全",
+    "safegauge": "后缀概率探针",
+    "inline_probing": "生成内探针",
     "rule_guard": "规则防护",
     "custom_guard": "自定义防护",
 }

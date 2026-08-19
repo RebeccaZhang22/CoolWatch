@@ -48,7 +48,7 @@ HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
   --state-dir "$REPO_DIR/.runtime/qwen3-8b-system-prompt-leakage-holder-server"
 ```
 
-## 2. 配置 Perspective Watch
+## 2. 配置 ProspectMonitor
 
 在 `backend/.env` 中至少设置：
 
@@ -76,7 +76,7 @@ INLINE_PROBING_TIMEOUT_SECONDS=120
 
 ## 3. 调用一个统一接口
 
-调用方只需要请求 Perspective Watch 的一个接口：
+调用方只需要请求 ProspectMonitor 的一个接口：
 
 ```text
 POST http://127.0.0.1:18088/v1/moderations
@@ -221,20 +221,19 @@ Probe 请求。这里的“一次”专指一次护栏 prefill：如果之后还
 ```
 
 SafeGauge 必须为每个 suffix 重新执行 prefill，所以三个 suffix 至少是三次 vLLM
-运行。Inline Probe 理论上可以让多个 probe head 复用同一份 residual，但当前 runtime
-只有一个全局 `INLINE_PROBING_CONFIG`，每个 worker 只加载一个 probe，不支持请求间
-热切换或一次返回多个 probe 分数。
+运行。patched runtime 可以在启动时通过 `INLINE_PROBING_CONFIGS` 注册多个 probe，
+并由每个请求的 `probe_id` 选择一个；单个请求仍只返回一个 probe 分数，注册表也不能
+在 worker 运行期间热更新。
 
 因此当前工程上的两种用法是：
 
-1. 顺序切换：停止 worker，用 `--probe-recipe` 换 checkpoint，修改匹配的
-   `INLINE_PROBING_TASK`/checkpoint ID，重启后调用对应 task；
-2. 独立服务：为每个 Inline task 启动一个 task-bound vLLM 端口，并让相应后端实例
-   使用匹配的 `INLINE_PROBING_TASK`。当前单个后端实例仍只有一个全局 Inline task。
+1. 同模型注册表：启动时重复传入 `--probe-recipe`，请求携带匹配的 `probe_id` 和
+   checkpoint ID；
+2. 独立服务：不同模型或需要不同运行参数时，为每个 task-bound vLLM 启动独立端口。
 
 SafeGauge 会依据请求的 `task + model` 选择对应 checkpoint 和 suffix，但当前一次
-`/v1/moderations` 只选择一个 task。将来若实现多 probe registry，Inline 部分可以
-复用 residual；SafeGauge 的多个 suffix prefill 仍然不能省略。
+`/v1/moderations` 只选择一个 task，单个后端实例的 SafeGauge 融合配置也仍只绑定
+一个 Inline task。SafeGauge 的多个 suffix prefill 不能因 probe 注册表而省略。
 
 ## 6. 重新生成 holder（可选）
 

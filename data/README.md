@@ -7,6 +7,24 @@ This folder contains the self-contained inputs used by the published demo.
 ```text
 data/
   TRAINING_DATA.md
+  customer_agent/
+    scenario.json
+    agent/
+    skills/
+    rag/
+    attacks/
+    evaluation/
+    tools/
+    orders/
+  legal_regulations_agent/
+    scenario.json
+    agent/
+    skills/
+    rag/
+    attacks/
+    evaluation/
+    tools/
+    examples/
   finvault/
     cases.jsonl
     system_prompts.jsonl
@@ -17,6 +35,10 @@ data/
 ```
 
 The prompt-extraction directory uses Chinese display names. Attack metadata keeps stable canonical ids.
+
+`data/customer_agent/` 是统一客服 Agent 的运行时场景配置，包含可组合的 System Prompt、Skill、Reasoning Policy、RAG、自然对话建议、工具和合成订单；攻击样例与 canary 单独放在评估链路中，不参与首页场景选择。目录结构与修改规则见 [Customer Agent 场景数据](customer_agent/README.md)。
+
+`data/legal_regulations_agent/` 是版本化法律条款 RAG 的合成演示数据，包含历史版、修订决定、现行整合版、实施办法、草案、变更事件流和时态检索用例。所有法规均为虚构内容；结构说明见 [法律法规条款 Agent 场景数据](legal_regulations_agent/README.md)。
 
 ## Scope
 

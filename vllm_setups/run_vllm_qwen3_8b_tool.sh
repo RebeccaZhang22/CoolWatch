@@ -10,6 +10,7 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-qwen3-8b}"
 PORT="${PORT:-8104}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-32768}"
 GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.50}"
+TENSOR_PARALLEL_SIZE="${TENSOR_PARALLEL_SIZE:-1}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 exec "$PYTHON_BIN" -m vllm.entrypoints.cli.main serve "$MODEL" \
@@ -17,13 +18,12 @@ exec "$PYTHON_BIN" -m vllm.entrypoints.cli.main serve "$MODEL" \
     --dtype auto \
     --host 0.0.0.0 \
     --port "$PORT" \
-    --tensor-parallel-size 1 \
+    --tensor-parallel-size "$TENSOR_PARALLEL_SIZE" \
     --trust-remote-code \
     --max-model-len "$MAX_MODEL_LEN" \
     --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION" \
     --enable-prefix-caching \
     --enable-chunked-prefill \
-    --reasoning-parser qwen3 \
     --max-num-batched-tokens 16384 \
     --enable-auto-tool-choice \
     --tool-call-parser hermes \

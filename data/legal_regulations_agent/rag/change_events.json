@@ -1,0 +1,46 @@
+[
+  {
+    "event_id": "evt-2024-04-15-promulgated",
+    "event_type": "promulgated",
+    "event_date": "2024-04-15",
+    "effective_date": "2024-07-01",
+    "document_ids": ["platform-data-rights-2024-original"],
+    "summary": "发布条例原始版。"
+  },
+  {
+    "event_id": "evt-2025-10-15-amended",
+    "event_type": "amended",
+    "event_date": "2025-10-15",
+    "effective_date": "2026-01-01",
+    "document_ids": [
+      "platform-data-rights-amendment-2025",
+      "platform-data-rights-2026-consolidated"
+    ],
+    "affected_document_ids": ["platform-data-rights-2024-original"],
+    "summary": "修改访问请求期限、安全事件通知期限和记录保存期限，并生成整合版。"
+  },
+  {
+    "event_id": "evt-2026-01-20-implementation",
+    "event_type": "new_supporting_rule",
+    "event_date": "2026-01-20",
+    "effective_date": "2026-03-01",
+    "document_ids": ["platform-data-rights-implementation-2026"],
+    "summary": "新增实施办法，细化工作日计算、身份核验和分阶段事件通知。"
+  },
+  {
+    "event_id": "evt-2026-03-05-interpretation",
+    "event_type": "official_interpretation",
+    "event_date": "2026-03-05",
+    "effective_date": "2026-03-05",
+    "document_ids": ["platform-data-rights-official-qa-2026"],
+    "summary": "新增官方政策问答。"
+  },
+  {
+    "event_id": "evt-2026-07-15-draft",
+    "event_type": "draft_published",
+    "event_date": "2026-07-15",
+    "effective_date": null,
+    "document_ids": ["platform-data-rights-draft-2027"],
+    "summary": "发布修正草案征求意见稿；该文件尚未生效。"
+  }
+]

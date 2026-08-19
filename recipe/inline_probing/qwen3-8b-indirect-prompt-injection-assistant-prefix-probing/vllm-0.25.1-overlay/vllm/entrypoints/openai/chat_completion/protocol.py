@@ -203,6 +203,7 @@ class InlineProbingRequestParam(OpenAIBaseModel):
     input_attempt_fingerprint: str
     deadline_ms: int
     target_token_index: int | None = None
+    probe_id: str | None = None
 
 
 class ChatCompletionRequest(OpenAIBaseModel):

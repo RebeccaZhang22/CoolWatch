@@ -2,7 +2,7 @@
 
 Recipe ID: `qwen3-8b-indirect-prompt-injection-assistant-prefix-probing`.
 
-This is a self-contained Perspective Watch golden recipe for detecting indirect prompt
+This is a self-contained ProspectMonitor golden recipe for detecting indirect prompt
 injection at the assistant-prefix boundary. It pins the rank-1 Qwen3-8B linear
 probe selected from 14,544 layer/epoch/threshold candidates: checkpoint layer
 4, epoch 10, and threshold 0.76.
@@ -61,7 +61,7 @@ TP=31. All 64 native prompt-token fingerprints match their collection inputs.
 
 ## Offline integrity check
 
-From the Perspective Watch repository root:
+From the ProspectMonitor repository root:
 
 ```bash
 python3 -m backend.watchers.inline_probing.golden_recipe
@@ -122,17 +122,22 @@ Pick an idle GPU and start the server:
 ```
 
 脚本默认加载本目录的间接提示词注入 checkpoint。要复用同一套 vLLM overlay
-加载其他兼容 checkpoint，可传入其 `recipe.json`：
+加载其他兼容 checkpoint，可传入其 `recipe.json`。`--probe-recipe` 可以重复，
+因此同一个模型 worker 能预加载多个 probe：
 
 ```bash
 ./vllm_server_control_with_probe_enabled.sh start \
-  --probe-recipe ../qwen3-8b-system-prompt-leakage-placeholder/recipe.json \
-  --state-dir ../../../.runtime/qwen3-8b-system-prompt-leakage-holder-server \
+  --probe-recipe recipe.json \
+  --probe-recipe ../../activation_probing/qwen3-8b-theft-unified-v16-multilayer-mlp/recipe.json \
+  --state-dir ../../../.runtime/qwen3-8b-multiprobe-server \
   --gpu 0
 ```
 
-`--state-dir` 应与同机运行的其他 vLLM 实例区分开。System Prompt Leakage
-holder 只验证 residual 捕获和融合通路，不是训练完成的检测器。
+所有 recipe 必须指向相同模型 family/revision/hidden width。请求通过 `probe_id`
+选择注册表中的 head；若省略 `probe_id`，checkpoint ID 必须能唯一确定一个 head。
+`--state-dir` 应与同机运行的其他 vLLM 实例区分开。v16 Activation Probe 使用
+21/22/23 三层 residual 拼接与 MLP，历史 probe 仍使用单层 linear；recipe 与后端
+配置见 `recipe/activation_probing/README.md`。
 
 The recipe defaults to `Qwen/Qwen3-8B`, served name `qwen3-8b`, port 8013,
 checkpoint layer 4, effective position -1, and threshold 0.76. `start` verifies
@@ -142,10 +147,10 @@ v1 capture hook. It also fixes TP=1, PP=1, ubatching=off, speculative decoding
 absent, asynchronous scheduling=off, and uses the public
 `inline_probing_request` / `inline_probing` protocol only.
 
-This is not a hot-plug controller. The probe checkpoint and capture
-configuration are loaded while the vLLM workers start. Requests can opt in by
-sending `inline_probing_request`, but changing, adding, or removing the loaded
-probe requires stopping and restarting this dedicated server.
+This is not a hot-plug controller. Probe checkpoints and capture configurations
+are loaded while the vLLM workers start. Requests can opt in and select any
+registered `probe_id` through `inline_probing_request`, but changing, adding, or
+removing a probe requires stopping and restarting this dedicated server.
 
 The patched `/v1/completions` route also accepts `inline_probing_request` for
 raw token-id prompts. A request may therefore return prompt logprobs for a
@@ -153,9 +158,9 @@ SafeGauge suffix and an Inline Probe score from an explicit earlier prompt
 token in one prefill. The request must be non-streaming, contain exactly one
 token-id prompt, use `n=1`, and request returned token IDs.
 
-## Perspective Watch live Agent integration
+## ProspectMonitor live Agent integration
 
-When this recipe server is used as Perspective Watch's agent model endpoint, the
+When this recipe server is used as ProspectMonitor's agent model endpoint, the
 AgentLoop attaches `inline_probing_request` to the actual assistant generation,
 not to a separate probe-only request. The trigger is the first assistant
 decision immediately following each newly appended batch of `tool` messages.
@@ -169,9 +174,9 @@ the decision state, so this trigger applies to every new tool-result batch.
 Offline experiment scoring uses frozen injection-round indices to select only
 the known injected decision points.
 
-Logs are written under `Perspective Watch/logs/YYYY-MM-DD/`. Runtime state owns
+Logs are written under `ProspectMonitor/logs/YYYY-MM-DD/`. Runtime state owns
 `run.pid`, `run.pgid`, and `run.json` under
-`Perspective Watch/.runtime/qwen3-8b-inline-probing-server/`. `status` prints the exact
+`ProspectMonitor/.runtime/qwen3-8b-inline-probing-server/`. `status` prints the exact
 log path, loaded recipe, checkpoint ID, task, and stop command.
 
 On hosts that need the NVIDIA forward-compatibility libraries, add:

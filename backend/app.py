@@ -1,16 +1,36 @@
 import asyncio
+import json
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.agent_loop import AgentLoop
+from backend.auth_store import AuthStore
 from backend.attack_library import load_attack_examples
 from backend.chat_orchestrator import ChatOrchestrator
 from backend.config import get_settings
+from backend.customer_agent import CustomerServiceAgent
+from backend.customer_agent_config import CustomerAgentRuntimeConfig
+from backend.customer_agent_catalog import LEGAL_REGULATIONS_AGENT_DATA_ROOT
+from backend.customer_agent_schemas import (
+    CustomerAgentAttackCard,
+    CustomerAgentBootstrapResponse,
+    CustomerAgentCompareRequest,
+    CustomerAgentCompareResponse,
+    CustomerAgentHealthResponse,
+    CustomerAgentProfileResponse,
+    CustomerAgentRunRequest,
+    CustomerAgentRunResponse,
+    CustomerAgentRagConfigResponse,
+    CustomerAgentRagDocumentContentResponse,
+    CustomerAgentRagMutationResponse,
+    CustomerAgentSystemPromptResponse,
+    CustomerAgentSystemPromptUpdateRequest,
+)
 from backend.case_studies import case_study_pdf, list_case_studies, load_case_study
 from backend.experiment_audit import (
     list_audit_risks,
@@ -37,6 +57,7 @@ from backend.schemas import (
     SessionCreateRequest,
     SessionCreateResponse,
 )
+from pydantic import BaseModel, Field
 from backend.session_store import SessionStore
 from backend.watchers import (
     ActivationProbeGuard,
@@ -49,9 +70,31 @@ from backend.watchers import (
 
 logger = logging.getLogger(__name__)
 
+
+class GuardrailsApiRequest(BaseModel):
+    input: str = Field(min_length=1, max_length=12000)
+    session_id: str | None = Field(default=None, max_length=128)
+
+
+class AuthCredentials(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    password: str = Field(min_length=8, max_length=256)
+
 settings = get_settings()
+auth_store = AuthStore()
 session_store = SessionStore()
-llm_client = LlmClient(settings)
+business_llm_client = LlmClient(
+    settings,
+    base_url=settings.customer_agent_business_base_url,
+    default_model=settings.customer_agent_model,
+)
+shadow_llm_client = LlmClient(
+    settings,
+    base_url=settings.customer_agent_shadow_base_url,
+    default_model=settings.customer_agent_shadow_model,
+)
+# Legacy routes continue to use the public business endpoint.
+llm_client = business_llm_client
 qwen_guard_client = Qwen3GuardClient(settings)
 llama_prompt_guard_client = LlamaPromptGuardClient(settings)
 netease_yidun_client = NeteaseYidunClient(settings)
@@ -79,6 +122,21 @@ moderation_service = ModerationService(
     inline_probing_guard=inline_probing_guard,
 )
 finvault_replay_service = FinVaultReplayService(settings)
+customer_agent_runtime_config = CustomerAgentRuntimeConfig(
+    LEGAL_REGULATIONS_AGENT_DATA_ROOT
+)
+customer_agent_service = CustomerServiceAgent(
+    settings=settings,
+    llm_client=llm_client,
+    shadow_llm_client=shadow_llm_client,
+    session_store=session_store,
+    activation_probe_guard=activation_probe_guard,
+    safegauge_guard=safegauge_guard,
+    qwen_guard_client=qwen_guard_client,
+    llama_prompt_guard_client=llama_prompt_guard_client,
+    netease_yidun_client=netease_yidun_client,
+    runtime_config=customer_agent_runtime_config,
+)
 
 
 @asynccontextmanager
@@ -93,6 +151,7 @@ async def lifespan(_: FastAPI):
         logger.warning("Unable to warm the FinVault audit cache", exc_info=True)
     yield
     await llm_client.close()
+    await shadow_llm_client.close()
     await qwen_guard_client.close()
     await llama_prompt_guard_client.close()
     await netease_yidun_client.close()
@@ -120,6 +179,103 @@ async def disable_frontend_asset_cache(request: Request, call_next):
         response.headers["Cache-Control"] = "no-store, max-age=0"
         response.headers["Pragma"] = "no-cache"
     return response
+
+
+@app.middleware("http")
+async def require_customer_agent_api_key(request: Request, call_next):
+    """Keep the customer product behind a browser session or CLI token."""
+    path = request.url.path
+    if not path.startswith("/api/customer-agent") and path != "/v1/guardrails":
+        return await call_next(request)
+    authorization = request.headers.get("authorization", "")
+    scheme, _, value = authorization.partition(" ")
+    user = auth_store.current_user(
+        session=request.cookies.get("pm_session"),
+        token=value.strip() if scheme.lower() == "bearer" else None,
+    )
+    if not user:
+        return JSONResponse(
+            status_code=401,
+            content={
+                "detail": "需要登录的 ProspectMonitor 账号，或携带 CLI Token。",
+                "code": "unauthorized",
+            },
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return await call_next(request)
+
+
+@app.post("/api/auth/register")
+async def auth_register(payload: AuthCredentials, response: Response) -> dict:
+    try:
+        result = auth_store.register(payload.email, payload.password)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    response.set_cookie("pm_session", result["session"], httponly=True, samesite="lax", max_age=30 * 24 * 3600)
+    return {"user": result["user"], "token": result["token"]}
+
+
+@app.post("/api/auth/login")
+async def auth_login(payload: AuthCredentials, response: Response) -> dict:
+    try:
+        result = auth_store.login(payload.email, payload.password)
+    except ValueError as error:
+        raise HTTPException(status_code=401, detail=str(error)) from error
+    response.set_cookie("pm_session", result["session"], httponly=True, samesite="lax", max_age=30 * 24 * 3600)
+    return {"user": result["user"], "token": result["token"]}
+
+
+@app.get("/api/auth/me")
+async def auth_me(request: Request) -> dict:
+    authorization = request.headers.get("authorization", "")
+    scheme, _, value = authorization.partition(" ")
+    user = auth_store.current_user(
+        session=request.cookies.get("pm_session"),
+        token=value.strip() if scheme.lower() == "bearer" else None,
+    )
+    if not user:
+        raise HTTPException(status_code=401, detail="尚未登录。")
+    return {"user": user}
+
+
+@app.post("/api/auth/token/rotate")
+async def auth_token_rotate(request: Request) -> dict:
+    authorization = request.headers.get("authorization", "")
+    scheme, _, value = authorization.partition(" ")
+    try:
+        result = auth_store.rotate_token(
+            session=request.cookies.get("pm_session"),
+            token=value.strip() if scheme.lower() == "bearer" else None,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=401, detail=str(error)) from error
+    return result
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(response: Response) -> dict:
+    response.delete_cookie("pm_session")
+    return {"ok": True}
+
+
+@app.post("/v1/guardrails")
+async def guardrails_api(payload: GuardrailsApiRequest) -> dict:
+    """Minimal product API: one key, one input, one protected answer."""
+    result = await customer_agent_service.run(
+        CustomerAgentRunRequest(
+            message=payload.input,
+            session_id=payload.session_id,
+            defense_mode="defended",
+        )
+    )
+    return {
+        "id": result.run_id,
+        "object": "guardrails.result",
+        "output": result.assistant_message,
+        "blocked": result.output_blocked,
+        "verdict": result.verdict,
+        "model": result.model,
+    }
 
 
 @app.get("/api/health", response_model=HealthResponse)
@@ -207,6 +363,10 @@ async def audit_catalog():
 def _prefers_html(request: Request) -> bool:
     accept = request.headers.get("accept", "")
     return "text/html" in accept and "application/json" not in accept
+
+
+def _customer_agent_sse(event: str, data: dict) -> str:
+    return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
 @app.get("/api/audit/experiment/cases/{sample_index}")
@@ -325,6 +485,177 @@ async def chat_stream(request: ChatRequest) -> StreamingResponse:
             "Cache-Control": "no-cache",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@app.get("/api/customer-agent", response_model=CustomerAgentBootstrapResponse)
+async def customer_agent_bootstrap() -> CustomerAgentBootstrapResponse:
+    return customer_agent_service.bootstrap()
+
+
+@app.get(
+    "/api/customer-agent/profile",
+    response_model=CustomerAgentProfileResponse,
+)
+async def customer_agent_profile() -> CustomerAgentProfileResponse:
+    return customer_agent_service.profile()
+
+
+@app.get(
+    "/api/customer-agent/health",
+    response_model=CustomerAgentHealthResponse,
+)
+async def customer_agent_health() -> CustomerAgentHealthResponse:
+    return await customer_agent_service.health()
+
+
+@app.get(
+    "/api/customer-agent/config/system-prompt",
+    response_model=CustomerAgentSystemPromptResponse,
+)
+async def customer_agent_system_prompt() -> CustomerAgentSystemPromptResponse:
+    return customer_agent_runtime_config.system_prompt()
+
+
+@app.put(
+    "/api/customer-agent/config/system-prompt",
+    response_model=CustomerAgentSystemPromptResponse,
+)
+async def update_customer_agent_system_prompt(
+    request: CustomerAgentSystemPromptUpdateRequest,
+) -> CustomerAgentSystemPromptResponse:
+    try:
+        return customer_agent_runtime_config.update_system_prompt(request.content)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.get(
+    "/api/customer-agent/config/rag",
+    response_model=CustomerAgentRagConfigResponse,
+)
+async def customer_agent_rag_config() -> CustomerAgentRagConfigResponse:
+    return customer_agent_runtime_config.rag_config()
+
+
+@app.get(
+    "/api/customer-agent/config/rag/documents/{document_id}",
+    response_model=CustomerAgentRagDocumentContentResponse,
+)
+async def customer_agent_rag_document_content(
+    document_id: str,
+) -> CustomerAgentRagDocumentContentResponse:
+    try:
+        return customer_agent_runtime_config.rag_document_content(document_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="RAG 文档不存在") from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.post(
+    "/api/customer-agent/config/rag/documents",
+    response_model=CustomerAgentRagMutationResponse,
+)
+async def upload_customer_agent_rag_document(
+    file: UploadFile = File(...),
+    title: str | None = Form(default=None),
+    visibility: str = Form(default="public"),
+) -> CustomerAgentRagMutationResponse:
+    try:
+        return await customer_agent_runtime_config.upload_rag_document(
+            file,
+            title=title,
+            visibility=visibility,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    finally:
+        await file.close()
+
+
+@app.delete(
+    "/api/customer-agent/config/rag/documents/{document_id}",
+    response_model=CustomerAgentRagMutationResponse,
+)
+async def delete_customer_agent_rag_document(
+    document_id: str,
+) -> CustomerAgentRagMutationResponse:
+    try:
+        return customer_agent_runtime_config.delete_rag_document(document_id)
+    except KeyError as error:
+        raise HTTPException(status_code=404, detail="RAG 文档不存在") from error
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.post("/api/customer-agent/sessions/{session_id}/reset")
+async def reset_customer_agent_session(session_id: str):
+    cleared_documents = customer_agent_service.reset_session(session_id)
+    return {
+        "ok": True,
+        "cleared_rag_documents": cleared_documents,
+        "rag": customer_agent_runtime_config.rag_config().model_dump(mode="json"),
+    }
+
+
+@app.get(
+    "/api/customer-agent/attacks",
+    response_model=list[CustomerAgentAttackCard],
+    include_in_schema=False,
+)
+async def customer_agent_attacks() -> list[CustomerAgentAttackCard]:
+    """Legacy evaluation catalog; the single-Agent console does not use it."""
+    scenario, _ = customer_agent_runtime_config.snapshot()
+    return [attack.model_copy(deep=True) for attack in scenario.attacks]
+
+
+@app.post(
+    "/api/customer-agent/run",
+    response_model=CustomerAgentRunResponse,
+)
+async def run_customer_agent(
+    request: CustomerAgentRunRequest,
+) -> CustomerAgentRunResponse:
+    try:
+        return await customer_agent_service.run(request)
+    except Exception as error:
+        logger.exception("Customer Agent run failed")
+        raise HTTPException(
+            status_code=502,
+            detail=f"客服 Agent 模型服务调用失败：{error}",
+        ) from error
+
+
+@app.post(
+    "/api/customer-agent/compare",
+    response_model=CustomerAgentCompareResponse,
+)
+async def compare_customer_agent(
+    request: CustomerAgentCompareRequest,
+) -> CustomerAgentCompareResponse:
+    try:
+        return await customer_agent_service.compare(request)
+    except Exception as error:
+        logger.exception("Customer Agent comparison failed")
+        raise HTTPException(
+            status_code=502,
+            detail=f"客服 Agent 攻防对比失败：{error}",
+        ) from error
+
+
+@app.post("/api/customer-agent/run/stream")
+async def stream_customer_agent(request: CustomerAgentRunRequest) -> StreamingResponse:
+    async def events():
+        async for event, payload in customer_agent_service.stream_events(request):
+            yield _customer_agent_sse(event, payload)
+
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

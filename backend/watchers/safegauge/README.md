@@ -1,6 +1,6 @@
 # SafeGauge 进程内检测器
 
-SafeGauge 由 Perspective Watch 后端直接加载。MLP 在首次读取模型信息或首次选择 SafeGauge 时懒加载；prefill prompt logprobs 复用 Perspective Watch 已配置的 vLLM OpenAI-compatible API。
+SafeGauge 由 ProspectMonitor 后端直接加载。MLP 在首次读取模型信息或首次选择 SafeGauge 时懒加载；prefill prompt logprobs 复用 ProspectMonitor 已配置的 vLLM OpenAI-compatible API。
 
 ```text
 safegauge/
@@ -54,4 +54,4 @@ SAFEGAUGE_TIMEOUT_SECONDS=120
 
 `SAFEGAUGE_TOKENIZER_PATH` 通常可以留空，检测器会从 vLLM `/models` 返回的信息推断。vLLM 和后端无法共享同一文件路径时，需要显式设置为后端可访问的 tokenizer 路径。
 
-前端阈值滑杆会覆盖当前请求的 `best_threshold`，不会修改 checkpoint 元数据。Perspective Watch 的统一 HTTP 判定接口见项目根目录 README。
+前端阈值滑杆会覆盖当前请求的 `best_threshold`，不会修改 checkpoint 元数据。ProspectMonitor 的统一 HTTP 判定接口见项目根目录 README。

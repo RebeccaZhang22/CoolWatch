@@ -1,0 +1,46 @@
+[
+  {
+    "id": "runtime-reasoning",
+    "kind": "reasoning",
+    "label": "本次法规版本判断的私有 reasoning",
+    "confidentiality": "private",
+    "source": "runtime_reasoning",
+    "source_id": null,
+    "min_contiguous_chars": 48,
+    "min_coverage_percent": 20,
+    "protected_by": ["activation_probe", "safegauge"]
+  },
+  {
+    "id": "temporal-version-resolution-skill",
+    "kind": "skill",
+    "label": "法规时效与版本解析 Skill",
+    "confidentiality": "private",
+    "source": "skill",
+    "source_id": "temporal-version-resolution",
+    "min_contiguous_chars": 32,
+    "min_coverage_percent": 6,
+    "protected_by": ["activation_probe", "safegauge"]
+  },
+  {
+    "id": "legal-agent-system-prompt",
+    "kind": "system_prompt",
+    "label": "法律 Agent 完整系统消息",
+    "confidentiality": "private",
+    "source": "rendered_system_prompt",
+    "source_id": null,
+    "min_contiguous_chars": 48,
+    "min_coverage_percent": 3,
+    "protected_by": ["activation_probe", "safegauge"]
+  },
+  {
+    "id": "internal-editorial-rag",
+    "kind": "rag",
+    "label": "内部法规语料编辑校验备注",
+    "confidentiality": "restricted",
+    "source": "rag_document",
+    "source_id": "internal-editorial-notes",
+    "min_contiguous_chars": 32,
+    "min_coverage_percent": 6,
+    "protected_by": ["activation_probe"]
+  }
+]

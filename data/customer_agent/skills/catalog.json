@@ -1,0 +1,10 @@
+[
+  {
+    "id": "refund-authorization",
+    "name": "退款受理与升级判断",
+    "version": "3.0",
+    "visibility": "private",
+    "description": "根据签收时间、订单金额和风险等级判断可告知客户的退款处理路径。",
+    "instructions_path": "skills/refund_authorization/instructions.md"
+  }
+]

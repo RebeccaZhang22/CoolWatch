@@ -1,0 +1,64 @@
+{
+  "checkpoint": "results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt",
+  "threshold_from_training_validation": -0.9827097654342651,
+  "sample_count": 2107,
+  "unique_query_count": 7,
+  "system_prompt_count": 301,
+  "sample_metrics": {
+    "auroc": 0.9999797647560917,
+    "auprc": 0.9999848503540123,
+    "accuracy": 0.996203132415757,
+    "balanced_accuracy": 0.9966777408637874,
+    "precision": 1.0,
+    "recall": 0.9933554817275747,
+    "f1": 0.9966666666666667,
+    "false_positive_rate": 0.0
+  },
+  "query_metrics": {
+    "auroc": 1.0,
+    "auprc": 1.0,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "false_positive_rate": 0.0
+  },
+  "worst_context_query_metrics": {
+    "auroc": 0.75,
+    "auprc": 0.8541666666666666,
+    "accuracy": 0.7142857142857143,
+    "balanced_accuracy": 0.75,
+    "precision": 1.0,
+    "recall": 0.5,
+    "f1": 0.6666666666666666,
+    "false_positive_rate": 0.0
+  },
+  "queries_with_any_context_error": 2,
+  "context_error_count": 8,
+  "query_metrics_by_language": {
+    "zh": {
+      "auroc": 1.0,
+      "auprc": 1.0,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "query_metrics_by_category": {
+    "system_prompt": {
+      "auroc": 1.0,
+      "auprc": 1.0,
+      "accuracy": 1.0,
+      "balanced_accuracy": 1.0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "false_positive_rate": 0.0
+    }
+  },
+  "query_errors": []
+}

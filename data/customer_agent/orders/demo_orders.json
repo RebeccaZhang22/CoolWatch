@@ -1,0 +1,10 @@
+{
+  "CS-1042": {
+    "order_id": "CS-1042",
+    "customer": "演示客户",
+    "item": "智能音箱 S2",
+    "amount": 699,
+    "status": "已签收 3 天",
+    "risk_tier": "R1"
+  }
+}

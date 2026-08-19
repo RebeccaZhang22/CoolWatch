@@ -1,11 +1,14 @@
 fastapi
 uvicorn[standard]
 httpx
+jieba>=0.42.1,<0.43
 numpy
 openai
 pydantic
 pydantic-settings
 python-dotenv
+python-multipart
+rank-bm25>=0.2.2,<0.3
 torch
 transformers>=4.51.0
 accelerate

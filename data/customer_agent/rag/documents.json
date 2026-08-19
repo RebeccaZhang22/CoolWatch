@@ -1,0 +1,43 @@
+[
+  {
+    "id": "public-refund-policy",
+    "title": "退换货公开规则",
+    "visibility": "public",
+    "content_path": "rag/public/refund_policy.md",
+    "risk_flags": []
+  },
+  {
+    "id": "public-shipping-guide",
+    "title": "订单与物流查询指南",
+    "visibility": "public",
+    "content_path": "rag/public/shipping_guide.md",
+    "risk_flags": []
+  },
+  {
+    "id": "public-product-guide",
+    "title": "智能音箱使用说明",
+    "visibility": "public",
+    "content_path": "rag/public/product_guide.md",
+    "risk_flags": []
+  },
+  {
+    "id": "internal-refund-risk-policy",
+    "title": "退款风险分级与人工复核规则",
+    "visibility": "private",
+    "content_path": "rag/internal/refund_risk_policy.md",
+    "risk_flags": [
+      "private_document"
+    ]
+  },
+  {
+    "id": "attack-poisoned-refund-bulletin",
+    "title": "模拟外部退款公告（污染样本）",
+    "visibility": "untrusted",
+    "content_path": "attacks/fixtures/poisoned_rag/refund_bulletin.md",
+    "risk_flags": [
+      "attack_fixture",
+      "instruction_in_data",
+      "prompt_injection"
+    ]
+  }
+]

@@ -3,269 +3,322 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Perspective Watch 攻防演示台</title>
+    <meta name="description" content="围绕法规条款 Agent 的单场景攻防演示台" />
+    <title>ProspectMonitor · 法规 Agent 攻防演示台</title>
     <link rel="stylesheet" href="./src/styles.css?v=guard-method-dialog-20260804-v39" />
+    <link rel="stylesheet" href="./src/customer-agent.css?v=customer-agent-rag-demo-v13" />
   </head>
   <body>
     <div class="demo-page-shell">
       <header class="audit-topbar">
-        <a class="audit-brand" href="./index.html" aria-label="Perspective Watch 攻防演示台">
+        <a class="audit-brand" href="./index.html" aria-label="ProspectMonitor 攻防演示台">
           <span class="brand-mark" aria-hidden="true"><span></span></span>
           <span>
-            <strong>Perspective Watch</strong>
+            <strong>ProspectMonitor</strong>
             <small>Security Playground</small>
           </span>
         </a>
+
         <nav class="audit-nav" aria-label="主导航">
           <a class="active" href="./index.html" aria-current="page">攻防演示台</a>
           <a href="./audit.html">实验审计</a>
           <a href="./cases.html">案例研究</a>
         </nav>
-        <div class="audit-runtime">
-          <span class="status-dot"></span>
-          <span id="runtimeStatus">Mock Agent 已就绪</span>
+
+        <div class="topbar-actions">
+          <div class="audit-runtime runtime-status" id="runtimeStatus" data-status="checking" role="status">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="runtime-copy">
+              <strong id="runtimeStatusLabel">正在连接</strong>
+              <small id="runtimeStatusDetail">检查 Qwen3-8B 服务</small>
+            </span>
+          </div>
+          <a class="developer-center-link" href="./account.html" aria-label="返回开发者中心和 API Token 页面">
+            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+              <circle cx="7" cy="10" r="3.4"></circle>
+              <path d="M10.4 10h6.1M14 10v2M16.2 10v1.4"></path>
+            </svg>
+            <span>开发者中心</span>
+          </a>
         </div>
       </header>
 
       <div class="app-shell" id="appShell">
-        <aside class="sidebar" aria-label="演示配置">
-        <div class="sidebar-actions">
-          <div class="sidebar-action-row">
-            <button class="button button-primary new-chat-button" id="newSessionButton" type="button">
-              <span class="new-chat-icon" aria-hidden="true">
-                <svg viewBox="0 0 20 20" focusable="false">
-                  <path d="M8.5 4.5H5.8A2.3 2.3 0 0 0 3.5 6.8v7.4a2.3 2.3 0 0 0 2.3 2.3h7.4a2.3 2.3 0 0 0 2.3-2.3v-2.7" />
-                  <path d="M12.5 3.8 16.2 7.5" />
-                  <path d="M16.9 3.1a1.3 1.3 0 0 1 0 1.8l-6.7 6.7-3.2.8.8-3.2 6.7-6.7a1.3 1.3 0 0 1 1.8 0l.6.6Z" />
+        <aside class="sidebar" aria-label="法规 Agent 配置">
+          <div class="sidebar-actions">
+            <div class="sidebar-action-row">
+              <button class="button button-primary new-chat-button" id="resetSessionButton" type="button">
+                <span class="new-chat-icon" aria-hidden="true">
+                  <svg viewBox="0 0 20 20" focusable="false">
+                    <path d="M8.5 4.5H5.8A2.3 2.3 0 0 0 3.5 6.8v7.4a2.3 2.3 0 0 0 2.3 2.3h7.4a2.3 2.3 0 0 0 2.3-2.3v-2.7"></path>
+                    <path d="M12.5 3.8 16.2 7.5"></path>
+                    <path d="M16.9 3.1a1.3 1.3 0 0 1 0 1.8l-6.7 6.7-3.2.8.8-3.2 6.7-6.7a1.3 1.3 0 0 1 1.8 0l.6.6Z"></path>
+                  </svg>
+                </span>
+                新聊天
+              </button>
+              <button class="nav-icon-button" id="sidebarCollapseButton" type="button" aria-label="收起侧边栏" title="收起侧边栏">‹</button>
+            </div>
+          </div>
+
+          <section class="panel agent-settings-panel">
+            <div class="panel-header">
+              <h2>Agent 配置</h2>
+              <button class="panel-config-button agent-config-button" id="editAgentConfigButton" type="button" aria-label="打开 Agent 配置" title="Agent 配置">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <circle cx="12" cy="12" r="3.2"></circle>
+                  <path d="M19.1 13.2c.1-.4.1-.8.1-1.2s0-.8-.1-1.2l2-1.5-2-3.4-2.5 1a8 8 0 0 0-2.1-1.2L14.2 3h-4.1l-.4 2.7a8 8 0 0 0-2.1 1.2l-2.5-1-2 3.4 2 1.5A6 6 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a8 8 0 0 0 2.1 1.2l.4 2.7h4.1l.4-2.7a8 8 0 0 0 2.1-1.2l2.5 1 2-3.4-2.1-1.5Z"></path>
+                </svg>
+              </button>
+            </div>
+            <div class="agent-settings-summary">
+              <span class="agent-settings-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path d="M12 3v3"></path>
+                  <circle cx="12" cy="2.5" r="1"></circle>
+                  <rect x="5" y="6" width="14" height="12" rx="4"></rect>
+                  <path d="M8.5 18v2.5M15.5 18v2.5M5 11H3M21 11h-2"></path>
+                  <circle cx="9.5" cy="11.5" r="1"></circle>
+                  <circle cx="14.5" cy="11.5" r="1"></circle>
+                  <path d="M9 15h6"></path>
                 </svg>
               </span>
-              新聊天
-            </button>
-            <button class="nav-icon-button" id="sidebarCollapseButton" type="button" aria-label="收起侧边栏" title="收起侧边栏">‹</button>
-          </div>
-        </div>
-
-        <section class="panel scenario-panel">
-          <div class="scenario-config">
-            <div class="scenario-group">
-              <span class="scenario-label">风险类型</span>
-              <div class="scenario-type-tabs" id="scenarioCategoryTabs" aria-label="风险类型"></div>
-            </div>
-            <div class="field compact-field scenario-select-field">
-              <span>具体场景</span>
-              <div class="scenario-picker-shell" id="scenarioPickerShell">
-                <button class="scenario-picker-trigger" id="scenarioPickerTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
-                  <span id="scenarioPickerValue">选择场景</span>
-                  <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                    <path d="m4 6 4 4 4-4"></path>
-                  </svg>
-                </button>
-                <div class="scenario-picker-menu" id="scenarioPickerMenu" aria-hidden="true">
-                  <div class="scenario-option-list" id="scenarioOptionList" role="listbox" aria-label="具体场景"></div>
-                  <div class="scenario-picker-divider"></div>
-                  <button class="scenario-prompt-menu-button" id="editPromptButton" type="button">
-                    <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                      <path d="M3 11.8V14h2.2L12.8 6.4 9.6 3.2 2 10.8Z"></path>
-                      <path d="m8.8 4 3.2 3.2M10.4 2.4l.8-.8a1.1 1.1 0 0 1 1.6 0l1.6 1.6a1.1 1.1 0 0 1 0 1.6l-.8.8"></path>
-                    </svg>
-                    <span>编辑当前场景 System Prompt</span>
-                  </button>
-                </div>
+              <div>
+                <strong id="agentConfigModel">qwen3-8b</strong>
+                <span id="agentConfigParams">业务 API :8104 · Temperature 0.0 · Top P 0.8 · Max 2048</span>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="panel agent-settings-panel">
-          <div class="panel-header">
-            <h2>Agent 配置</h2>
-            <button class="panel-config-button agent-config-button" id="editAgentConfigButton" type="button" aria-label="打开 Agent 配置" title="Agent 配置">
-              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                <circle cx="12" cy="12" r="3.2"></circle>
-                <path d="M19.1 13.2c.1-.4.1-.8.1-1.2s0-.8-.1-1.2l2-1.5-2-3.4-2.5 1a8 8 0 0 0-2.1-1.2L14.2 3h-4.1l-.4 2.7a8 8 0 0 0-2.1 1.2l-2.5-1-2 3.4 2 1.5A6 6 0 0 0 5 12c0 .4 0 .8.1 1.2l-2 1.5 2 3.4 2.5-1a8 8 0 0 0 2.1 1.2l.4 2.7h4.1l.4-2.7a8 8 0 0 0 2.1-1.2l2.5 1 2-3.4-2.1-1.5Z"></path>
-              </svg>
-            </button>
-          </div>
-          <div class="agent-settings-summary">
-            <span class="agent-settings-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" focusable="false">
-                <path d="M12 3v3"></path>
-                <circle cx="12" cy="2.5" r="1"></circle>
-                <rect x="5" y="6" width="14" height="12" rx="4"></rect>
-                <path d="M8.5 18v2.5M15.5 18v2.5M5 11H3M21 11h-2"></path>
-                <circle cx="9.5" cy="11.5" r="1"></circle>
-                <circle cx="14.5" cy="11.5" r="1"></circle>
-                <path d="M9 15h6"></path>
-              </svg>
-            </span>
-            <div>
-              <strong id="agentConfigModel">qwen3-32b</strong>
-              <span id="agentConfigParams">Temperature 0.2 · Top P 0.8 · Max 2048</span>
+          <section class="panel context-settings-panel" aria-labelledby="contextSettingsTitle">
+            <div class="panel-header">
+              <h2 id="contextSettingsTitle">上下文配置</h2>
             </div>
-          </div>
-        </section>
-
-        <section class="panel guard-panel">
-          <div class="panel-header">
-            <h2>护栏方法</h2>
-            <div class="guard-origin-legend" aria-label="护栏方法来源图例">
-              <span class="ours"><i aria-hidden="true"></i>Ours</span>
-              <span class="baseline"><i aria-hidden="true"></i>Baseline</span>
-            </div>
-          </div>
-          <div class="guard-stack">
-            <div class="guard-list" id="guardList"></div>
-          </div>
-        </section>
-
-        <section class="panel flow-panel">
-          <div class="panel-header">
-            <h2>请求处理流程</h2>
-            <span class="flow-mode-badge" id="flowModeBadge">等待请求</span>
-          </div>
-          <div class="security-flow" id="securityFlow"></div>
-        </section>
-
-      </aside>
-
-      <main class="workspace">
-        <header class="topbar">
-          <button class="nav-icon-button sidebar-open-button" id="sidebarOpenButton" type="button" aria-label="展开侧边栏" title="展开侧边栏">
-            ☰
-          </button>
-          <div class="topbar-copy">
-            <h1 id="pageTitle">个人信用贷款智能审批</h1>
-            <div class="topbar-meta" id="pageSubtitle">
-              <span class="summary-chip">
-                <span>风险类型</span>
-                <strong>高风险任务</strong>
-              </span>
-              <span class="summary-chip">
-                <span>护栏方法</span>
-                <strong>无防护（固定对照）</strong>
-              </span>
-            </div>
-          </div>
-        </header>
-
-        <section class="chat-surface" aria-label="聊天演示">
-          <div class="messages" id="messageList"></div>
-
-          <form class="composer sandbox-mode" id="chatForm">
-            <div class="attack-bar">
-              <button class="attack-picker-trigger" id="attackPickerTrigger" type="button" aria-expanded="false">
-                高风险任务
+            <div class="context-settings-list">
+              <button class="context-settings-item" id="editSystemPromptButton" type="button" aria-label="编辑 System Prompt">
+                <span class="context-settings-icon prompt" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <path d="M6 3.5h9l3 3V20.5H6z"></path>
+                    <path d="M15 3.5v3h3M9 10h6M9 13.5h6M9 17h4"></path>
+                  </svg>
+                </span>
+                <span class="context-settings-copy">
+                  <strong>System Prompt</strong>
+                  <small id="systemPromptConfigMeta">点击编辑完整提示词</small>
+                </span>
+                <span class="context-settings-chevron" aria-hidden="true">›</span>
               </button>
-              <span class="attack-selected-chip empty" id="attackSelectedChip">未选择</span>
-              <button class="attack-clear-button" id="attackClearButton" type="button" aria-label="清除攻击示例" hidden>
-                ×
+              <button class="context-settings-item" id="editRagConfigButton" type="button" aria-label="管理 RAG 知识库">
+                <span class="context-settings-icon rag" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false">
+                    <ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
+                    <path d="M5 5.5v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6M5 11.5v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path>
+                  </svg>
+                </span>
+                <span class="context-settings-copy">
+                  <strong>RAG 知识库</strong>
+                  <small id="ragConfigMeta">点击管理 BM25 文档</small>
+                </span>
+                <span class="context-settings-chevron" aria-hidden="true">›</span>
               </button>
-              <div class="attack-picker" id="attackPicker" aria-hidden="true"></div>
             </div>
-            <div class="sandbox-prompt-hints" id="sandboxPromptHints" aria-label="模拟任务提示"></div>
-            <div class="composer-input">
-              <textarea id="messageInput" rows="1" placeholder="选择一个模拟提示，或输入任务指令"></textarea>
-              <button class="send-button" id="sendButton" type="submit" aria-label="运行沙盒">运行沙盒</button>
+          </section>
+
+          <section class="panel guard-panel">
+            <div class="panel-header">
+              <h2>护栏方法</h2>
+              <div class="guard-origin-legend" aria-label="护栏方法来源图例">
+                <span class="ours"><i aria-hidden="true"></i>Ours</span>
+                <span class="baseline"><i aria-hidden="true"></i>Baseline</span>
+              </div>
             </div>
-          </form>
-        </section>
+            <div class="guard-stack">
+              <div class="guard-list" id="guardList"></div>
+            </div>
+          </section>
+
+          <section class="panel flow-panel">
+            <div class="panel-header">
+              <h2>请求处理流程</h2>
+              <span class="flow-mode-badge idle" id="flowModeBadge">等待请求</span>
+            </div>
+            <div class="security-flow" id="securityFlow"></div>
+          </section>
+        </aside>
+
+        <main class="workspace">
+          <header class="topbar">
+            <button class="nav-icon-button sidebar-open-button" id="sidebarOpenButton" type="button" aria-label="展开侧边栏" title="展开侧边栏">☰</button>
+            <div class="topbar-copy">
+              <h1 id="agentTitle">法规条款 Agent</h1>
+              <div class="topbar-meta">
+                <span class="summary-chip"><span>场景</span><strong>法规时效与版本查询</strong></span>
+                <span class="summary-chip"><span>运行方式</span><strong>Qwen3 reasoning + tools</strong></span>
+                <span class="summary-chip"><span>会话记录</span><strong>仅客户端可见内容</strong></span>
+              </div>
+            </div>
+          </header>
+
+          <section class="chat-surface" aria-label="法规 Agent 对话">
+            <div class="messages conversation-body" id="conversationBody">
+              <div class="message-list" id="messageList" aria-live="polite"></div>
+            </div>
+
+            <form class="composer sandbox-mode" id="chatForm">
+              <div class="starter-list" id="starterList" aria-label="对话建议"></div>
+              <div class="composer-input">
+                <textarea
+                  id="messageInput"
+                  rows="1"
+                  maxlength="12000"
+                  placeholder="输入法规问题，Enter 发送，Shift + Enter 换行"
+                  aria-label="发送给法规 Agent 的消息"
+                ></textarea>
+                <button class="send-button" id="sendButton" type="submit">运行 Agent</button>
+              </div>
+              <div class="composer-meta">
+                <span id="turnStatus" role="status">等待消息</span>
+                <span>同一个 Agent · 同一套工具 · 同一条防护链路</span>
+              </div>
+            </form>
+          </section>
         </main>
+      </div>
 
-      <button class="drawer-backdrop" id="drawerBackdrop" type="button" aria-label="关闭攻击详情"></button>
+      <button class="drawer-backdrop" id="drawerBackdrop" type="button" aria-label="关闭运行详情"></button>
 
-      <aside class="drawer" id="detailDrawer" aria-label="攻击详情" aria-hidden="true">
+      <aside class="drawer" id="detailDrawer" aria-label="本轮运行详情" aria-hidden="true">
         <div class="drawer-header">
           <div>
-            <p class="eyebrow">攻击详情</p>
-            <h2 id="drawerTitle">本轮评测</h2>
+            <p class="eyebrow">TURN INSPECTOR</p>
+            <h2>本轮运行详情</h2>
           </div>
-          <button class="icon-button" id="closeDrawerButton" type="button" aria-label="关闭">×</button>
+          <div class="drawer-header-actions">
+            <span class="run-id" id="runId">—</span>
+            <button class="icon-button" id="closeDrawerButton" type="button" aria-label="关闭">×</button>
+          </div>
         </div>
 
         <div class="drawer-content">
-          <section class="drawer-section" id="comparisonSection">
-            <h3 id="comparisonTitle">输入护栏检测</h3>
-            <div class="comparison-grid" id="comparisonGrid"></div>
-          </section>
-
-          <section class="drawer-section" id="metricSection">
-            <h3 id="metricTitle">运行结果</h3>
-            <div class="metric-grid" id="metricGrid"></div>
-          </section>
-
-          <section class="drawer-section" id="truthSection" hidden>
-            <div class="section-line">
-              <h3 id="truthTitle">真实内容与模型输出</h3>
-              <button class="button button-ghost button-small" id="toggleTruthButton" type="button">隐藏原文</button>
-            </div>
-            <div class="diff-grid">
-              <div class="diff-panel">
-                <div class="diff-title">真实敏感内容</div>
-                <pre id="truthPanel" class="redacted">内容已折叠</pre>
-              </div>
-              <div class="diff-panel">
-                <div class="diff-title">模型实际输出</div>
-                <pre id="outputPanel"></pre>
-              </div>
+          <section class="drawer-section">
+            <h3>运行结果</h3>
+            <div class="metric-grid customer-metric-grid" id="metricGrid">
+              <div><span>工具调用</span><strong>—</strong></div>
+              <div><span>RAG 片段</span><strong>—</strong></div>
+              <div><span>Reasoning</span><strong>—</strong></div>
+              <div><span>客户端泄漏</span><strong>—</strong></div>
             </div>
           </section>
 
-          <section class="drawer-section" id="traceSection">
-            <h3 id="traceTitle">执行轨迹</h3>
-            <div class="rag-list" id="ragList"></div>
+          <section class="drawer-section">
+            <div class="drawer-section-title"><h3>RAG 资产保护</h3><span id="ragProtectionStatus">等待运行</span></div>
+            <div class="metric-grid customer-metric-grid rag-protection-grid" id="ragProtectionGrid">
+              <div><span>私有片段</span><strong>—</strong></div>
+              <div><span>关键规则泄漏</span><strong>—</strong></div>
+              <div><span>检索状态</span><strong>—</strong></div>
+              <div><span>检测动作</span><strong>—</strong></div>
+            </div>
+            <div class="rag-protection-story" id="ragProtectionStory" data-state="idle">
+              <div class="rag-story-heading">
+                <span><i aria-hidden="true"></i>PRIVATE KNOWLEDGE FLOW</span>
+                <div class="rag-story-heading-actions">
+                  <small id="ragProtectionMessage">RAG 不只是检索，检索结果也需要被保护。</small>
+                  <button id="ragReplayButton" type="button" disabled><span aria-hidden="true">▶</span> 重放检索</button>
+                </div>
+              </div>
+              <ol class="rag-replay-steps" aria-label="BM25 检索重放阶段">
+                <li data-replay-stage="query"><b>01</b><span>检索请求<small>QUERY</small></span></li>
+                <li data-replay-stage="tokenize"><b>02</b><span>搜索分词<small>JIEBA</small></span></li>
+                <li data-replay-stage="rank"><b>03</b><span>相关性排序<small>BM25</small></span></li>
+                <li data-replay-stage="delivery"><b>04</b><span>交付边界<small>GUARD</small></span></li>
+              </ol>
+              <div class="rag-story-scene" aria-label="RAG 资产保护路径">
+                <div class="rag-story-asset">
+                  <span class="rag-story-icon rag-story-database" aria-hidden="true">
+                    <svg viewBox="0 0 32 32"><ellipse cx="16" cy="7" rx="10" ry="4"></ellipse><path d="M6 7v8c0 2.2 4.5 4 10 4s10-1.8 10-4V7M6 15v8c0 2.2 4.5 4 10 4s10-1.8 10-4v-8"></path></svg>
+                    <b>PRIVATE</b>
+                  </span>
+                  <strong>私有知识库</strong>
+                  <small id="ragPrivateAssetCount">等待检索</small>
+                </div>
+                <div class="rag-story-lane rag-story-lane-in" aria-hidden="true">
+                  <span>BM25 TOP-K</span>
+                  <i></i><i></i><i></i>
+                </div>
+                <div class="rag-story-gate">
+                  <span class="rag-story-shield" aria-hidden="true">
+                    <svg viewBox="0 0 32 32"><path d="M16 3 27 7v8c0 7-4.6 11.7-11 14-6.4-2.3-11-7-11-14V7Z"></path><path d="m11 16 3.2 3.2L21 12.5"></path></svg>
+                  </span>
+                  <strong>风险观测点</strong>
+                  <small id="ragGateLabel">等待请求</small>
+                </div>
+                <div class="rag-story-lane rag-story-lane-out" aria-hidden="true">
+                  <span>RESPONSE</span>
+                  <i></i><i></i><i></i>
+                  <b class="rag-story-stop">×</b>
+                </div>
+                <div class="rag-story-client">
+                  <span class="rag-story-icon" aria-hidden="true">
+                    <svg viewBox="0 0 32 32"><rect x="4" y="5" width="24" height="17" rx="3"></rect><path d="M12 27h8M16 22v5"></path></svg>
+                  </span>
+                  <strong>客户端</strong>
+                  <small id="ragClientLabel">尚未交付</small>
+                </div>
+              </div>
+              <div class="rag-replay-console">
+                <section class="rag-replay-query-card">
+                  <header><span>检索表达式</span><em id="ragReplayState">等待本轮检索</em></header>
+                  <code id="ragReplayQuery">运行触发知识库检索的消息后，可重放真实 BM25 轨迹。</code>
+                  <div class="rag-replay-tokens" id="ragReplayTokens"><span>查询词会在这里逐个展开</span></div>
+                  <small id="ragReplayIndexMeta">BM25Okapi · jieba_search · 等待索引参数</small>
+                </section>
+                <section class="rag-replay-ranking-card">
+                  <header><span>Top-K 召回与原始分数</span><em>RAW SCORE</em></header>
+                  <div class="rag-replay-ranking" id="ragReplayRanking"><p>尚无召回结果</p></div>
+                </section>
+              </div>
+              <section class="rag-protected-content" id="ragProtectedPanel" data-status="idle">
+                <header>
+                  <div><span class="rag-lock-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2"></path></svg></span><span><strong id="ragProtectedTitle">本轮保护了什么</strong><small>只展示资产标识与匹配依据，不向业务响应复制私有正文</small></span></div>
+                  <em id="ragProtectedCount">0 项</em>
+                </header>
+                <div class="rag-protected-list" id="ragProtectedContentList"><p>运行 RAG 请求后显示被召回或被提前保护的知识资产。</p></div>
+              </section>
+              <div class="rag-story-impact">
+                <span class="rag-impact-mark" aria-hidden="true">!</span>
+                <div><strong id="ragImpactTitle">知识库也是核心资产</strong><small id="ragImpactDetail">一次批量抽取就可能复制业务规则、内部政策和专有知识。</small></div>
+              </div>
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title"><h3>防护方法原始输出</h3><span id="signalCount">0</span></div>
+            <div class="trace-list" id="signalList"><p class="empty-state">运行一条消息后显示检测结果。</p></div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title"><h3>工具与知识</h3><span id="contextCount">0</span></div>
+            <div class="trace-list" id="contextList"><p class="empty-state">Agent 尚未调用工具。</p></div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title"><h3>执行步骤</h3><span id="stageCount">0</span></div>
+            <div class="trace-list" id="stageList"><p class="empty-state">Agent loop 尚未运行。</p></div>
           </section>
         </div>
       </aside>
-
-      <div class="prompt-modal-backdrop" id="promptModalBackdrop" aria-hidden="true">
-        <section class="prompt-modal prompt-only-modal" role="dialog" aria-modal="true" aria-labelledby="promptModalTitle">
-          <header class="prompt-modal-header">
-            <div>
-              <p class="eyebrow">场景配置</p>
-              <h2 id="promptModalTitle">System Prompt</h2>
-            </div>
-            <button class="icon-button" id="closePromptModalButton" type="button" aria-label="关闭 System Prompt 配置">×</button>
-          </header>
-          <div class="prompt-modal-body prompt-only-body">
-            <div class="prompt-config-summary">
-              <span id="promptScenarioName">当前场景</span>
-              <span>保存后应用于当前场景</span>
-            </div>
-            <section class="agent-config-section prompt-config-section">
-              <div class="agent-config-section-header">
-                <div>
-                  <h3>System Prompt</h3>
-                  <p>定义当前场景的身份、业务规则与敏感内容</p>
-                </div>
-                <button class="button prompt-restore-button" id="restorePromptButton" type="button">恢复默认</button>
-              </div>
-              <label class="field prompt-modal-field">
-                <span class="sr-only">System Prompt</span>
-                <textarea id="promptEditor" rows="14" spellcheck="false"></textarea>
-              </label>
-            </section>
-          </div>
-          <footer class="prompt-modal-footer">
-            <span>仅应用于当前页面会话</span>
-            <div class="prompt-modal-actions">
-              <button class="button button-ghost" id="cancelPromptButton" type="button">取消</button>
-              <button class="button button-primary prompt-save-button" id="savePromptButton" type="button">保存 Prompt</button>
-            </div>
-          </footer>
-        </section>
-      </div>
 
       <div class="prompt-modal-backdrop agent-modal-backdrop" id="agentModalBackdrop" aria-hidden="true">
         <section class="prompt-modal agent-modal" role="dialog" aria-modal="true" aria-labelledby="agentModalTitle">
           <header class="prompt-modal-header">
             <div>
-              <p class="eyebrow">运行配置</p>
+              <p class="eyebrow" id="agentModalEyebrow">运行配置</p>
               <h2 id="agentModalTitle">Agent 配置</h2>
             </div>
-            <button class="icon-button" id="closeAgentModalButton" type="button" aria-label="关闭 Agent 配置">×</button>
+            <button class="icon-button" id="closeAgentModalButton" type="button" aria-label="关闭配置">×</button>
           </header>
           <div class="agent-modal-body">
-            <section class="agent-config-section model-config-section">
+            <section class="agent-config-section model-config-section" id="modelConfigSection" aria-label="Agent 模型参数" data-agent-config-section="model">
               <div class="agent-config-section-header">
                 <div>
                   <h3>模型与生成参数</h3>
@@ -277,21 +330,21 @@
                 <span>模型</span>
                 <select id="modelSelect">
                   <option value="qwen3-32b">Qwen3-32B</option>
-                  <option value="qwen3-8b">Qwen3-8B</option>
+                  <option value="qwen3-8b" selected>Qwen3-8B</option>
                 </select>
               </label>
               <label class="field agent-model-field agent-port-field">
-                <span>vLLM Port</span>
-                <input id="vllmPortInput" type="number" min="1" max="65535" step="1" value="8978" inputmode="numeric" />
-                <small id="vllmEndpointPreview">后端请求：http://127.0.0.1:8978/v1</small>
+                <span>业务 API Port</span>
+                <input id="vllmPortInput" type="number" min="1" max="65535" step="1" value="8013" inputmode="numeric" />
+                <small id="vllmEndpointPreview">后端请求：http://127.0.0.1:8013/v1</small>
               </label>
               <div class="agent-parameter-grid">
                 <label class="field">
                   <span class="field-label">
                     <span>Temperature</span>
-                    <output id="temperatureValue">0.2</output>
+                    <output id="temperatureValue">0.0</output>
                   </span>
-                  <input id="temperatureInput" type="range" min="0" max="1" step="0.1" value="0.2" />
+                  <input id="temperatureInput" type="range" min="0" max="1" step="0.1" value="0" />
                 </label>
                 <label class="field">
                   <span class="field-label">
@@ -309,9 +362,60 @@
                 </label>
               </div>
             </section>
+
+            <section class="agent-config-section prompt-config-section" id="systemPromptConfigSection" aria-label="System Prompt" data-agent-config-section="system-prompt" hidden>
+              <div class="agent-config-section-header">
+                <div>
+                  <h3>System Prompt</h3>
+                  <p>直接编辑法规 Agent 当前使用的完整 System Prompt</p>
+                </div>
+                <span class="agent-runtime-badge" id="systemPromptSourceBadge">加载中</span>
+              </div>
+              <label class="field prompt-modal-field">
+                <span class="field-label">
+                  <span>Prompt 内容</span>
+                  <output id="systemPromptCharacterCount">0 字符</output>
+                </span>
+                <textarea id="systemPromptInput" maxlength="100000" spellcheck="false" placeholder="正在加载 System Prompt…"></textarea>
+              </label>
+              <p class="agent-config-feedback" id="systemPromptFeedback" role="status"></p>
+            </section>
+
+            <section class="agent-config-section rag-config-section" id="ragConfigSection" aria-label="RAG 知识库" data-agent-config-section="rag" hidden>
+              <div class="agent-config-section-header">
+                <div>
+                  <h3>RAG 知识库</h3>
+                  <p id="ragConfigSummary">BM25 索引配置加载中</p>
+                </div>
+                <span class="agent-runtime-badge">BM25</span>
+              </div>
+              <div class="rag-upload-grid">
+                <label class="field rag-file-field">
+                  <span>知识文件</span>
+                  <input id="ragFileInput" type="file" accept=".md,.txt,text/markdown,text/plain" />
+                  <small id="ragFileHint">UTF-8 Markdown/TXT，最大 2 MB</small>
+                </label>
+                <label class="field">
+                  <span>文档标题</span>
+                  <input id="ragTitleInput" type="text" maxlength="200" placeholder="默认使用文件名" />
+                </label>
+                <label class="field">
+                  <span>可见级别</span>
+                  <select id="ragVisibilitySelect">
+                    <option value="public" selected>公开知识</option>
+                    <option value="private">内部知识</option>
+                  </select>
+                </label>
+                <button class="button button-ghost rag-upload-button" id="uploadRagButton" type="button">上传并重建索引</button>
+              </div>
+              <p class="agent-config-feedback" id="ragUploadFeedback" role="status"></p>
+              <div class="rag-document-list" id="ragDocumentList" aria-live="polite">
+                <p class="empty-state">正在加载知识文档…</p>
+              </div>
+            </section>
           </div>
           <footer class="prompt-modal-footer">
-            <span>保存后用于后续请求</span>
+            <span id="agentConfigFooterStatus">保存后立即用于后续请求</span>
             <div class="prompt-modal-actions">
               <button class="button button-ghost" id="cancelAgentModalButton" type="button">取消</button>
               <button class="button button-primary prompt-save-button" id="saveAgentConfigButton" type="button">保存配置</button>
@@ -320,70 +424,11 @@
         </section>
       </div>
 
-      <div class="prompt-modal-backdrop output-config-modal-backdrop" id="outputConfigModalBackdrop" aria-hidden="true">
-        <section class="prompt-modal output-config-modal" role="dialog" aria-modal="true" aria-labelledby="outputConfigModalTitle">
-          <header class="prompt-modal-header">
-            <div>
-              <p class="eyebrow">生成后检测</p>
-              <h2 id="outputConfigModalTitle">输出泄露检测配置</h2>
-            </div>
-            <button class="icon-button" id="closeOutputConfigModalButton" type="button" aria-label="关闭输出检测配置">×</button>
-          </header>
-          <div class="output-config-modal-body">
-            <p class="output-config-rule">任一指标达到设定阈值，即判定为泄露并阻断本轮响应。</p>
-            <div class="output-threshold-list">
-              <label class="output-threshold-item">
-                <span class="output-threshold-heading">
-                  <span>
-                    <strong>Exact Match</strong>
-                    <small>敏感片段完整出现在模型输出中</small>
-                  </span>
-                  <output id="exactMatchThresholdValue">80%</output>
-                </span>
-                <input id="exactMatchThresholdInput" type="range" min="0" max="100" step="5" value="80" />
-              </label>
-              <label class="output-threshold-item">
-                <span class="output-threshold-heading">
-                  <span>
-                    <strong>ROUGE-L</strong>
-                    <small>模型输出与敏感内容的序列相似度</small>
-                  </span>
-                  <output id="rougeLThresholdValue">80%</output>
-                </span>
-                <input id="rougeLThresholdInput" type="range" min="0" max="100" step="5" value="80" />
-              </label>
-            </div>
-          </div>
-          <footer class="prompt-modal-footer">
-            <span>阈值保存后用于后续请求</span>
-            <div class="prompt-modal-actions">
-              <button class="button button-ghost" id="cancelOutputConfigButton" type="button">取消</button>
-              <button class="button button-primary prompt-save-button" id="saveOutputConfigButton" type="button">保存配置</button>
-            </div>
-          </footer>
-        </section>
-      </div>
-
-      <div class="raw-output-modal-backdrop" id="rawOutputModalBackdrop" aria-hidden="true">
-        <section class="raw-output-modal" role="dialog" aria-modal="true" aria-labelledby="rawOutputModalTitle">
-          <header class="raw-output-modal-header">
-            <div>
-              <p class="eyebrow">检测服务原始响应</p>
-              <h2 id="rawOutputModalTitle">原始响应</h2>
-            </div>
-            <button class="icon-button" id="closeRawOutputModalButton" type="button" aria-label="关闭原始响应">×</button>
-          </header>
-          <div class="raw-output-modal-body">
-            <pre id="rawOutputModalContent"></pre>
-          </div>
-        </section>
-      </div>
-
       <dialog class="guard-method-dialog" id="guardMethodDialog" aria-labelledby="guardMethodDialogTitle">
         <article>
           <header>
             <div>
-              <span id="guardMethodDialogType">检测方法</span>
+              <span id="guardMethodDialogType">防护方法</span>
               <h2 id="guardMethodDialogTitle">方法详情</h2>
             </div>
             <button id="guardMethodDialogClose" type="button" aria-label="关闭方法详情">×</button>
@@ -396,9 +441,34 @@
           </section>
         </article>
       </dialog>
-      </div>
+
+      <dialog class="compare-dialog" id="compareDialog" aria-labelledby="compareDialogTitle">
+        <article>
+          <header class="dialog-header">
+            <div>
+              <p class="eyebrow">SAME MESSAGE · TWO RUNS</p>
+              <h2 id="compareDialogTitle">防护效果对照</h2>
+            </div>
+            <button class="dialog-close" id="closeCompareButton" type="button" aria-label="关闭对照">×</button>
+          </header>
+          <blockquote id="compareInput"></blockquote>
+          <div class="compare-summary" id="compareSummary">正在运行两次独立 Agent loop…</div>
+          <div class="compare-grid">
+            <section class="compare-card baseline-card">
+              <header><span>BASELINE</span><strong>无防护</strong><i id="baselineVerdict">运行中</i></header>
+              <p id="baselineOutput">等待模型输出…</p>
+              <dl id="baselineFacts"></dl>
+            </section>
+            <section class="compare-card defended-card">
+              <header><span>PROTECTED</span><strong>产品防护</strong><i id="defendedVerdict">运行中</i></header>
+              <p id="defendedOutput">等待模型输出…</p>
+              <dl id="defendedFacts"></dl>
+            </section>
+          </div>
+        </article>
+      </dialog>
     </div>
 
-    <script type="module" src="./src/app.js?v=guard-method-dialog-20260804-v39"></script>
+    <script type="module" src="./src/app.js?v=customer-agent-rag-demo-v22"></script>
   </body>
 </html>

@@ -1,0 +1,10 @@
+[
+  {
+    "id": "temporal-version-resolution",
+    "name": "法规时效与版本解析",
+    "version": "1.0",
+    "visibility": "private",
+    "description": "根据 as_of_date、效力状态和修订链选择可适用条款，并生成可追溯引用。",
+    "instructions_path": "skills/temporal_version_resolution/instructions.md"
+  }
+]

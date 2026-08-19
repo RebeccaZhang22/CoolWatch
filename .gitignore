@@ -45,6 +45,11 @@ logs/
 tmp/
 node_modules/
 
+# Customer Agent configuration created from the web console. Canonical defaults
+# remain versioned under data/customer_agent/.
+data/customer_agent/agent/system_prompt.override.md
+data/customer_agent/rag/uploads/
+
 # Local model/download caches
 .cache/
 /models/
@@ -70,6 +75,7 @@ results/**/*.pt
 !results/activation_probe/finvault-qwen3-32b/best_probe.pt
 !results/activation_probe/prompt-extraction-qwen3-8b/probe/best_probe.pt
 !results/activation_probe/prompt-extraction-qwen3-32b/probe/best_probe.pt
+!results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt
 !recipe/**/probe.pt
 results/system_prompt_leakage_banking_cn/
 results/guard_detection/
@@ -102,3 +108,5 @@ results/audit_data/**/guarded_case_results.jsonl
 # Local benchmark/evaluation scratch output
 results/evaluations/**/logs/
 results/evaluations/**/features/
+
+regression

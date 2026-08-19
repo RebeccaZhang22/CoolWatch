@@ -40,10 +40,9 @@ from vllm.v1.core.kv_cache_metrics import KVCacheMetricsCollector
 from vllm.v1.core.kv_cache_utils import KVCacheBlock
 from vllm.v1.core.sched.interface import PauseState, SchedulerInterface
 from vllm.v1.inline_probing import (
-    InlineProbingConfig,
     InlineProbingFailure,
     failure_from_exception,
-    load_config_from_env,
+    load_configs_from_env,
     make_capture_spec,
 )
 from vllm.v1.core.sched.output import (
@@ -299,7 +298,7 @@ class Scheduler(SchedulerInterface):
             self.scheduler_config.scheduler_reserve_full_isl
         )
 
-        self.inline_probing_config: InlineProbingConfig | None = load_config_from_env()
+        self.inline_probing_configs = load_configs_from_env()
         self.inline_probing_failures: dict[str, dict] = {}
         self.has_mamba_layers = kv_cache_config.has_mamba_layers
         self.needs_kv_cache_zeroing = kv_cache_config.needs_kv_cache_zeroing
@@ -1099,7 +1098,7 @@ class Scheduler(SchedulerInterface):
             ]
 
         inline_probing_capture_specs: dict[str, dict] = {}
-        if self.inline_probing_config is not None:
+        if self.inline_probing_configs:
             for req_id, scheduled_count in num_scheduled_tokens.items():
                 req = self.requests.get(req_id)
                 if req is None or req.inline_probing_request is None:
@@ -1111,7 +1110,7 @@ class Scheduler(SchedulerInterface):
                     scheduled_start=req.num_computed_tokens,
                     scheduled_count=scheduled_count,
                     scheduler_step=self.processed_step_seq,
-                    config=self.inline_probing_config,
+                    configs=self.inline_probing_configs,
                 )
                 if isinstance(spec, InlineProbingFailure):
                     req.inline_probing_terminal = spec.as_dict()

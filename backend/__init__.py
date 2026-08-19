@@ -1,1 +1,1 @@
-"""Backend package for the Perspective Watch demo."""
+"""Backend package for the ProspectMonitor demo."""

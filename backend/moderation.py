@@ -1,4 +1,4 @@
-"""Unified input-classification service for all Perspective Watch guards."""
+"""Unified input-classification service for all ProspectMonitor guards."""
 
 from __future__ import annotations
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Serve the trained FinVault and prompt-extraction Activation Probes."""
+"""Serve the trained FinVault and protected-asset theft Activation Probes."""
 
 from __future__ import annotations
 
@@ -26,7 +26,8 @@ MODEL_SPECS = {
         "hidden_size": 4096,
         "finvault_checkpoint": ROOT / "results/activation_probe/finvault-qwen3-8b/best_probe.pt",
         "prompt_checkpoint": (
-            ROOT / "results/activation_probe/prompt-extraction-qwen3-8b/probe/best_probe.pt"
+            ROOT
+            / "results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt"
         ),
     },
     "qwen3-32b": {
@@ -143,11 +144,11 @@ class ActivationProbeRuntime:
                 "prompt": {
                     "path": _project_relative(self.prompt_checkpoint_path),
                     "checkpoint_id": self.checkpoint_ids["prompt"],
-                    "layers": [
-                        int(self.prompt_checkpoint["start_layer"]),
-                        int(self.prompt_checkpoint["end_layer"]),
-                    ],
+                    "layers": _checkpoint_layers(self.prompt_checkpoint),
                     "feature_type": str(self.prompt_checkpoint["feature_type"]),
+                    "classifier_type": str(
+                        self.prompt_checkpoint.get("classifier_type", "linear")
+                    ),
                 },
             },
         }
@@ -187,8 +188,8 @@ class ActivationProbeRuntime:
     def _detect_prompt_extraction(self, request: DetectRequest) -> dict[str, Any]:
         checkpoint = self.prompt_checkpoint
         feature_type = str(checkpoint["feature_type"])
-        start_layer = int(checkpoint["start_layer"])
-        end_layer = int(checkpoint["end_layer"])
+        selected_layers = _checkpoint_layers(checkpoint)
+        end_layer = selected_layers[-1]
         captured: dict[int, torch.Tensor] = {}
         handles = []
 
@@ -199,9 +200,18 @@ class ActivationProbeRuntime:
 
             return capture
 
-        for layer_index in range(start_layer, end_layer + 1):
+        for layer_index in selected_layers:
             layer = self._model.model.layers[layer_index]
-            module = layer.self_attn if feature_type == "attn" else layer.mlp
+            if feature_type == "attn":
+                module = layer.self_attn
+            elif feature_type == "ffn":
+                module = layer.mlp
+            elif feature_type == "residual":
+                module = layer
+            else:
+                raise ValueError(
+                    f"Unsupported prompt-extraction feature_type={feature_type!r}"
+                )
             handles.append(module.register_forward_hook(make_hook(layer_index)))
         try:
             self._forward(request)
@@ -209,19 +219,49 @@ class ActivationProbeRuntime:
             for handle in handles:
                 handle.remove()
 
-        missing = [index for index in range(start_layer, end_layer + 1) if index not in captured]
+        missing = [index for index in selected_layers if index not in captured]
         if missing:
             raise RuntimeError(f"Prompt-extraction activation hooks missed layers: {missing}")
         activations = torch.stack(
-            [captured[index] for index in range(start_layer, end_layer + 1)],
+            [captured[index] for index in selected_layers],
             dim=1,
         )
         normalized = (
             activations - checkpoint["mean"].float()
         ) / checkpoint["std"].float().clamp_min(1e-5)
-        weight = checkpoint["weight"].float().reshape(-1)
-        bias = checkpoint["bias"].float()
-        logit = float((normalized.flatten(1) @ weight + bias).item())
+        flattened = normalized.flatten(1)
+        if checkpoint.get("classifier_type", "linear") == "multilayer_mlp":
+            architecture = checkpoint["architecture"]
+            modules: list[torch.nn.Module] = [
+                torch.nn.LayerNorm(
+                    int(architecture["input_size"]), elementwise_affine=False
+                )
+            ]
+            previous = int(architecture["input_size"])
+            for hidden_size in architecture["hidden_sizes"]:
+                modules.extend(
+                    [
+                        torch.nn.Linear(previous, int(hidden_size)),
+                        torch.nn.GELU(),
+                        torch.nn.Dropout(float(architecture["dropout"])),
+                    ]
+                )
+                previous = int(hidden_size)
+            modules.append(torch.nn.Linear(previous, 1))
+            network = torch.nn.Sequential(*modules)
+            network.load_state_dict(
+                {
+                    key.removeprefix("network."): value
+                    for key, value in checkpoint["state_dict"].items()
+                }
+            )
+            network.eval()
+            with torch.inference_mode():
+                logit = float(network(flattened).item())
+        else:
+            weight = checkpoint["weight"].float().reshape(-1)
+            bias = checkpoint["bias"].float()
+            logit = float((flattened @ weight + bias).item())
         return self._response(
             category="prompt",
             logit=logit,
@@ -229,7 +269,10 @@ class ActivationProbeRuntime:
             layer=end_layer,
             detail={
                 "feature_type": feature_type,
-                "layers": list(range(start_layer, end_layer + 1)),
+                "layers": selected_layers,
+                "classifier_type": str(
+                    checkpoint.get("classifier_type", "linear")
+                ),
             },
         )
 
@@ -273,7 +316,11 @@ class ActivationProbeRuntime:
         return {
             "schema": "perspective_watch.activation_probe.result.v1",
             "protocol": "activation_probe.runtime.v1",
-            "task": "high_risk_task" if category == "finvault" else "system_prompt_extraction",
+            "task": (
+                "high_risk_task"
+                if category == "finvault"
+                else str(self.prompt_checkpoint.get("task") or "system_prompt_extraction")
+            ),
             "score": score,
             "logit": logit,
             "threshold": threshold,
@@ -318,6 +365,28 @@ def _sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _checkpoint_layer(
+    checkpoint: dict[str, Any],
+    boundary: Literal["start", "end"],
+) -> int:
+    absolute_key = f"absolute_{boundary}_layer"
+    legacy_key = f"{boundary}_layer"
+    if absolute_key in checkpoint:
+        return int(checkpoint[absolute_key])
+    return int(checkpoint[legacy_key])
+
+
+def _checkpoint_layers(checkpoint: dict[str, Any]) -> list[int]:
+    values = checkpoint.get("selected_layers") or checkpoint.get(
+        "feature_layer_indices"
+    )
+    if isinstance(values, list) and values:
+        return [int(value) for value in values]
+    start = _checkpoint_layer(checkpoint, "start")
+    end = _checkpoint_layer(checkpoint, "end")
+    return list(range(start, end + 1))
+
+
 def _project_relative(path: Path) -> str:
     try:
         return path.relative_to(ROOT).as_posix()
@@ -358,7 +427,7 @@ def build_app(runtime: ActivationProbeRuntime, *, eager_load: bool) -> FastAPI:
             await asyncio.to_thread(runtime.load)
         yield
 
-    app = FastAPI(title="Perspective Watch Activation Probe", lifespan=lifespan)
+    app = FastAPI(title="ProspectMonitor Activation Probe", lifespan=lifespan)
 
     @app.get("/health")
     async def health():

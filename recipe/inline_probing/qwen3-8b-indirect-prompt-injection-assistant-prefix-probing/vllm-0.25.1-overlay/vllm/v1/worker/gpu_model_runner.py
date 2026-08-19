@@ -160,9 +160,10 @@ from vllm.v1.kv_cache_interface import (
 )
 from vllm.v1.kv_cache_spec_registry import KVCacheSpecRegistry
 from vllm.v1.inline_probing import (
-    InlineLinearProbe,
+    InlineMultilayerMLPProbe,
+    build_probe_scorer,
     failure_from_exception,
-    load_config_from_env,
+    load_configs_from_env,
     load_resolved_checkpoint,
     score_capture,
 )
@@ -570,14 +571,23 @@ class GPUModelRunner(
         # Encoder CUDA graph manager (initialized after model load if enabled)
         self.encoder_cudagraph_manager: EncoderCudaGraphManager | None = None
 
-        self.inline_probing_config = load_config_from_env()
-        self.inline_probing_scorer = None
-        if self.inline_probing_config is not None:
-            resolved = load_resolved_checkpoint(self.inline_probing_config)
-            self.inline_probing_scorer = InlineLinearProbe(resolved, self.device)
-        self.use_aux_hidden_state_outputs = False
-        if self.inline_probing_config is not None:
-            self.use_aux_hidden_state_outputs = True
+        self.inline_probing_configs = load_configs_from_env()
+        self.inline_probing_scorers = {
+            probe_id: build_probe_scorer(
+                load_resolved_checkpoint(config), self.device
+            )
+            for probe_id, config in self.inline_probing_configs.items()
+        }
+        self.inline_probing_aux_layers = tuple(
+            sorted(
+                {
+                    layer
+                    for config in self.inline_probing_configs.values()
+                    for layer in config.aux_hidden_state_layers
+                }
+            )
+        )
+        self.use_aux_hidden_state_outputs = bool(self.inline_probing_configs)
         # Set up speculative decoding.
         # NOTE(Jiayi): currently we put the entire draft model on
         # the last PP rank. This is not ideal if there are many
@@ -4457,11 +4467,11 @@ class GPUModelRunner(
         if not specs:
             return None
         outputs = {}
-        if self.inline_probing_config is None or self.inline_probing_scorer is None:
+        if not self.inline_probing_configs or not self.inline_probing_scorers:
             for req_id, spec in specs.items():
-                outputs[req_id] = {"status": "error", "code": "not_configured", "message": "INLINE_PROBING_CONFIG is not set", "attempt_id": spec.get("attempt_id", "")}
+                outputs[req_id] = {"status": "error", "code": "not_configured", "message": "no probe registry is configured", "attempt_id": spec.get("attempt_id", "")}
             return outputs
-        if aux_hidden_states is None or len(aux_hidden_states) != 1:
+        if aux_hidden_states is None or len(aux_hidden_states) != len(self.inline_probing_aux_layers):
             for req_id, spec in specs.items():
                 outputs[req_id] = {"status": "error", "code": "missing_hidden_state", "message": "target layer hidden state was not captured", "attempt_id": spec.get("attempt_id", "")}
             return outputs
@@ -4471,18 +4481,31 @@ class GPUModelRunner(
             if req_id in scheduler_output.num_scheduled_tokens:
                 offsets[req_id] = offset
                 offset += scheduler_output.num_scheduled_tokens[req_id]
-        hidden = aux_hidden_states[0]
+        hidden_by_layer = dict(zip(self.inline_probing_aux_layers, aux_hidden_states))
         for req_id, spec in specs.items():
             try:
+                probe_id = spec["probe_id"]
+                config = self.inline_probing_configs[probe_id]
+                scorer = self.inline_probing_scorers[probe_id]
                 row = offsets[req_id] + spec["target_token_index"] - spec["scheduled_start"]
+                if isinstance(scorer, InlineMultilayerMLPProbe):
+                    hidden = torch.stack(
+                        [
+                            hidden_by_layer[layer + 1][row]
+                            for layer in scorer.checkpoint.layer_indices
+                        ],
+                        dim=0,
+                    )
+                else:
+                    hidden = hidden_by_layer[spec["aux_hidden_state_layer"]][row]
                 token_id = self.input_batch.token_ids_cpu[
                     self.input_batch.req_id_to_index[req_id], spec["target_token_index"]
                 ]
                 outputs[req_id] = score_capture(
-                    scorer=self.inline_probing_scorer,
-                    config=self.inline_probing_config,
+                    scorer=scorer,
+                    config=config,
                     spec=SimpleNamespace(**spec),
-                    hidden_state=hidden[row],
+                    hidden_state=hidden,
                     captured_token_id=int(token_id),
                 )
             except Exception as exc:
@@ -5318,9 +5341,9 @@ class GPUModelRunner(
                         eplb_models += 1
 
                 self._setup_eagle3_aux_hidden_state_outputs()
-                if self.inline_probing_config is not None:
+                if self.inline_probing_configs:
                     self.model.set_aux_hidden_state_layers(
-                        (self.inline_probing_config.aux_hidden_state_layer,)
+                        self.inline_probing_aux_layers
                     )
 
                 # Resolve the MoE model, unwrapping VLM wrappers if needed.

@@ -18,7 +18,10 @@ from backend.watchers.inline_probing.client import (
 @dataclass(frozen=True)
 class LlmGeneration:
     content: str
+    reasoning_content: str
     message: dict[str, Any]
+    finish_reason: str | None = None
+    usage: dict[str, Any] | None = None
     inline_probing: InlineProbingAssessment | None = None
 
 
@@ -41,8 +44,9 @@ class LlmClient:
     async def close(self) -> None:
         await self._client.aclose()
 
-    async def list_models(self) -> list[str]:
-        response = await self._client.get(f"{self.base_url}/models", headers=self._headers())
+    async def list_models(self, *, base_url: str | None = None) -> list[str]:
+        request_base_url = (base_url or self.base_url).rstrip("/")
+        response = await self._client.get(f"{request_base_url}/models", headers=self._headers())
         response.raise_for_status()
         payload = response.json()
         return [item["id"] for item in payload.get("data", []) if item.get("id")]
@@ -71,7 +75,9 @@ class LlmClient:
             "top_p": model_params.top_p,
             "max_tokens": model_params.max_tokens,
             "stream": False,
-            "chat_template_kwargs": {"enable_thinking": False},
+            "chat_template_kwargs": {
+                "enable_thinking": model_params.enable_reasoning,
+            },
         }
         if tools is not None:
             payload["tools"] = tools
@@ -83,10 +89,12 @@ class LlmClient:
             else float(inline_probing_threshold)
         )
         if enable_inline_probing:
+            payload["return_token_ids"] = True
             payload["inline_probing_request"] = build_inline_probing_request(
                 payload,
                 expected_checkpoint_id=self.settings.inline_probing_expected_checkpoint_id,
                 timeout_seconds=self.settings.inline_probing_timeout_seconds,
+                probe_id=self.settings.inline_probing_probe_id or None,
             )
         started = perf_counter()
         request_base_url = (base_url or self.base_url).rstrip("/")
@@ -97,21 +105,50 @@ class LlmClient:
         )
         response.raise_for_status()
         data = response.json()
-        message = data["choices"][0]["message"]
+        choice = data["choices"][0]
+        message = choice["message"]
         assessment = None
         if enable_inline_probing:
-            result = parse_inline_probing_response(
-                data,
-                expected_checkpoint_id=self.settings.inline_probing_expected_checkpoint_id,
-            )
-            assessment = assessment_from_probe_result(
-                result,
-                threshold=threshold,
-                latency_ms=round((perf_counter() - started) * 1000),
-            )
+            latency_ms = round((perf_counter() - started) * 1000)
+            try:
+                result = parse_inline_probing_response(
+                    data,
+                    expected_checkpoint_id=self.settings.inline_probing_expected_checkpoint_id,
+                    expected_probe_id=self.settings.inline_probing_probe_id or None,
+                )
+                assessment = assessment_from_probe_result(
+                    result,
+                    threshold=threshold,
+                    latency_ms=latency_ms,
+                )
+            except Exception as error:
+                # A standard vLLM may accept the extension request but omit the
+                # probe result. Keep its real generation and expose the missing
+                # detector as an explicit error signal instead of failing the
+                # entire customer-service turn.
+                assessment = InlineProbingAssessment(
+                    score=None,
+                    logit=None,
+                    threshold=threshold,
+                    checkpoint_id=None,
+                    layer=None,
+                    effective_position=None,
+                    protocol=self.settings.inline_probing_protocol,
+                    raw_output="",
+                    latency_ms=latency_ms,
+                    error=str(error),
+                )
         return LlmGeneration(
-            content=message.get("content") or message.get("reasoning") or "",
+            # Never fall back to the private reasoning field as user-visible
+            # content. Callers may inspect reasoning metadata, but must make an
+            # explicit policy decision before exposing any of it.
+            content=_message_text(message.get("content")),
+            reasoning_content=_message_text(
+                message.get("reasoning_content") or message.get("reasoning")
+            ),
             message=message,
+            finish_reason=choice.get("finish_reason"),
+            usage=data.get("usage"),
             inline_probing=assessment,
         )
 
@@ -132,7 +169,9 @@ class LlmClient:
             "top_p": model_params.top_p,
             "max_tokens": model_params.max_tokens,
             "stream": True,
-            "chat_template_kwargs": {"enable_thinking": False},
+            "chat_template_kwargs": {
+                "enable_thinking": model_params.enable_reasoning,
+            },
         }
         if tools is not None:
             payload["tools"] = tools
@@ -173,4 +212,11 @@ def parse_openai_stream_line(line: str) -> str | None:
     payload = json.loads(data)
     choice = payload.get("choices", [{}])[0]
     delta = choice.get("delta") or {}
-    return delta.get("content") or delta.get("reasoning_content") or delta.get("reasoning") or ""
+    # The legacy streaming API emits only final answer tokens. This prevents a
+    # reasoning-enabled model from accidentally streaming its private scratchpad
+    # through an endpoint that has no separate reasoning channel.
+    return _message_text(delta.get("content"))
+
+
+def _message_text(value: Any) -> str:
+    return value if isinstance(value, str) else ""

@@ -1,17 +1,21 @@
-# Perspective Watch
+# ProspectMonitor
 
-Perspective Watch 是一个面向金融 Agent 的安全审计与攻防演示系统。仓库包含可直接浏览的冻结审计结果、Case Study、FinVault 单轮回放，以及接入真实 Qwen/vLLM 和多种护栏的前后端代码。
+ProspectMonitor 是一个 Agent 安全审计与攻防演示系统。首页围绕一个真实可对话的商城客服 Agent 展示运行时防护，仓库同时保留冻结审计结果、Case Study、FinVault 单轮回放，以及接入真实 Qwen/vLLM 和多种护栏的代码。
 
 模型路径、场景选型、端口规划、vLLM 启动命令和 API 调用示例见 [软件接入与使用说明](软件接入与使用说明.md)。
 
 ## 包含的能力
 
 - 实验审计：FinVault 高风险任务、系统提示词泄露、间接提示词注入。
-- 攻防演示台：Qwen3-8B/32B，支持流式输出与单轮 FinVault 录制回放。
+- 攻防演示台：单一 Qwen3-8B reasoning 客服 Agent，支持真实工具调用、RAG、逐阶段轨迹和同消息防护对照。
 - 护栏对比：Activation Probe、SafeGauge、Qwen3Guard、Llama Prompt Guard 2、网易易盾、XGuard，以及无防护基线。
 - Case Study：用流程图对比无防护与有防护的 Agent 行为。
 
 审计页和录制回放不要求 GPU 或外部模型服务。只有实时聊天、实时护栏判定和 Activation Probe 推理需要额外模型服务。
+
+## 统一客服 Agent 攻防 API
+
+`/api/customer-agent/*` 与首页把实时演示收束为一个 Qwen3-8B reasoning 客服 Agent。用户直接发送自然消息，模型自行决定是否调用订单或知识库工具；右侧面板展示输入、上下文、生成和输出阶段的防护结果，并可对同一条消息运行 baseline/defended 对照。一键模型与后端启动命令、API 示例和安全边界见 [统一客服 Agent 后端](backend/CUSTOMER_AGENT.md)。
 
 ## 快速启动（审计与录制回放）
 
@@ -50,7 +54,19 @@ CUDA_VISIBLE_DEVICES=0,1,2,3 \
 
 ### Activation Probe
 
-该服务按 `--model` 加载仓库内对应的 FinVault 与系统提示词 checkpoint。以下是 Qwen3-32B 示例：
+Activation Probe 现在有两种后端：
+
+- `vllm`：由仓库的 vLLM 0.25.1 overlay 在 GPU worker 内直接加载 checkpoint，并与模型 prefill 共用一次前向；后端只接收分数，不传输 hidden state。
+- `standalone`：保留原来的 `backend.activation_probe_server` Transformers 服务，便于对照和兼容旧部署。
+
+仓库保留四个单层 residual linear Activation Probe，并将客服 Agent 默认统一窃取检测升级为 Qwen3-8B v16：它拼接第 21/22/23 层 residual activation 后使用 MLP，同一 patched vLLM 实例仍可注册多个 probe，并由请求中的 `probe_id` 选择。启动命令与带 SHA-256 的 recipe 见 [Activation Probe vLLM README](recipe/activation_probing/README.md)。后端切换配置为：
+
+```dotenv
+ACTIVATION_PROBE_BACKEND=vllm
+ACTIVATION_PROBE_VLLM_BASE_URL=http://127.0.0.1:8013/v1
+```
+
+若继续使用独立 Transformers 后端，Qwen3-32B 示例为：
 
 ```bash
 CUDA_VISIBLE_DEVICES=0,1 \
@@ -61,7 +77,7 @@ CUDA_VISIBLE_DEVICES=0,1 \
   --port 8910
 ```
 
-Qwen3-8B 使用 `--model qwen3-8b --model-path .runtime/models/Qwen3-8B`。`--model-path` 是显式运行参数；服务不会读取 checkpoint 中的训练机路径。模型权重属于部署依赖，不属于发布数据。普通 OpenAI-compatible vLLM API 不返回所需中间激活，不能替代该服务。
+Qwen3-8B 使用 `--model qwen3-8b --model-path .runtime/models/Qwen3-8B`。`--model-path` 是显式运行参数；服务不会读取 checkpoint 中的训练机路径。模型权重属于部署依赖，不属于发布数据。未应用仓库 overlay 的普通 OpenAI-compatible vLLM 不支持该协议。
 
 ### 其他可选护栏
 
@@ -85,8 +101,8 @@ Qwen3Guard 可用 `vllm_setups/run_vllm_qwen3guard_8b.sh` 启动。Llama Prompt 
 这个结论只适用于一组匹配的 `task + SafeGauge suffix + Inline checkpoint`，不表示
 多个安全问题可以在一次 prefill 中全部完成。若要检测多个安全行为：
 
-- Inline Probe 从方法上可以让多个 probe head 复用同一份 residual；但当前 worker
-  启动时只加载一个 checkpoint，换 probe 需要重启或使用另一个 task-bound 服务。
+- patched worker 可在启动时通过重复的 `--probe-recipe` 注册多个同模型 probe；
+  每个请求必须用 `probe_id`（或唯一 checkpoint ID）选择其中一个。注册表本身不能热更新。
 - SafeGauge 的每个行为使用独立 suffix 和配套 MLP；每换一个 suffix，都必须重新
   prefill 一次。
 - 当前 `/v1/moderations` 每次只接受一个 `task`，SafeGauge 路由也只选择一个 suffix。
@@ -133,6 +149,7 @@ SAFEGAUGE_TIMEOUT_SECONDS=120
 
 INLINE_PROBING_PROTOCOL=inline_probing
 INLINE_PROBING_TASK=system_prompt_leakage_intent
+INLINE_PROBING_PROBE_ID=qwen3-8b-system-prompt-leakage-placeholder
 INLINE_PROBING_EXPECTED_CHECKPOINT_ID=sha256:6bf38a15533e94cc187cbb15d974cd616f898068a706912a3de1f41277fd11d3
 INLINE_PROBING_THRESHOLD=0.5
 INLINE_PROBING_TIMEOUT_SECONDS=120
@@ -141,9 +158,10 @@ INLINE_PROBING_TIMEOUT_SECONDS=120
 `INLINE_PROBING_EXPECTED_CHECKPOINT_ID` 必须等于 vLLM 实际加载 checkpoint
 的 SHA-256 ID；`INLINE_PROBING_TASK` 必须与请求里的 `task` 完全一致。
 上面的 ID 和阈值对应非检测型 holder。更换为真正训练的 checkpoint 时必须同步
-替换 ID 和训练得到的阈值，并重启 vLLM worker；worker 不支持请求期间热切换。
+替换 probe ID、checkpoint ID 和训练得到的阈值，并重启 vLLM worker。已在启动时
+注册的多个 probe 可以逐请求选择，但不能在 worker 运行期间增删。
 
-然后启动 Perspective Watch：
+然后启动 ProspectMonitor：
 
 ```bash
 ./start-perspective-watch.sh

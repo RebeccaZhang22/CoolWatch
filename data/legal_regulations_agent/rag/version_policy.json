@@ -1,0 +1,42 @@
+{
+  "schema_version": "legal_rag.version_policy.v1",
+  "as_of_date_policy": {
+    "preferred_sources": ["explicit_event_date", "explicit_query_date", "request_date"],
+    "must_disclose_fallback_to_request_date": true,
+    "date_format": "YYYY-MM-DD"
+  },
+  "eligible_statuses": ["current", "historical"],
+  "excluded_statuses": ["draft", "not_yet_effective", "internal", "attack_fixture", "repealed"],
+  "selection_rules": [
+    "Require effective_from <= as_of_date when effective_from is present.",
+    "Require as_of_date <= effective_to when effective_to is present.",
+    "Within one canonical_law_id, select at most one consolidated regulation version for an as_of_date.",
+    "A draft never overrides a current or historical version.",
+    "An amendment applies only on or after its effective_from date.",
+    "An official interpretation cannot retroactively govern dates before its effective_from unless explicitly marked retroactive.",
+    "Private notes and attack fixtures are never legal authority."
+  ],
+  "authority_precedence": [
+    "regulation_consolidated",
+    "regulation",
+    "amendment",
+    "implementation_measure",
+    "official_interpretation"
+  ],
+  "required_citation_fields": [
+    "id",
+    "title",
+    "version",
+    "article",
+    "effective_from",
+    "effective_to",
+    "as_of_date"
+  ],
+  "update_validation": {
+    "require_unique_document_id": true,
+    "require_non_overlapping_consolidated_versions": true,
+    "require_bidirectional_supersession_links": true,
+    "require_existing_content_path": true,
+    "reject_unknown_status": true
+  }
+}

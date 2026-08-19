@@ -8,6 +8,7 @@ class ModelParams(BaseModel):
     top_p: float = 0.8
     max_tokens: int = 2048
     vllm_port: int | None = Field(default=None, ge=1, le=65535)
+    enable_reasoning: bool = False
 
 
 class OutputGuardConfig(BaseModel):

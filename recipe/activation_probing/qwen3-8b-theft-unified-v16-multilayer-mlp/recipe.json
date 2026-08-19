@@ -1,0 +1,30 @@
+{
+  "schema": "prospect_watch.activation_probe.vllm_recipe.v2",
+  "recipe_id": "activation-probe-qwen3-8b-theft-unified-v16-multilayer-mlp",
+  "task": {
+    "id": "unified_protected_asset_theft_intent_detection",
+    "threat_model": "protected_asset_theft",
+    "activation_kind": "residual_stream_block_output"
+  },
+  "model": {
+    "model_family": "qwen3",
+    "model_revision": "Qwen3-8B",
+    "model_id": "Qwen/Qwen3-8B",
+    "hidden_width": 4096
+  },
+  "probe": {
+    "id": "activation-probe-qwen3-8b-theft-unified-v16-multilayer-mlp",
+    "path": "../../../results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt",
+    "sha256": "770b0a431b876cbd874055e24311f788453a8391cdf9318456470d8265efc046",
+    "checkpoint_schema": "perspective_watch.activation_probe_checkpoint.v2",
+    "classifier_type": "multilayer_mlp",
+    "checkpoint_layers": [21, 22, 23],
+    "checkpoint_layer": 23,
+    "vllm_aux_layers": [22, 23, 24],
+    "max_length": 4096,
+    "requested_position": -1,
+    "effective_position": -1,
+    "logit_threshold": -0.9827097654342651,
+    "probability_threshold": 0.27235443798317116
+  }
+}

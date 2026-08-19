@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API Token · ProspectMonitor</title>
+    <style>
+      :root { font-family: Inter, system-ui, sans-serif; color: #17202c; background: #f5f7fa; }
+      * { box-sizing: border-box; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; }
+      .card { width: min(720px, 100%); border: 1px solid #e1e6ec; border-radius: 16px; background: #fff; padding: 30px; box-shadow: 0 16px 50px rgba(22,35,51,.08); }
+      .brand { color: #176b4d; font-weight: 800; letter-spacing: .04em; }
+      h1 { margin: 10px 0 4px; font-size: 25px; } p { color: #697586; font-size: 13px; line-height: 1.55; }
+      .token { margin: 22px 0 8px; display: flex; gap: 8px; align-items: center; }
+      code { flex: 1; overflow: auto; border-radius: 8px; background: #17202c; color: #d9e7f5; padding: 13px; font-size: 12px; white-space: nowrap; }
+      button, a { border: 0; border-radius: 8px; background: #176b4d; color: white; padding: 11px 15px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; text-decoration: none; }
+      .secondary { background: #edf3fb; color: #315f9c; }
+      .warning { color: #a46018; font-size: 12px; }
+      pre { overflow: auto; border-radius: 8px; background: #17202c; color: #d9e7f5; padding: 14px; font-size: 11px; line-height: 1.55; }
+      .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+      #message { min-height: 18px; color: #176b4d; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="brand">PROSPECTMONITOR</div>
+      <h1>API Token</h1>
+      <p id="userLine">正在加载账号…</p>
+      <p>Token 仅用于 CLI 或服务端调用，不会被 ProspectWatch 演示台用于请求。请像密码一样保管。</p>
+      <div class="token"><code id="token">登录后生成</code><button id="copy">复制</button></div>
+      <p class="warning">Token 只在当前页面展示明文。泄露后请立即重置。</p>
+      <h3>如何使用</h3>
+      <pre>curl http://localhost:18088/v1/guardrails \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"input":"hello world"}'</pre>
+      <div id="message"></div>
+      <div class="actions"><button class="secondary" id="rotate">重置 Token</button><a href="/">进入 ProspectWatch 演示台</a><button class="secondary" id="logout">退出登录</button></div>
+    </main>
+    <script type="module" src="./src/auth.js"></script>
+  </body>
+</html>

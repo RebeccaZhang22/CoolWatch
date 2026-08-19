@@ -1,0 +1,67 @@
+{
+  "schema": "perspective_watch.activation_probe_training_run_provenance.v3",
+  "run": "theft-unified-qwen3-8b-v16-multilayer-mlp",
+  "base_model": "/share/workspace/models/hub/models--Qwen--Qwen3-8B/snapshots/b968826d9c46dd6066d109eabc6255188de91218",
+  "checkpoint": "results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt",
+  "checkpoint_sha256": "770b0a431b876cbd874055e24311f788453a8391cdf9318456470d8265efc046",
+  "feature": {
+    "type": "residual",
+    "transformer_blocks": [21, 22, 23],
+    "depth_fraction_of_zero_based_layer_range": [0.6, 0.6285714285714286, 0.6571428571428571],
+    "position": "last token of Qwen chat template with add_generation_prompt=true",
+    "transform": "per-layer train-split standardization then concatenation",
+    "chat_template_enable_thinking": false,
+    "max_length": 4096,
+    "runtime_truncation_side": "left"
+  },
+  "classifier": {
+    "type": "multilayer_mlp",
+    "input_size": 12288,
+    "hidden_sizes": [128, 32],
+    "activation": "gelu",
+    "dropout": 0.1,
+    "parameter_count": 1577153
+  },
+  "training_components": [
+    {
+      "dataset": "data/activation_probe/protected_asset_theft/v2",
+      "samples": 16298,
+      "role": "base train/validation/test corpus"
+    },
+    {
+      "dataset": "data/activation_probe/system_prompt_context_robustness/v1",
+      "samples": 9252,
+      "role": "train/validation direct system-prompt cross-context pairs"
+    },
+    {
+      "dataset": "data/activation_probe/ordinary_query_context_robustness/v1",
+      "samples": 3084,
+      "role": "train/validation greeting calibration"
+    },
+    {
+      "dataset": "data/activation_probe/unified_theft_context_robustness/v1",
+      "source_samples": 4096,
+      "selected_samples": 1536,
+      "selection": "64 train and 32 validation contexts per query",
+      "role": "symmetric four-asset complex-theft cross-context pairs"
+    }
+  ],
+  "fit_sample_count": {
+    "train": 20878,
+    "validation": 5404,
+    "strict_test": 3888,
+    "total_cached_rows": 30170
+  },
+  "threshold": {
+    "logit": -0.9827097654342651,
+    "selection": "highest validation recall at or below 2% validation sample FPR",
+    "validation_false_positive_rate": 0.019320660641944532,
+    "test_or_external_audits_used_for_selection": false
+  },
+  "data_isolation": {
+    "v2_test_system_groups_seen_in_training": false,
+    "external_attack_audit_used_in_training": false,
+    "external_natural_safe_audit_used_in_training": false,
+    "cross_context_regression_audit_used_in_selection": false
+  }
+}

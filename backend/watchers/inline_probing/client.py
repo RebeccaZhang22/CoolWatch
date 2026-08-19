@@ -49,7 +49,7 @@ class InlineProbingAssessment:
 
 
 class InlineProbingGuard:
-    """Perspective Watch wrapper for patched-vLLM runtime inline probing."""
+    """ProspectMonitor wrapper for patched-vLLM runtime inline probing."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -157,6 +157,7 @@ class InlineProbingGuard:
             payload,
             expected_checkpoint_id=self.settings.inline_probing_expected_checkpoint_id,
             timeout_seconds=self.settings.inline_probing_timeout_seconds,
+            probe_id=getattr(self.settings, "inline_probing_probe_id", "") or None,
         )
         response = await self._client.post(
             f"{(base_url or self.settings.vllm_base_url).rstrip('/')}/chat/completions",
@@ -168,6 +169,9 @@ class InlineProbingGuard:
         return parse_inline_probing_response(
             data,
             expected_checkpoint_id=self.settings.inline_probing_expected_checkpoint_id,
+            expected_probe_id=(
+                getattr(self.settings, "inline_probing_probe_id", "") or None
+            ),
         )
 
     async def get_model_info(self) -> dict[str, Any]:
@@ -178,6 +182,7 @@ class InlineProbingGuard:
             "task": self.settings.inline_probing_task,
             "threshold": self.settings.inline_probing_threshold,
             "expected_checkpoint_id": self.settings.inline_probing_expected_checkpoint_id,
+            "probe_id": getattr(self.settings, "inline_probing_probe_id", ""),
         }
 
 
@@ -216,6 +221,7 @@ def build_inline_probing_request(
     expected_checkpoint_id: str,
     timeout_seconds: float,
     target_token_index: int | None = None,
+    probe_id: str | None = None,
 ) -> dict[str, Any]:
     if not expected_checkpoint_id.strip():
         raise RuntimeError("INLINE_PROBING_EXPECTED_CHECKPOINT_ID is required")
@@ -225,6 +231,8 @@ def build_inline_probing_request(
         or target_token_index < 0
     ):
         raise ValueError("target_token_index must be a non-negative integer")
+    if probe_id is not None and not probe_id.strip():
+        raise ValueError("probe_id must be non-empty")
     return {
         "schema": INLINE_PROBING_REQUEST_SCHEMA,
         "required": True,
@@ -234,6 +242,7 @@ def build_inline_probing_request(
         "input_attempt_fingerprint": input_attempt_fingerprint(chat),
         "deadline_ms": max(1, int(timeout_seconds * 1000)),
         "target_token_index": target_token_index,
+        "probe_id": probe_id,
     }
 
 
@@ -241,6 +250,7 @@ def parse_inline_probing_response(
     response: Mapping[str, Any],
     *,
     expected_checkpoint_id: str,
+    expected_probe_id: str | None = None,
 ) -> dict[str, Any]:
     probe = response.get(INLINE_PROBING_RESPONSE_FIELD)
     if not isinstance(probe, Mapping):
@@ -252,6 +262,8 @@ def parse_inline_probing_response(
         raise RuntimeError(f"inline probing result status is {result.get('status') or 'missing'}")
     if result.get("checkpoint_id") != expected_checkpoint_id:
         raise RuntimeError("inline probing result checkpoint mismatch")
+    if expected_probe_id is not None and result.get("probe_id") != expected_probe_id:
+        raise RuntimeError("inline probing result probe mismatch")
     _validate_probe_result(result)
     result["_protocol"] = "inline_probing"
     return result

@@ -1,6 +1,8 @@
-# Perspective Watch Backend
+# ProspectMonitor Backend
 
-FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回护栏检测状态、泄露指标和 RAG Trace。Qwen3Guard、Llama Prompt Guard、Suffix Probe（界面名称为 SafeGauge）和易盾在生成前执行；FinVault/系统提示词场景的 Activation Probe 由独立的隐藏层推理服务执行；间接提示词注入的 Inline Probing 则嵌入新工具返回后的首次真实 assistant generation。所有护栏均不改写模型上下文或输出。
+FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回护栏检测状态、泄露指标和 RAG Trace。在原有 `/api/chat` 中，Qwen3Guard、Llama Prompt Guard、Suffix Probe（界面名称为 SafeGauge）和易盾在生成前执行；FinVault/系统提示词场景的 Activation Probe 可由 patched vLLM worker 或独立 Transformers 服务执行；间接提示词注入的 Inline Probing 则嵌入新工具返回后的首次真实 assistant generation。这条旧链路中的护栏均不改写模型上下文或输出。
+
+首页使用独立的 `/api/customer-agent/*` API：Qwen3-8B 法规 Agent 自主选择法规检索、文档读取或版本比较工具，并使用 `jieba + BM25Okapi` 检索带时效元数据的合成法规语料；defended 模式把输入检测作为旁路观测，只记录风险而不阻断业务模型生成。任意自然消息都可以直接运行或做同消息 baseline/defended 对照。启动方式、API 契约和双模型隔离规则见 [法规条款 Agent 后端](CUSTOMER_AGENT.md)。原有 `/api/chat` 仅供旧审计与回放页面兼容。
 
 ## Llama Prompt Guard 2
 
@@ -17,7 +19,7 @@ LLAMA_PROMPT_GUARD_DEVICE=auto
 
 ## SafeGauge / Suffix Probe
 
-选择 SafeGauge 时，Perspective Watch 后端会按场景和模型，从 `results/gauge_probe/` 选择对应 MLP，并在 Agent Loop 前检测当前场景的 System Prompt 和本轮用户 Query。生成 prefill logprobs 时复用本轮 Qwen vLLM 端口，不需要独立 SafeGauge 服务。
+选择 SafeGauge 时，ProspectMonitor 后端会按场景和模型，从 `results/gauge_probe/` 选择对应 MLP，并在 Agent Loop 前检测当前场景的 System Prompt 和本轮用户 Query。生成 prefill logprobs 时复用本轮 Qwen vLLM 端口，不需要独立 SafeGauge 服务。
 
 ```dotenv
 SAFEGAUGE_PROCESSOR_PATH=
@@ -56,9 +58,21 @@ checkpoint。若融合请求中的某一项失败，聊天路径只对失败项�
 
 ## Activation Probe
 
-FinVault 和系统提示词场景选择 Activation Probe 时，后端调用独立的 `backend.activation_probe_server`。服务通过 `--model` 加载一个 Qwen3-8B 或 Qwen3-32B Transformers 实例，并使用对应 checkpoint：
+FinVault 和私有资产窃取场景选择 Activation Probe 时，推荐让 patched vLLM 在 GPU worker 内直接打分。现有 checkpoint 均为单层 residual probe；Qwen3-8B 客服 Agent 默认使用统一 theft probe，一次覆盖 System/Developer Prompt、私有 RAG、私有 CoT 与私有 Skill/tool 窃取意图。请求按 `model + scenario_category` 选择显式 `probe_id`，并校验 probe ID、checkpoint SHA-256、任务和层号。完整启动命令见 [Activation Probe vLLM recipe](../recipe/activation_probing/README.md)。
+
+```dotenv
+ACTIVATION_PROBE_BACKEND=vllm
+# 留空时跟随聊天请求选择的 vLLM URL；固定部署也可填写完整 /v1 地址。
+ACTIVATION_PROBE_VLLM_BASE_URL=http://127.0.0.1:8013/v1
+ACTIVATION_PROBE_TIMEOUT_SECONDS=300
+```
+
+后端只读取 recipe 元数据并校验 checkpoint SHA-256，不加载 probe 参数，也不接收 raw hidden state。未应用仓库 overlay 的普通 vLLM 不提供 `inline_probing_request` / `inline_probing` 协议，不能用于此后端。
+
+原来的独立 `backend.activation_probe_server` 仍可用作兼容或数值对照。它通过 `--model` 加载一个 Qwen3-8B 或 Qwen3-32B Transformers 实例，并使用对应 checkpoint：
 
 - `results/activation_probe/finvault-qwen3-8b/best_probe.pt`
+- `results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt`（8B 默认）
 - `results/activation_probe/prompt-extraction-qwen3-8b/probe/best_probe.pt`
 - `results/activation_probe/finvault-qwen3-32b/best_probe.pt`
 - `results/activation_probe/prompt-extraction-qwen3-32b/probe/best_probe.pt`
@@ -90,11 +104,10 @@ CUDA_VISIBLE_DEVICES=5 \
 后端配置：
 
 ```dotenv
+ACTIVATION_PROBE_BACKEND=standalone
 ACTIVATION_PROBE_BASE_URL=http://127.0.0.1:8910
 ACTIVATION_PROBE_TIMEOUT_SECONDS=300
 ```
-
-普通 vLLM OpenAI API 不提供分类器所需的中间隐藏层，因此该服务不能由未打补丁的 8978 `/chat/completions` 代替。
 
 ## Inline Probing
 
@@ -102,11 +115,12 @@ ACTIVATION_PROBE_TIMEOUT_SECONDS=300
 
 生产运行时不会预先知道 tool result 是否含有注入，因此会检测每个新 tool-result batch 后的首次决策。实验评估才根据冻结的 injection round index，只统计已知的注入轮次。如果本轮生成前没有新 tool result，返回状态为“未触发”。
 
-Perspective Watch 后端不接收 raw hidden states，也不加载 probe checkpoint；它只构造 typed request，并严格验证 result schema、status、checkpoint ID 和有限数值。
+ProspectMonitor 后端不接收 raw hidden states，也不加载 probe checkpoint；它只构造 typed request，并严格验证 result schema、status、checkpoint ID 和有限数值。
 
 ```dotenv
 INLINE_PROBING_PROTOCOL=inline_probing
 INLINE_PROBING_TASK=indirect_prompt_injection
+INLINE_PROBING_PROBE_ID=qwen3-8b-indirect-prompt-injection-assistant-prefix-probing
 INLINE_PROBING_EXPECTED_CHECKPOINT_ID=sha256:<probe-checkpoint-sha256>
 INLINE_PROBING_THRESHOLD=0.5
 INLINE_PROBING_TIMEOUT_SECONDS=120

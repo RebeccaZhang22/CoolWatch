@@ -1,0 +1,27 @@
+{
+  "schema": "prospect_watch.activation_probe.vllm_recipe.v1",
+  "recipe_id": "activation-probe-qwen3-32b-prompt-extraction",
+  "task": {
+    "id": "system_prompt_extraction",
+    "threat_model": "system_prompt_leakage",
+    "activation_kind": "residual_stream_block_output"
+  },
+  "model": {
+    "model_family": "qwen3",
+    "model_revision": "Qwen3-32B",
+    "model_id": "Qwen/Qwen3-32B",
+    "hidden_width": 5120
+  },
+  "probe": {
+    "id": "activation-probe-qwen3-32b-prompt-extraction",
+    "path": "../../../results/activation_probe/prompt-extraction-qwen3-32b/probe/best_probe.pt",
+    "sha256": "dfb6ead93973af725ad580bb51654858a910cc487836b9472823e12a84fcaa68",
+    "checkpoint_schema": "perspective_watch.activation_probe.checkpoint.v1",
+    "checkpoint_layer": 47,
+    "vllm_aux_layer": 48,
+    "requested_position": -1,
+    "effective_position": -1,
+    "logit_threshold": 4.282105922698975,
+    "probability_threshold": 0.9863746728338325
+  }
+}

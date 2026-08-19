@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>登录 · ProspectMonitor</title>
+    <style>
+      :root { font-family: Inter, system-ui, sans-serif; color: #17202c; background: #f5f7fa; }
+      * { box-sizing: border-box; }
+      body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; }
+      .card { width: min(430px, 100%); border: 1px solid #e1e6ec; border-radius: 16px; background: #fff; padding: 30px; box-shadow: 0 16px 50px rgba(22, 35, 51, .08); }
+      .brand { color: #176b4d; font-weight: 800; letter-spacing: .04em; }
+      h1 { margin: 10px 0 8px; font-size: 25px; }
+      p { color: #697586; font-size: 13px; line-height: 1.55; }
+      label { display: grid; gap: 6px; margin-top: 16px; color: #4b5563; font-size: 12px; font-weight: 650; }
+      input { width: 100%; border: 1px solid #d8dee7; border-radius: 8px; padding: 11px 12px; font: inherit; }
+      input:focus { outline: 2px solid rgba(49,95,156,.18); border-color: #315f9c; }
+      button { width: 100%; margin-top: 20px; border: 0; border-radius: 8px; background: #176b4d; color: white; padding: 12px; cursor: pointer; font-weight: 700; }
+      button.secondary { margin-top: 10px; background: #edf3fb; color: #315f9c; }
+      .switch { margin-top: 18px; text-align: center; color: #315f9c; cursor: pointer; font-size: 12px; }
+      .error { min-height: 20px; margin: 12px 0 0; color: #a63b35; font-size: 12px; }
+      .terms { margin-top: 18px; color: #8a94a3; font-size: 11px; }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="brand">PROSPECTMONITOR</div>
+      <h1 id="title">登录 ProspectMonitor</h1>
+      <form id="authForm">
+        <label>邮箱<input id="email" type="email" autocomplete="email" required placeholder="you@example.com" /></label>
+        <label>密码<input id="password" type="password" autocomplete="current-password" required minlength="8" placeholder="至少 8 位" /></label>
+        <button id="submit" type="submit">登录</button>
+      </form>
+      <p class="error" id="error"></p>
+      <div class="switch" id="switchMode">还没有账号？注册</div>
+      <div class="terms">账号用于管理平台访问权限。请勿与他人共享 CLI Token。</div>
+    </main>
+    <script type="module" src="./src/auth.js"></script>
+  </body>
+</html>

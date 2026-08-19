@@ -173,15 +173,16 @@ data/finvault/probe/
 - 当前新增了 `system_prompt_leakage_intent` 的非检测型 holder checkpoint；它会
   真实捕获 residual 并在 worker 内打分，但固定输出约 `1e-6`，只用于验证融合通路，
   不算该任务的训练完成权重。
-- FinVault 与 System Prompt 场景在前端选择 `inline_probing` 时，后端经常实际调用
-  独立的 Activation Probe 服务。因此当前 guard ID、显示名称和真正执行的方法并不
-  一致。
+- FinVault 与 System Prompt 场景在前端选择 `inline_probing` 时，后端实际执行
+  Activation Probe；它现在可配置为独立 Transformers 服务或 patched vLLM worker。
+  guard ID 与显示名称仍沿用旧兼容约定，没有变成独立的 `activation_probe` ID。
 - Inline Probe 和 residual-based Activation Probe 在算法本质上相同：都是读取
   residual activation，再用标准化线性分类器打分。它们主要是两种运行方式，而非
   两种独立的检测原理。
-- 现有 System Prompt Activation Probe 比较特殊：它使用三层 FFN/Attention
-  子模块输出拼接，不是 residual stream，因此不能直接放进当前 Inline Probe
-  runtime。
+- 当前 System Prompt Activation Probe 已重训为单层 residual stream：8B 使用
+  block 26，32B 使用 block 47；两份 checkpoint 都能被 patched vLLM 直接加载。
+- vLLM worker 已支持同模型多 probe registry，请求用 `probe_id` 选择 head；注册表
+  仍在 worker 启动时固定，不能热更新。
 - SafeGauge 权重、运行路由和说明现已统一到 `results/gauge_probe/`。
 
 状态约定：
@@ -195,9 +196,9 @@ data/finvault/probe/
 
 | 目标任务 | SafeGauge | Activation Probe | Inline Probe |
 |---|---|---|---|
-| System Prompt 泄漏 | ✅ 有 Qwen3-8B/32B suffix+MLP 权重，task-aware 路由已指向 `results/gauge_probe` | ⚠️ 有 Qwen3-8B/32B 权重和独立服务；实际特征为三层 FFN/Attention 输出拼接，前端却复用 `inline_probing` guard ID | △ completion/chat 协议、SafeGauge 融合和非检测型 holder recipe 已具备，但没有训练完成的 System Prompt Inline checkpoint |
+| System Prompt 泄漏 | ✅ 有 Qwen3-8B/32B suffix+MLP 权重，task-aware 路由已指向 `results/gauge_probe` | ✅ 有 Qwen3-8B/32B 单层 residual 权重，可在 standalone 或 patched vLLM 中运行；前端仍复用 `inline_probing` guard ID | △ Activation checkpoint 已能通过 Inline executor 运行，但尚未把它定义成独立的 System Prompt Inline 产品/guard ID；holder 仍只是非检测型融合样例 |
 | RAG Chunks 泄漏 | ❌ 没有 task、suffix、训练数据或 checkpoint | ❌ Activation 服务只接受 `finvault`/`prompt`，没有 RAG checkpoint | △ 已有“工具结果后首次 assistant 决策点”的触发机制，但现有 checkpoint 检测的是 chunk 中的间接注入，不是 chunk 泄漏 |
-| FinVault 风险 | ⚠️ 有 Qwen3-8B/32B suffix+MLP 权重和可运行路由，但旧评测标签还存在已确认的数据问题 | ⚠️ 有 Qwen3-8B/32B 单层 residual 权重；独立服务可运行，但 FinVault 页面是冻结回放，且前端仍借用 `inline_probing` ID | △ raw-token 融合协议能够在原始上下文边界捕获 residual，但没有 FinVault Inline checkpoint/recipe，实时 FinVault Agent 路径也未开放 |
+| FinVault 风险 | ⚠️ 有 Qwen3-8B/32B suffix+MLP 权重和可运行路由，但旧评测标签还存在已确认的数据问题 | ⚠️ 有 Qwen3-8B/32B 单层 residual 权重，standalone/vLLM 均已跑通；FinVault 页面仍是冻结回放，且前端仍借用 `inline_probing` ID | △ 已有 FinVault vLLM recipe 并可复用 Inline executor，但实时 FinVault Agent 路径仍未开放，也未拆成独立 Inline 产品入口 |
 
 因此，按“有对应任务的训练权重”计算，当前 9 个格子中仍只有 4 个具备核心资产；
 其中 FinVault SafeGauge 的数据质量需要重审。holder 不增加这一计数，因为它不是
@@ -259,26 +260,21 @@ RAG chunk leakage 还缺少：
 
 ### 5. Activation Probe 当前到底使用了什么
 
-`backend/activation_probe_server.py` 中两类 checkpoint 的特征并不相同：
+当前四份 checkpoint 已统一为单层 residual 特征：
 
 | 任务/模型 | 捕获位置 | 特征类型 | 输入维度 |
 |---|---:|---|---:|
 | FinVault Qwen3-8B | block 25，最后一个 prompt token | block 输出 residual stream | 4096 |
 | FinVault Qwen3-32B | block 45，最后一个 prompt token | block 输出 residual stream | 5120 |
-| System Prompt Qwen3-8B | block 25–27，最后一个 prompt token | 三层 FFN/MLP 输出拼接 | 12,288 |
-| System Prompt Qwen3-32B | block 46–48，最后一个 prompt token | 三层 self-attention 输出拼接 | 15,360 |
+| System Prompt Qwen3-8B | block 26，最后一个 prompt token | block 输出 residual stream | 4096 |
+| System Prompt Qwen3-32B | block 47，最后一个 prompt token | block 输出 residual stream | 5120 |
 
 所以“Activation Probe 用的不是 activation”需要更精确地表述：
 
-- 四个 checkpoint 用的都是模型内部 activation。
-- FinVault 用的是 residual activation。
-- System Prompt 用的是 FFN/Attention 子模块 activation，不是 residual。
+- 四个 checkpoint 用的都是模型内部 residual activation。
+- 每个 checkpoint 都是单层、标准化线性 probe，可直接复用同一 worker scorer 契约。
 
-如果项目的统一定义要求所有 probe 都获取 residual，那么现有 System Prompt
-Activation Probe 不符合该定义，需要用 residual 重新抽特征、选层和训练，不能只
-改名称。
-
-当前独立 Activation Probe 还有这些运行特征：
+standalone Activation Probe 仍保留这些运行特征：
 
 - 使用额外的 Transformers 模型做一次独立 forward；
 - 输入只由 System Prompt 和当前 User Message 构造；
@@ -286,6 +282,10 @@ Activation Probe 不符合该定义，需要用 residual 重新抽特征、选�
 - 在服务进程中加载 checkpoint 并输出 score；
 - 请求只支持 `scenario_category = finvault | prompt`；
 - RAG tool result、完整真实 Agent 上下文和实际 generation 不在这次 forward 中。
+
+新增的 vLLM 后端保持相同的 system + user 模板、special-token 规则和最后一个 token
+决策点，但复用主 Qwen worker。后端从 recipe 读取层号、阈值和 checkpoint SHA-256，
+请求携带显式 `probe_id`；probe 权重和 raw hidden state 都不离开 worker。
 
 ### 6. Inline Probe 重点审计
 
@@ -301,7 +301,7 @@ logit = weight · x + bias
 score = sigmoid(logit)
 ```
 
-hidden state 不会传回 Perspective Watch 后端；后端只收到 score、logit、layer、
+hidden state 不会传回 ProspectMonitor 后端；后端只收到 score、logit、layer、
 captured token index 和 checkpoint ID。
 
 当前 recipe 的具体配置是：
@@ -314,26 +314,21 @@ captured token index 和 checkpoint ID。
 - label protocol 是 `risk_faced`；
 - 在每批新 tool result 后的首次 assistant 决策触发。
 
-#### 6.2 当前 Inline runtime 只能加载一个任务
+#### 6.2 Inline runtime 已支持同模型多 probe registry
 
-服务器从单个 `INLINE_PROBING_CONFIG` 加载：
+服务器优先从 `INLINE_PROBING_CONFIGS` 加载多个配置，并保留旧的单
+`INLINE_PROBING_CONFIG` 兼容路径。registry 会校验所有 probe 的模型族、revision、
+hidden width、TP 和 PP 一致，并分别加载 checkpoint、target layer 与 scorer。
 
-- 一个 checkpoint；
-- 一个 target layer；
-- 一个 scorer；
-- 一个模型族和 hidden width。
+启动脚本可重复传入 `--probe-recipe`。请求通过 `probe_id` 选择 head；旧客户端未传
+`probe_id` 时，只有 checkpoint ID 唯一匹配才会继续。响应回传 probe ID、task、
+checkpoint ID、层号、阈值和判定。注册表仍不能热更新，不同模型或不同并行配置仍需
+独立 vLLM 实例。
 
-后端也只有单个全局 `INLINE_PROBING_TASK` 和
-`INLINE_PROBING_EXPECTED_CHECKPOINT_ID`。因此当前架构无法让同一个 vLLM 服务根据
-请求在 System Prompt、RAG Leakage、FinVault 三个 Inline checkpoint 之间切换。
-
-启动脚本现在可以用 `--probe-recipe` 选择不同 recipe，但这个选择发生在 worker
-启动时；System Prompt holder 也占用这唯一的 scorer 槽位，并没有提供运行时多任务
-切换能力。
-
-如果保持现状，只能为每个 task 启动独立 vLLM 实例；这会重复占用基础模型显存。
-更合理的是让 worker 启动时加载 task → checkpoint registry，请求显式携带 task/probe
-ID，并让响应回传同一 task/probe ID。
+后端普通 Inline/SafeGauge 融合配置目前仍只有一组全局
+`INLINE_PROBING_TASK`、`INLINE_PROBING_PROBE_ID` 和 checkpoint ID；Activation Probe
+则另由 `model + scenario_category` 自动选择四份 recipe。runtime 多任务能力已经具备，
+但统一 moderation API 尚未暴露通用的多 task → probe 路由表。
 
 #### 6.3 task 校验存在缺口
 
@@ -367,34 +362,33 @@ System Prompt 或 FinVault 请求上执行 IPI checkpoint，并返回一个形�
 
 当前 recipe 固定或要求：
 
-- Qwen3-8B；
+- Qwen3-8B 或 Qwen3-32B（同一 worker 内 recipe 必须属于同一模型）；
 - vLLM 0.25.1 overlay；
 - v1 runner；
 - TP=1、PP=1；
 - ubatching、speculative decoding、async scheduling 关闭；
-- checkpoint 在 worker 启动时加载；可用 `--probe-recipe` 选择 recipe，但不能热切换。
+- checkpoint 在 worker 启动时加载；可重复 `--probe-recipe` 注册多个 head，但不能热更新。
 
-这些约束进一步说明它目前是一个单任务 golden deployment recipe，不是通用的三任务
-Inline Probe 平台。
+这些约束说明它已经是同模型多 probe executor，但还不是跨模型、可热插拔的通用平台。
 
 ### 7. Inline Probe 与 Activation Probe 本质上是否一样
 
 结论：属于同一个方法家族，但当前不是完全相同、也不能全部直接互换。
 
-| 比较项 | 独立 Activation Probe | Inline Probe |
+| 比较项 | Activation Probe 语义 | patched vLLM executor |
 |---|---|---|
 | 核心信号 | 模型内部 activation | 模型内部 activation |
 | FinVault 信号 | 单层 residual、最后一个 token | 单层 residual、指定 prompt token |
 | 分类器 | 标准化线性 probe | 标准化线性 probe |
-| forward | 独立 Transformers forward | 复用真实 vLLM prefill/generation forward |
-| 上下文 | 当前实现只重建 system + user | vLLM 实际 chat template、历史、tools 和 tool result |
-| 打分位置 | 独立服务中的 forward hook | vLLM GPU worker 内部 |
-| 额外基础模型 | 需要额外加载一份 | 不需要，复用 Agent 模型 |
-| System Prompt 现有权重 | 三层 FFN/Attention 拼接 | runtime 目前只支持单层 residual |
-| checkpoint 可直接互换 | FinVault 理论上可转换，但必须做 token/feature parity | System Prompt 当前不能直接加载 |
+| forward | standalone 时独立 Transformers forward | 可复用主 vLLM prefill；IPI 还可附着真实 generation |
+| 上下文 | Activation 路由保持 system + user 训练语义 | executor 也支持完整历史、tools 和 tool result |
+| 打分位置 | standalone forward hook | vLLM GPU worker 内部 |
+| 额外基础模型 | standalone 需要额外加载一份 | vLLM 后端不需要，复用 Agent 模型 |
+| System Prompt 现有权重 | 8B block 26 / 32B block 47 residual | 可直接加载，无需 checkpoint 转换 |
+| checkpoint 可直接互换 | 四份当前权重均为单层 residual | 已由 activation checkpoint adapter 直接加载 |
 
-对于 FinVault，二者数学形式相同，checkpoint 宽度也符合单层 residual。理论上可以把
-现有 FinVault Activation Probe 转换为 Inline checkpoint，但必须先验证：
+四份 Activation checkpoint 与 worker scorer 的数学形式相同，也符合单层 residual
+宽度。接入仍必须验证：
 
 1. chat template 和 special token 完全一致；
 2. 捕获的是同一个 block 边界；
@@ -402,11 +396,10 @@ Inline Probe 平台。
 4. Transformers 与 vLLM 上的 activation 数值和 probe score 在容差内一致；
 5. 训练时上下文与真实 Agent 上下文一致。
 
-未通过 feature-parity regression 前，不能只复制权重并宣称两者等价。
-
-对于 System Prompt，现有权重维度是 `3 × hidden_width`，而 Inline runtime 只接受
-`hidden_width`，并且特征来自不同模块，因此不存在直接转换关系。要统一，推荐重新
-训练单层 residual 版本，而不是继续扩展两个不同的特征协议。
+当前已完成 8B/32B、FinVault/Prompt 四条真实请求，并用同输入与 standalone
+Transformers 对照。四条判定一致，绝对 logit 差为 0.0094–0.1064；8B 两类输入的
+prompt token 数与 token fingerprint 也完全一致。该结果支持当前运行接入，但正式
+评测仍应在完整冻结集上报告一致率和阈值附近样本的漂移。
 
 从论文或方法分类角度，建议表述为：
 
@@ -524,12 +517,14 @@ FinVault 对应的是沙盒动作 verifier。不要把 probe prediction 与实�
 5. 给 moderation/chat 定义三个正式 task，并让所有请求、响应和 checkpoint 都验证
    task。
 6. 修复 standalone Inline moderation 未校验 task 的问题。
-7. 对重训后的 FinVault residual checkpoint 做 Transformers ↔ vLLM feature parity，
-   再接入 Inline executor。
-8. 将 System Prompt Activation Probe 重训为 canonical residual 版本。
-9. 为三个任务分别生成 SafeGauge 与 activation checkpoint，并将 activation
-   checkpoint 同时接到 Standalone/Inline executor。
-10. 将 Inline worker 升级为多任务 registry，补齐 Qwen3-8B/32B recipes 和回归测试。
+7. 将本次 Transformers ↔ vLLM 代表样例 parity 扩展到完整冻结集，重点复查阈值
+   附近样本；运行接入和四条代表样例已经完成。
+8. System Prompt Activation Probe 已重训为 canonical 单层 residual 版本；继续补充
+   训练元数据和完整 parity 报告。
+9. Activation checkpoint 已同时接到 Standalone/vLLM executor；RAG leakage 仍缺少
+   对应监督数据和 checkpoint。
+10. Inline worker 多 probe registry、Qwen3-8B/32B 四份 Activation recipe 和回归测试
+    已完成；后续补通用 moderation task → probe 路由。
 11. 恢复 RAG 工作时，再构造 RAG leakage 数据并接通输出 verifier 与 UI。
 
 ### 11. 最终判断
@@ -541,10 +536,10 @@ FinVault 对应的是沙盒动作 verifier。不要把 probe prediction 与实�
 - SafeGauge 是一种独立信号方法。
 - Activation Probe 与 Inline Probe 是同一种 activation-based probing 的两种执行
   形态。
-- 当前 Inline Probe 真正完成训练的仍只有间接提示词注入任务；System Prompt holder
-  只让融合链路可运行，没有完成泄漏检测。
-- FinVault 的现有 Activation Probe 最接近可迁移的 Inline checkpoint。
-- System Prompt 现有 Activation Probe 因为使用三层 FFN/Attention 特征，必须重训
-  或扩展 Inline runtime；为了统一，优先推荐重训 residual 版本。
+- 作为独立产品任务命名时，Inline Probe 真正完成训练的仍只有间接提示词注入；
+  System Prompt holder 仍只是融合通路样例。与此同时，四份 Activation Probe 已能
+  由同一个 vLLM executor 直接运行，不能再说 worker 只支持 IPI checkpoint。
+- FinVault 和 System Prompt Activation Probe 都已是可迁移的单层 residual
+  checkpoint，并已接入 8B/32B 多 probe registry。
 - RAG chunk leakage 需要从标签、数据和 checkpoint 开始新建，同时保留生成后泄漏
   证据验证。

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "search_knowledge_base",
+    "description": "按客户问题检索现行帮助中心文章、商品指南和售后运营手册，返回带来源标识的参考资料。涉及规则、公告或产品说明时使用。",
+    "required_when_any": [
+      "知识库",
+      "公告",
+      "退款规则",
+      "退货规则",
+      "配网"
+    ],
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {"type": "string"}
+      },
+      "required": ["query"]
+    }
+  },
+  {
+    "name": "lookup_order",
+    "description": "按订单号查询商城演示订单，返回商品、实付金额、订单节点、签收时间和审核路由字段。消息中出现具体订单号时使用。",
+    "required_when_any": ["CS-"],
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "order_id": {"type": "string"}
+      },
+      "required": ["order_id"]
+    }
+  }
+]

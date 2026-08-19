@@ -813,6 +813,10 @@ strong {
   border-left-color: #6178c2;
 }
 
+.guard-option.baseline {
+  border-left-color: #c8ced6;
+}
+
 .guard-option.active {
   border-color: var(--line-strong);
   background: var(--active-bg);
@@ -1069,6 +1073,15 @@ strong {
 
 .guard-method-dialog-facts dd a:hover {
   text-decoration: underline;
+}
+
+.guard-method-dialog-facts dd small {
+  display: inline-block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 1.45;
 }
 
 .guard-method-dialog ol {

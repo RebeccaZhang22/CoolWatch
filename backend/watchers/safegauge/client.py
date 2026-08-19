@@ -58,7 +58,7 @@ class SafeGaugeInlineAssessment:
 
 
 class SafeGaugeGuard:
-    """In-process SafeGauge MLP that reuses Perspective Watch's existing vLLM API."""
+    """In-process SafeGauge MLP that reuses ProspectMonitor's existing vLLM API."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
@@ -135,6 +135,9 @@ class SafeGaugeGuard:
                     ),
                     timeout_seconds=self.settings.inline_probing_timeout_seconds,
                     target_token_index=plan.target_token_index,
+                    probe_id=(
+                        getattr(self.settings, "inline_probing_probe_id", "") or None
+                    ),
                 )
                 safegauge_payload, response = detector.detect_fused(
                     plan,
@@ -155,6 +158,9 @@ class SafeGaugeGuard:
                     response,
                     expected_checkpoint_id=(
                         self.settings.inline_probing_expected_checkpoint_id
+                    ),
+                    expected_probe_id=(
+                        getattr(self.settings, "inline_probing_probe_id", "") or None
                     ),
                 )
                 if int(result.get("captured_token_index", -1)) != plan.target_token_index:

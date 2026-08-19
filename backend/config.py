@@ -10,11 +10,37 @@ BACKEND_ENV_FILE = Path(__file__).resolve().with_name(".env")
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=BACKEND_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = "Perspective Watch"
+    app_name: str = "ProspectMonitor"
     vllm_base_url: str = Field(default="http://127.0.0.1:8013/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
     vllm_model: str = Field(default="qwen3-8b", alias="VLLM_MODEL")
     llm_timeout_seconds: float = Field(default=120.0, alias="LLM_TIMEOUT_SECONDS")
+    customer_agent_vllm_base_url: str = Field(
+        default="http://127.0.0.1:8013/v1",
+        alias="CUSTOMER_AGENT_VLLM_BASE_URL",
+    )
+    # Public business endpoint. Kept separate from the probe-capable shadow
+    # endpoint so user requests never need to talk to the modified vLLM.
+    customer_agent_business_vllm_base_url: str = Field(
+        default="",
+        alias="CUSTOMER_AGENT_BUSINESS_VLLM_BASE_URL",
+    )
+    customer_agent_shadow_vllm_base_url: str = Field(
+        default="http://127.0.0.1:8013/v1",
+        alias="CUSTOMER_AGENT_SHADOW_VLLM_BASE_URL",
+    )
+    customer_agent_model: str = Field(
+        default="qwen3-8b",
+        alias="CUSTOMER_AGENT_MODEL",
+    )
+    customer_agent_shadow_model: str = Field(
+        default="qwen3-8b",
+        alias="CUSTOMER_AGENT_SHADOW_MODEL",
+    )
+    customer_agent_enable_runtime_probes: bool = Field(
+        default=True,
+        alias="CUSTOMER_AGENT_ENABLE_RUNTIME_PROBES",
+    )
     qwen3_guard_backend: str = Field(default="auto", alias="QWEN3_GUARD_BACKEND")
     qwen3_guard_base_url: str = Field(default="", alias="QWEN3_GUARD_BASE_URL")
     qwen3_guard_api_key: str = Field(default="EMPTY", alias="QWEN3_GUARD_API_KEY")
@@ -40,6 +66,10 @@ class Settings(BaseSettings):
         default="indirect_prompt_injection",
         alias="INLINE_PROBING_TASK",
     )
+    inline_probing_probe_id: str = Field(
+        default="qwen3-8b-indirect-prompt-injection-assistant-prefix-probing",
+        alias="INLINE_PROBING_PROBE_ID",
+    )
     inline_probing_expected_checkpoint_id: str = Field(
         default="sha256:41f1433346caebc8b2e9ff5640b44e3d162050d6ef7ffee45285badba4798b45",
         alias="INLINE_PROBING_EXPECTED_CHECKPOINT_ID",
@@ -53,6 +83,14 @@ class Settings(BaseSettings):
     activation_probe_timeout_seconds: float = Field(
         default=300.0,
         alias="ACTIVATION_PROBE_TIMEOUT_SECONDS",
+    )
+    activation_probe_backend: str = Field(
+        default="standalone",
+        alias="ACTIVATION_PROBE_BACKEND",
+    )
+    activation_probe_vllm_base_url: str = Field(
+        default="",
+        alias="ACTIVATION_PROBE_VLLM_BASE_URL",
     )
     netease_yidun_api_url: str = Field(default="https://as.dun.163.com/v5/text/check", alias="NETEASE_YIDUN_API_URL")
     netease_yidun_secret_id: str = Field(default="", alias="NETEASE_YIDUN_SECRET_ID")
@@ -73,6 +111,19 @@ class Settings(BaseSettings):
         if self.cors_allow_origins.strip() == "*":
             return ["*"]
         return [origin.strip() for origin in self.cors_allow_origins.split(",") if origin.strip()]
+
+    @property
+    def customer_agent_business_base_url(self) -> str:
+        """The only endpoint used for user-visible Agent generation."""
+        return (
+            self.customer_agent_business_vllm_base_url.strip()
+            or self.customer_agent_vllm_base_url.strip()
+        ).rstrip("/")
+
+    @property
+    def customer_agent_shadow_base_url(self) -> str:
+        """Server-side-only hidden-state/logprob prefill endpoint."""
+        return self.customer_agent_shadow_vllm_base_url.rstrip("/")
 
 
 @lru_cache

@@ -167,6 +167,7 @@ class ChatOrchestrator:
                     scenario_category=scenario.category,
                     model=request.model_params.model,
                     threshold=request.inline_probing.threshold,
+                    base_url=base_url,
                 )
         return assessments
 

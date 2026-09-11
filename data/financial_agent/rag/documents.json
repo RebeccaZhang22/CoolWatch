@@ -1,0 +1,638 @@
+[
+  {
+    "id": "psbc-faq-summary",
+    "title": "邮储银行财富管理常见问题汇总",
+    "visibility": "public",
+    "content_path": "rag/psbc/questions.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "questions.md",
+    "document_type": "faq",
+    "issuing_authority": "多来源汇总",
+    "keywords": [
+      "邮储银行",
+      "基金",
+      "理财",
+      "黄金",
+      "利率",
+      "保险",
+      "货币基金",
+      "升金礼",
+      "私人银行",
+      "人工客服"
+    ]
+  },
+  {
+    "id": "doc001",
+    "title": "证券投资基金——证券投资基金有哪些分类？",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc1.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc1.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国证券投资基金业协会（投资者教育基地）",
+    "keywords": [
+      "q01",
+      "q02",
+      "邮储银行"
+    ],
+    "promulgated_at": "2020-06-03"
+  },
+  {
+    "id": "doc002",
+    "title": "开放式基金",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc2.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc2.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q01",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc003",
+    "title": "基金定投",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc3.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc3.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q01",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc004",
+    "title": "金融小知识：对标市场的指数型基金",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc4.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc4.md",
+    "document_type": "webpage",
+    "issuing_authority": "中共湖南省委金融委员会办公室（湖南省地方金融管理局）",
+    "keywords": [
+      "q02",
+      "邮储银行"
+    ],
+    "promulgated_at": "2026-05-25"
+  },
+  {
+    "id": "doc005",
+    "title": "工银中证A500指数A（022442）基金产品详情",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc5.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc5.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q02",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc006",
+    "title": "华泰柏瑞基金管理有限公司关于增加中国邮政储蓄银行股份有限公司为旗下部分基金的代销机构同时开通基金定投业务的通知",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc6.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc6.md",
+    "document_type": "announcement",
+    "issuing_authority": "华泰柏瑞基金管理有限公司（天天基金网披露）",
+    "keywords": [
+      "q02",
+      "邮储银行"
+    ],
+    "promulgated_at": "2025-01-06"
+  },
+  {
+    "id": "doc007",
+    "title": "基金规模的选择",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc7.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc7.md",
+    "document_type": "webpage",
+    "issuing_authority": "晋商银行（内容署名“展恒基金君”）",
+    "keywords": [
+      "q02",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc008",
+    "title": "同业理财（中邮理财有限责任公司背景）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc8.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc8.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q03",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc009",
+    "title": "理财超市（邮储银行理财产品风险提示）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc9.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc9.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q03",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc010",
+    "title": "理财公司产品适当性管理自律规范（R1–R5 风险等级）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc10.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc10.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国银行保险资产管理业协会（原中国银行业协会相关自律规范）",
+    "keywords": [
+      "q03",
+      "邮储银行"
+    ],
+    "promulgated_at": "2026-03-27"
+  },
+  {
+    "id": "doc011",
+    "title": "理财产品需公布登记编码 买理财先验明正身",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc11.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc11.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国经济网（国家经济门户）",
+    "keywords": [
+      "q03",
+      "邮储银行"
+    ],
+    "promulgated_at": "2014-04-08"
+  },
+  {
+    "id": "doc012",
+    "title": "净值型理财产品宣传（中国银行消费者教育）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc12.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc12.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国银行",
+    "keywords": [
+      "q03",
+      "邮储银行"
+    ],
+    "promulgated_at": "2019-04-17"
+  },
+  {
+    "id": "doc013",
+    "title": "贵金属_中国邮政储蓄银行官网业务介绍",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc13.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc13.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q04",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc014",
+    "title": "贵金属产品信息（黄金积存风险等级）_中国邮政储蓄银行",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc14.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc14.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q04",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc015",
+    "title": "关于黄金积存业务上线及调整部分业务交易规则的通知_中国邮政储蓄银行",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc15.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc15.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q04",
+      "邮储银行"
+    ],
+    "promulgated_at": "2019-12-18"
+  },
+  {
+    "id": "doc016",
+    "title": "黄金五十年：从布雷顿森林废墟到全球储备王座_21财经",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc16.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc16.md",
+    "document_type": "webpage",
+    "issuing_authority": "21世纪经济报道（21财经）",
+    "keywords": [
+      "q04",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc017",
+    "title": "秩序重构进行时 \\\"黄金+\\\"能否扶摇直上？_证券时报",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc17.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc17.md",
+    "document_type": "webpage",
+    "issuing_authority": "证券时报",
+    "keywords": [
+      "q04",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc018",
+    "title": "人民币利率查询_中国邮政储蓄银行",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc18.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc18.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行（中国邮政储蓄银行股份有限公司官网）",
+    "keywords": [
+      "q05",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc019",
+    "title": "贷款市场报价利率（LPR）_中国货币网",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc19.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc19.md",
+    "document_type": "webpage",
+    "issuing_authority": "全国银行间同业拆借中心（中国人民银行授权发布）",
+    "keywords": [
+      "q05",
+      "邮储银行"
+    ],
+    "promulgated_at": "2026-08-20"
+  },
+  {
+    "id": "doc020",
+    "title": "存款保险条例（国务院令第660号）_中国政府网",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc20.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc20.md",
+    "document_type": "webpage",
+    "issuing_authority": "中华人民共和国国务院（中国政府网）",
+    "keywords": [
+      "q05",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc021",
+    "title": "存款保险条例修改了保障额度吗？_中国人民银行留言回复",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc21.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc21.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国人民银行",
+    "keywords": [
+      "q05",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc022",
+    "title": "中邮人寿保险股份有限公司在售产品列表_中国邮政储蓄银行",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc22.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc22.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q06",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc023",
+    "title": "人身保险投保提示书（邮储银行代理保险专用）_中国邮政储蓄银行",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc23.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc23.md",
+    "document_type": "pdf",
+    "issuing_authority": "中国邮政储蓄银行（国家金融监督管理总局统一制式）",
+    "keywords": [
+      "q06",
+      "邮储银行"
+    ],
+    "promulgated_at": "2026-09-10"
+  },
+  {
+    "id": "doc024",
+    "title": "保险有多少种？普通人要买哪些保险构筑家庭保障？_中国太平洋保险",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc24.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc24.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国太平洋保险（集团）股份有限公司",
+    "keywords": [
+      "q06",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc025",
+    "title": "中邮保险在售产品分类及风险等级_中邮保险官网",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc25.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc25.md",
+    "document_type": "webpage",
+    "issuing_authority": "中邮人寿保险股份有限公司",
+    "keywords": [
+      "q06",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc026",
+    "title": "货币市场基金监督管理办法（中国证监会、中国人民银行令第120号）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc26.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc26.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国证券监督管理委员会 / 中国人民银行（经中国政府网公布）",
+    "keywords": [
+      "q07",
+      "邮储银行"
+    ],
+    "promulgated_at": "2026-09-10"
+  },
+  {
+    "id": "doc027",
+    "title": "余额宝收益率跌破1%",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc27.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc27.md",
+    "document_type": "webpage",
+    "issuing_authority": "中证网（中国证券报旗下）",
+    "keywords": [
+      "q07",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc028",
+    "title": "天弘余额宝货币市场基金产品页（风险收益特征）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc28.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc28.md",
+    "document_type": "webpage",
+    "issuing_authority": "天弘基金管理有限公司",
+    "keywords": [
+      "q07",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc029",
+    "title": "天弘现金管家货币市场基金产品资料概要（邮储银行代销/托管公告）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc29.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc29.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行（基金代销信息披露页）",
+    "keywords": [
+      "q07",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc030",
+    "title": "5月升金礼，资金最佳安排，7家银行加码福利汇总（含邮储银行部分）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc30.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc30.md",
+    "document_type": "webpage",
+    "issuing_authority": "什么值得买社区（第三方消费导购平台，作者\\\"老胡说卡\\\"）",
+    "keywords": [
+      "q08",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc031",
+    "title": "各家银行提前布局年终奖专属理财（\\\"升金礼\\\"为工行活动）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc31.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc31.md",
+    "document_type": "webpage",
+    "issuing_authority": "新浪财经",
+    "keywords": [
+      "q08",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc032",
+    "title": "龙腾升金，步步为「赢」，解锁您的专属礼遇！（邮储官网财富活动）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc32.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc32.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q08",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc033",
+    "title": "存款到期潮，银行、理财、基金如何接招？（行业\\\"升金礼\\\"活动综述）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc33.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc33.md",
+    "document_type": "webpage",
+    "issuing_authority": "腾讯新闻（转载北京商报）",
+    "keywords": [
+      "q08",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc034",
+    "title": "邮储银行VIP客户评定标准",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc34.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc34.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q09",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc035",
+    "title": "鼎福卡及鼎福客户专属服务",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc35.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc35.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q09",
+      "q10",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc036",
+    "title": "鼎福客户增值服务",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc36.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc36.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q09",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc037",
+    "title": "邮储银行全面升级客户分层服务体系",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc37.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc37.md",
+    "document_type": "webpage",
+    "issuing_authority": "中证网（中国证券报）",
+    "keywords": [
+      "q09",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc038",
+    "title": "客户投诉指南（邮储银行官网）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc38.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc38.md",
+    "document_type": "webpage",
+    "issuing_authority": "中国邮政储蓄银行",
+    "keywords": [
+      "q10",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc039",
+    "title": "邮储银行缩减在线客服人工服务时间（2025年12月起调整为7:00—23:00）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc39.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc39.md",
+    "document_type": "webpage",
+    "issuing_authority": "移动支付网（转引邮储银行公告）",
+    "keywords": [
+      "q10",
+      "邮储银行"
+    ]
+  },
+  {
+    "id": "doc040",
+    "title": "邮储银行调整非信用卡在线人工客服时段（新浪财经转载北京商报）",
+    "visibility": "public",
+    "content_path": "rag/psbc/doc40.md",
+    "risk_flags": [],
+    "origin": "builtin",
+    "original_filename": "doc40.md",
+    "document_type": "webpage",
+    "issuing_authority": "新浪财经（转引北京商报）",
+    "keywords": [
+      "q10",
+      "邮储银行"
+    ]
+  }
+]
+

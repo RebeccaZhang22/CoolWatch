@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>开发文档 · ProspectMonitor</title>
+    <link rel="stylesheet" href="./src/developer-help.css?v=1" />
+  </head>
+  <body class="help-page">
+    <main class="help-card">
+      <nav class="developer-tabs" aria-label="开发者中心">
+        <a href="./account.html?embedded=1">API Token</a>
+        <a class="active" href="./developer-docs.html" aria-current="page">开发文档</a>
+        <a href="./developer-examples.html">示例代码</a>
+        <a href="./admin.html" data-admin-link hidden>管理后台</a>
+      </nav>
+
+      <header class="help-hero">
+        <h1>已有智能体接入防护</h1>
+        <p>无需迁移或重新搭建智能体。将智能体当前的完整消息列表发送到检测接口，根据返回的 <code>action</code> 决定继续执行还是立即拦截。</p>
+      </header>
+
+      <div class="help-layout">
+        <nav class="help-toc" aria-label="开发文档目录">
+          <a href="#integration-overview">接入方式</a>
+          <a href="#integration-timing">调用时机</a>
+          <a href="#api-reference">接口说明</a>
+          <a href="#request-parameters">请求参数</a>
+          <a href="#response-parameters">响应参数</a>
+          <a href="#error-codes">错误码</a>
+        </nav>
+
+        <article class="help-content">
+          <section class="help-section" id="integration-overview">
+            <h2>接入方式</h2>
+            <p>ProspectMonitor 作为已有智能体旁路的安全检测服务工作。你的业务模型、System Prompt、RAG 和工具调用方式都可以保持不变，只需在关键执行节点调用检测接口。</p>
+            <div class="integration-flow" aria-label="已有智能体接入流程">
+              <div><strong>已有智能体</strong><small>保留原有配置</small></div>
+              <div><strong>提交上下文</strong><small>messages + tools</small></div>
+              <div><strong>安全检测</strong><small>多个 Probe 并行</small></div>
+              <div><strong>读取 action</strong><small>pass / block</small></div>
+              <div><strong>继续或中止</strong><small>由业务侧执行</small></div>
+            </div>
+            <div class="help-note">检测接口不会替你调用业务模型，也不会改写原始消息。它只返回风险判断，你的智能体仍然掌握最终执行权。</div>
+          </section>
+
+          <section class="help-section" id="integration-timing">
+            <h2>调用时机</h2>
+            <ol>
+              <li><strong>模型调用前：</strong>在用户消息加入上下文后检测一次。若返回 <code>block</code>，不要把该轮请求发送给业务模型。</li>
+              <li><strong>工具返回后：</strong>把工具或 RAG 结果以 <code>tool</code> 消息加入上下文，再检测一次，防止外部内容中的间接提示词注入进入后续模型调用。</li>
+              <li><strong>继续生成前：</strong>只有检测结果为 <code>pass</code> 时，才让智能体继续调用模型或执行下一步工具。</li>
+            </ol>
+            <div class="help-note">每次传入当前完整消息列表。你不需要预先判断风险属于哪一类，服务端会让所有已启用的 Probe 共同检查同一份上下文。</div>
+          </section>
+
+          <section class="help-section" id="api-reference">
+            <h2>接口说明</h2>
+            <div class="endpoint"><span>POST</span><code>/v1/moderations</code></div>
+            <p>接口同步返回检测结果。请求头使用开发者中心生成的 API Token：</p>
+            <pre class="help-code">Authorization: Bearer YOUR_TOKEN
+Content-Type: application/json</pre>
+          </section>
+
+          <section class="help-section" id="request-parameters">
+            <h2>请求参数</h2>
+            <div class="help-table-wrap">
+              <table class="help-table">
+                <thead><tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                <tbody>
+                  <tr><td><code>messages</code></td><td>array</td><td>是</td><td>当前完整消息列表，按真实执行顺序传入，不要只截取最后一个 Query。</td></tr>
+                  <tr><td><code>messages[].role</code></td><td>string</td><td>是</td><td>支持 <code>developer</code>、<code>system</code>、<code>user</code>、<code>assistant</code>、<code>tool</code>。</td></tr>
+                  <tr><td><code>messages[].content</code></td><td>string</td><td>是</td><td>当前版本支持文本内容。</td></tr>
+                  <tr><td><code>messages[].reasoning_content</code></td><td>string</td><td>否</td><td>需要参与检测的推理文本。</td></tr>
+                  <tr><td><code>tools</code></td><td>array</td><td>否</td><td>智能体本轮可用的工具定义，格式与模型调用时保持一致。</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <h3>请求示例</h3>
+            <pre class="help-code">{
+  "messages": [
+    {"role": "system", "content": "你是企业客服助手。"},
+    {"role": "user", "content": "请查询我的订单状态。"}
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {"name": "lookup_order", "description": "查询订单"}
+    }
+  ]
+}</pre>
+          </section>
+
+          <section class="help-section" id="response-parameters">
+            <h2>响应参数</h2>
+            <div class="help-table-wrap">
+              <table class="help-table">
+                <thead><tr><th>字段</th><th>说明</th></tr></thead>
+                <tbody>
+                  <tr><td><code>action</code></td><td><code>pass</code> 表示可以继续；<code>block</code> 表示至少一个风险检测已触发，应中止后续执行。</td></tr>
+                  <tr><td><code>per_risk</code></td><td>内容安全、提示词泄漏和间接提示词注入的风险分数、阈值及是否触发。</td></tr>
+                  <tr><td><code>per_entry</code></td><td>各个 Probe 的原始分值，便于审计和排查。</td></tr>
+                  <tr><td><code>triggered_entries</code></td><td>本次超过阈值的 Probe 列表。</td></tr>
+                  <tr><td><code>request_id</code></td><td>请求追踪 ID，可与开发者中心调用日志对应。</td></tr>
+                  <tr><td><code>usage</code></td><td>本次检测的输入 Token 与计费单位。</td></tr>
+                  <tr><td><code>latency_ms</code></td><td>排队、检测和总耗时。</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <h3>响应示例</h3>
+            <pre class="help-code">{
+  "id": "mod_...",
+  "request_id": "req_...",
+  "detector_model": "qwen35-2b",
+  "action": "pass",
+  "per_risk": {
+    "harmful": {"score": 0.08, "threshold": 0.50, "flagged": false},
+    "prompt_leakage": {"score": 0.11, "threshold": 0.50, "flagged": false},
+    "ipi": {"score": 0.06, "threshold": 0.50, "flagged": false}
+  },
+  "triggered_entries": [],
+  "usage": {"input_tokens": 32, "unit": "1k_input_tokens"},
+  "latency_ms": {"total": 41.7}
+}</pre>
+            <h3>处理规则</h3>
+            <pre class="help-code">if result["action"] == "block":
+    # 停止调用模型或工具，向用户返回统一安全提示
+    stop_agent()
+else:
+    # 保持原有智能体流程
+    continue_agent()</pre>
+          </section>
+
+          <section class="help-section" id="error-codes">
+            <h2>错误码</h2>
+            <div class="help-table-wrap">
+              <table class="help-table">
+                <thead><tr><th>HTTP 状态码</th><th>含义</th><th>建议处理</th></tr></thead>
+                <tbody>
+                  <tr><td>400</td><td>JSON、消息角色或字段格式不正确</td><td>修正请求后重试。</td></tr>
+                  <tr><td>401</td><td>API Token 缺失或无效</td><td>检查 Bearer Token，必要时在本页重置。</td></tr>
+                  <tr><td>413</td><td>输入超过服务限制</td><td>缩短上下文后重新检测。</td></tr>
+                  <tr><td>429</td><td>检测服务暂时过载</td><td>读取 <code>Retry-After</code>，退避后重试。</td></tr>
+                  <tr><td>503 / 504</td><td>检测服务不可用或超时</td><td>暂停智能体后续执行并重试，避免绕过防护。</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </article>
+      </div>
+    </main>
+    <script type="module" src="./src/developer-help.js?v=3"></script>
+  </body>
+</html>

@@ -42,7 +42,7 @@ export const guards = [
   },
   {
     id: "netease_yidun",
-    name: "网易易盾",
+    name: "网易易盾文本安全护栏",
     description: "第三方文本同步检测接口",
     stage: "pre_generation",
     methodGroup: "baseline",
@@ -397,7 +397,7 @@ const guardProfiles = {
     status: "待接入",
     blocked: false,
     connected: false,
-    note: "Mock 模式不调用网易易盾；FastAPI 模式会按环境变量配置调用文本同步检测接口。",
+    note: "Mock 模式不调用网易易盾文本安全护栏；FastAPI 模式会按环境变量配置调用文本同步检测接口。",
     latency: 0,
   },
 };

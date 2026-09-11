@@ -1,28 +1,27 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="auth-pending">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="围绕法规条款 Agent 的单场景攻防演示台" />
-    <title>ProspectMonitor · 法规 Agent 攻防演示台</title>
+    <meta name="description" content="围绕银行财富管理客服的单场景攻防演示台" />
+    <title>ProspectMonitor · 银行财富管理客服攻防演示台</title>
+    <style>html.auth-pending body { visibility: hidden; }</style>
     <link rel="stylesheet" href="./src/styles.css?v=guard-method-dialog-20260804-v39" />
-    <link rel="stylesheet" href="./src/customer-agent.css?v=customer-agent-rag-demo-v13" />
+    <link rel="stylesheet" href="./src/customer-agent.css?v=guard-risk-display-v2" />
   </head>
   <body>
     <div class="demo-page-shell">
       <header class="audit-topbar">
-        <a class="audit-brand" href="./index.html" aria-label="ProspectMonitor 攻防演示台">
+        <a class="audit-brand" href="./index.html" aria-label="ProspectMonitor">
           <span class="brand-mark" aria-hidden="true"><span></span></span>
-          <span>
-            <strong>ProspectMonitor</strong>
-            <small>Security Playground</small>
-          </span>
+          <strong>ProspectMonitor</strong>
         </a>
 
         <nav class="audit-nav" aria-label="主导航">
           <a class="active" href="./index.html" aria-current="page">攻防演示台</a>
           <a href="./audit.html">实验审计</a>
           <a href="./cases.html">案例研究</a>
+          <a href="./competitors.html">竞品分析</a>
         </nav>
 
         <div class="topbar-actions">
@@ -33,7 +32,7 @@
               <small id="runtimeStatusDetail">检查 Qwen3-8B 服务</small>
             </span>
           </div>
-          <a class="developer-center-link" href="./account.html" aria-label="返回开发者中心和 API Token 页面">
+          <a class="developer-center-link" id="openDeveloperCenter" href="./account.html" aria-label="打开开发者中心和 API Token 页面">
             <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
               <circle cx="7" cy="10" r="3.4"></circle>
               <path d="M10.4 10h6.1M14 10v2M16.2 10v1.4"></path>
@@ -44,7 +43,7 @@
       </header>
 
       <div class="app-shell" id="appShell">
-        <aside class="sidebar" aria-label="法规 Agent 配置">
+        <aside class="sidebar" aria-label="银行财富管理客服配置">
           <div class="sidebar-actions">
             <div class="sidebar-action-row">
               <button class="button button-primary new-chat-button" id="resetSessionButton" type="button">
@@ -85,7 +84,7 @@
               </span>
               <div>
                 <strong id="agentConfigModel">qwen3-8b</strong>
-                <span id="agentConfigParams">业务 API :8104 · Temperature 0.0 · Top P 0.8 · Max 2048</span>
+                <span id="agentConfigParams">业务 API :8104 · Temperature 0.0 · Top P 0.8 · Max 8192</span>
               </div>
             </div>
           </section>
@@ -126,10 +125,10 @@
 
           <section class="panel guard-panel">
             <div class="panel-header">
-              <h2>护栏方法</h2>
-              <div class="guard-origin-legend" aria-label="护栏方法来源图例">
-                <span class="ours"><i aria-hidden="true"></i>Ours</span>
-                <span class="baseline"><i aria-hidden="true"></i>Baseline</span>
+              <h2>安全检测方法</h2>
+              <div class="guard-origin-legend" aria-label="安全检测方法来源图例">
+                <span class="ours"><i aria-hidden="true"></i>我们的产品</span>
+                <span class="baseline"><i aria-hidden="true"></i>护栏（市面竞品）</span>
               </div>
             </div>
             <div class="guard-stack">
@@ -150,16 +149,11 @@
           <header class="topbar">
             <button class="nav-icon-button sidebar-open-button" id="sidebarOpenButton" type="button" aria-label="展开侧边栏" title="展开侧边栏">☰</button>
             <div class="topbar-copy">
-              <h1 id="agentTitle">法规条款 Agent</h1>
-              <div class="topbar-meta">
-                <span class="summary-chip"><span>场景</span><strong>法规时效与版本查询</strong></span>
-                <span class="summary-chip"><span>运行方式</span><strong>Qwen3 reasoning + tools</strong></span>
-                <span class="summary-chip"><span>会话记录</span><strong>仅客户端可见内容</strong></span>
-              </div>
+              <h1 id="agentTitle">银行财富管理客服</h1>
             </div>
           </header>
 
-          <section class="chat-surface" aria-label="法规 Agent 对话">
+          <section class="chat-surface" aria-label="银行财富管理客服对话">
             <div class="messages conversation-body" id="conversationBody">
               <div class="message-list" id="messageList" aria-live="polite"></div>
             </div>
@@ -171,14 +165,13 @@
                   id="messageInput"
                   rows="1"
                   maxlength="12000"
-                  placeholder="输入法规问题，Enter 发送，Shift + Enter 换行"
-                  aria-label="发送给法规 Agent 的消息"
+                  placeholder="输入银行财富管理业务问题，Enter 发送，Shift + Enter 换行"
+                  aria-label="发送给银行财富管理客服的消息"
                 ></textarea>
                 <button class="send-button" id="sendButton" type="submit">运行 Agent</button>
               </div>
               <div class="composer-meta">
                 <span id="turnStatus" role="status">等待消息</span>
-                <span>同一个 Agent · 同一套工具 · 同一条防护链路</span>
               </div>
             </form>
           </section>
@@ -190,7 +183,6 @@
       <aside class="drawer" id="detailDrawer" aria-label="本轮运行详情" aria-hidden="true">
         <div class="drawer-header">
           <div>
-            <p class="eyebrow">TURN INSPECTOR</p>
             <h2>本轮运行详情</h2>
           </div>
           <div class="drawer-header-actions">
@@ -201,109 +193,62 @@
 
         <div class="drawer-content">
           <section class="drawer-section">
-            <h3>运行结果</h3>
-            <div class="metric-grid customer-metric-grid" id="metricGrid">
-              <div><span>工具调用</span><strong>—</strong></div>
-              <div><span>RAG 片段</span><strong>—</strong></div>
-              <div><span>Reasoning</span><strong>—</strong></div>
-              <div><span>客户端泄漏</span><strong>—</strong></div>
-            </div>
-          </section>
-
-          <section class="drawer-section">
-            <div class="drawer-section-title"><h3>RAG 资产保护</h3><span id="ragProtectionStatus">等待运行</span></div>
-            <div class="metric-grid customer-metric-grid rag-protection-grid" id="ragProtectionGrid">
-              <div><span>私有片段</span><strong>—</strong></div>
-              <div><span>关键规则泄漏</span><strong>—</strong></div>
-              <div><span>检索状态</span><strong>—</strong></div>
-              <div><span>检测动作</span><strong>—</strong></div>
-            </div>
-            <div class="rag-protection-story" id="ragProtectionStory" data-state="idle">
-              <div class="rag-story-heading">
-                <span><i aria-hidden="true"></i>PRIVATE KNOWLEDGE FLOW</span>
-                <div class="rag-story-heading-actions">
-                  <small id="ragProtectionMessage">RAG 不只是检索，检索结果也需要被保护。</small>
-                  <button id="ragReplayButton" type="button" disabled><span aria-hidden="true">▶</span> 重放检索</button>
-                </div>
-              </div>
-              <ol class="rag-replay-steps" aria-label="BM25 检索重放阶段">
-                <li data-replay-stage="query"><b>01</b><span>检索请求<small>QUERY</small></span></li>
-                <li data-replay-stage="tokenize"><b>02</b><span>搜索分词<small>JIEBA</small></span></li>
-                <li data-replay-stage="rank"><b>03</b><span>相关性排序<small>BM25</small></span></li>
-                <li data-replay-stage="delivery"><b>04</b><span>交付边界<small>GUARD</small></span></li>
-              </ol>
-              <div class="rag-story-scene" aria-label="RAG 资产保护路径">
-                <div class="rag-story-asset">
-                  <span class="rag-story-icon rag-story-database" aria-hidden="true">
-                    <svg viewBox="0 0 32 32"><ellipse cx="16" cy="7" rx="10" ry="4"></ellipse><path d="M6 7v8c0 2.2 4.5 4 10 4s10-1.8 10-4V7M6 15v8c0 2.2 4.5 4 10 4s10-1.8 10-4v-8"></path></svg>
-                    <b>PRIVATE</b>
-                  </span>
-                  <strong>私有知识库</strong>
-                  <small id="ragPrivateAssetCount">等待检索</small>
-                </div>
-                <div class="rag-story-lane rag-story-lane-in" aria-hidden="true">
-                  <span>BM25 TOP-K</span>
-                  <i></i><i></i><i></i>
-                </div>
-                <div class="rag-story-gate">
-                  <span class="rag-story-shield" aria-hidden="true">
-                    <svg viewBox="0 0 32 32"><path d="M16 3 27 7v8c0 7-4.6 11.7-11 14-6.4-2.3-11-7-11-14V7Z"></path><path d="m11 16 3.2 3.2L21 12.5"></path></svg>
-                  </span>
-                  <strong>风险观测点</strong>
-                  <small id="ragGateLabel">等待请求</small>
-                </div>
-                <div class="rag-story-lane rag-story-lane-out" aria-hidden="true">
-                  <span>RESPONSE</span>
-                  <i></i><i></i><i></i>
-                  <b class="rag-story-stop">×</b>
-                </div>
-                <div class="rag-story-client">
-                  <span class="rag-story-icon" aria-hidden="true">
-                    <svg viewBox="0 0 32 32"><rect x="4" y="5" width="24" height="17" rx="3"></rect><path d="M12 27h8M16 22v5"></path></svg>
-                  </span>
-                  <strong>客户端</strong>
-                  <small id="ragClientLabel">尚未交付</small>
-                </div>
-              </div>
-              <div class="rag-replay-console">
-                <section class="rag-replay-query-card">
-                  <header><span>检索表达式</span><em id="ragReplayState">等待本轮检索</em></header>
-                  <code id="ragReplayQuery">运行触发知识库检索的消息后，可重放真实 BM25 轨迹。</code>
-                  <div class="rag-replay-tokens" id="ragReplayTokens"><span>查询词会在这里逐个展开</span></div>
-                  <small id="ragReplayIndexMeta">BM25Okapi · jieba_search · 等待索引参数</small>
-                </section>
-                <section class="rag-replay-ranking-card">
-                  <header><span>Top-K 召回与原始分数</span><em>RAW SCORE</em></header>
-                  <div class="rag-replay-ranking" id="ragReplayRanking"><p>尚无召回结果</p></div>
-                </section>
-              </div>
-              <section class="rag-protected-content" id="ragProtectedPanel" data-status="idle">
-                <header>
-                  <div><span class="rag-lock-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2"></path></svg></span><span><strong id="ragProtectedTitle">本轮保护了什么</strong><small>只展示资产标识与匹配依据，不向业务响应复制私有正文</small></span></div>
-                  <em id="ragProtectedCount">0 项</em>
-                </header>
-                <div class="rag-protected-list" id="ragProtectedContentList"><p>运行 RAG 请求后显示被召回或被提前保护的知识资产。</p></div>
-              </section>
-              <div class="rag-story-impact">
-                <span class="rag-impact-mark" aria-hidden="true">!</span>
-                <div><strong id="ragImpactTitle">知识库也是核心资产</strong><small id="ragImpactDetail">一次批量抽取就可能复制业务规则、内部政策和专有知识。</small></div>
-              </div>
-            </div>
-          </section>
-
-          <section class="drawer-section">
             <div class="drawer-section-title"><h3>防护方法原始输出</h3><span id="signalCount">0</span></div>
             <div class="trace-list" id="signalList"><p class="empty-state">运行一条消息后显示检测结果。</p></div>
           </section>
 
-          <section class="drawer-section">
-            <div class="drawer-section-title"><h3>工具与知识</h3><span id="contextCount">0</span></div>
-            <div class="trace-list" id="contextList"><p class="empty-state">Agent 尚未调用工具。</p></div>
+          <section class="drawer-section prompt-compare-section" id="promptCompareSection" hidden>
+            <div class="drawer-section-title">
+              <h3 id="promptCompareTitle">模型真实输出与系统提示词的对照</h3>
+              <div class="prompt-compare-actions">
+                <span id="promptCompareStatus">等待运行</span>
+                <button id="promptCompareTranslateButton" type="button" disabled>翻译为中文</button>
+              </div>
+            </div>
+            <div class="prompt-compare-grid">
+              <article class="prompt-compare-pane output-pane">
+                <header><span>模型真实输出</span><small id="promptCompareOutputLabel">—</small></header>
+                <pre id="promptCompareOutput">暂无输出</pre>
+              </article>
+              <article class="prompt-compare-pane source-pane" id="promptCompareSourcePane">
+                <header><span>实际系统提示词</span><small id="promptCompareSourceLabel">—</small></header>
+                <pre id="promptCompareSource">暂无 System Prompt</pre>
+              </article>
+            </div>
+            <div class="prompt-compare-legend" id="promptCompareLegend"><span><i class="prompt-match-swatch"></i>连续相似片段</span></div>
           </section>
 
           <section class="drawer-section">
-            <div class="drawer-section-title"><h3>执行步骤</h3><span id="stageCount">0</span></div>
-            <div class="trace-list" id="stageList"><p class="empty-state">Agent loop 尚未运行。</p></div>
+            <div class="drawer-section-title"><h3>RAG 检索详情</h3><span id="ragRetrievalCount">0 条</span></div>
+            <div class="rag-retrieval-summary" id="ragRetrievalSummary" data-status="idle">
+              <span>是否命中</span>
+              <strong id="ragRetrievalHit">—</strong>
+              <small id="ragRetrievalStatus">等待本轮检索</small>
+            </div>
+            <div class="trace-list rag-retrieval-list" id="ragRetrievalList"><p class="empty-state">运行一条消息后显示 RAG 检索结果。</p></div>
+          </section>
+
+          <section class="drawer-section high-value-exposure-section" id="highValueExposureSection" hidden>
+            <div class="drawer-section-title"><h3>高价值泄漏内容</h3><span id="highValueExposureStatus" role="status">等待运行</span></div>
+            <div class="high-value-exposure-intro" id="highValueExposureIntro" data-state="idle">
+              <span class="high-value-exposure-mark" aria-hidden="true">!</span>
+              <div>
+                <strong id="highValueExposureHeadline">等待本轮关键资产检测</strong>
+                <small id="highValueExposureDetail">RAG 与 System Prompt 只展示泄漏证据，不复制私有正文。</small>
+              </div>
+            </div>
+            <div class="high-value-exposure-list" id="highValueExposureList" aria-live="polite">
+              <p class="empty-state">运行一次窃取测试后，这里会高亮到达客户端的关键内容。</p>
+            </div>
+          </section>
+
+          <section class="drawer-section">
+            <div class="drawer-section-title"><h3>执行过程</h3></div>
+            <figure class="execution-flow-figure">
+              <a href="./assets/execution-flow-v3.png" target="_blank" rel="noopener noreferrer" aria-label="查看执行流程大图（新窗口）">
+                <img src="./assets/execution-flow-v3.png" alt="启用防护时，用户输入先由独立检测模型提取内部表征并输出风险评分；命中风险则拦截并返回安全提示，通过后进入业务执行：System Prompt 与用户消息组成上下文，RAG 相关片段作为 tool 消息加入，由业务模型生成最终回答。" loading="lazy" decoding="async" />
+              </a>
+            </figure>
           </section>
         </div>
       </aside>
@@ -356,9 +301,9 @@
                 <label class="field max-token-field">
                   <span class="field-label">
                     <span>最大 Token</span>
-                    <output id="maxTokensValue">2048</output>
+                    <output id="maxTokensValue">8192</output>
                   </span>
-                  <input id="maxTokensInput" type="number" min="256" max="8192" step="256" value="2048" />
+                  <input id="maxTokensInput" type="number" min="256" max="8192" step="256" value="8192" />
                 </label>
               </div>
             </section>
@@ -367,7 +312,7 @@
               <div class="agent-config-section-header">
                 <div>
                   <h3>System Prompt</h3>
-                  <p>直接编辑法规 Agent 当前使用的完整 System Prompt</p>
+                  <p>直接编辑银行财富管理客服当前使用的完整 System Prompt</p>
                 </div>
                 <span class="agent-runtime-badge" id="systemPromptSourceBadge">加载中</span>
               </div>
@@ -391,20 +336,12 @@
               </div>
               <div class="rag-upload-grid">
                 <label class="field rag-file-field">
-                  <span>知识文件</span>
+                  <span class="rag-file-label"><span>知识文件</span><small id="ragFileHint">UTF-8 Markdown/TXT，最大 2 MB</small></span>
                   <input id="ragFileInput" type="file" accept=".md,.txt,text/markdown,text/plain" />
-                  <small id="ragFileHint">UTF-8 Markdown/TXT，最大 2 MB</small>
                 </label>
                 <label class="field">
                   <span>文档标题</span>
                   <input id="ragTitleInput" type="text" maxlength="200" placeholder="默认使用文件名" />
-                </label>
-                <label class="field">
-                  <span>可见级别</span>
-                  <select id="ragVisibilitySelect">
-                    <option value="public" selected>公开知识</option>
-                    <option value="private">内部知识</option>
-                  </select>
                 </label>
                 <button class="button button-ghost rag-upload-button" id="uploadRagButton" type="button">上传并重建索引</button>
               </div>
@@ -455,13 +392,13 @@
           <div class="compare-summary" id="compareSummary">正在运行两次独立 Agent loop…</div>
           <div class="compare-grid">
             <section class="compare-card baseline-card">
-              <header><span>BASELINE</span><strong>无防护</strong><i id="baselineVerdict">运行中</i></header>
-              <p id="baselineOutput">等待模型输出…</p>
+              <header><span>其他已有产品</span><strong>无防护对照</strong><i id="baselineVerdict">运行中</i></header>
+              <div class="compare-output" id="baselineOutput">等待模型输出…</div>
               <dl id="baselineFacts"></dl>
             </section>
             <section class="compare-card defended-card">
-              <header><span>PROTECTED</span><strong>产品防护</strong><i id="defendedVerdict">运行中</i></header>
-              <p id="defendedOutput">等待模型输出…</p>
+              <header><span>我们的产品</span><strong>产品防护</strong><i id="defendedVerdict">运行中</i></header>
+              <div class="compare-output" id="defendedOutput">等待模型输出…</div>
               <dl id="defendedFacts"></dl>
             </section>
           </div>
@@ -469,6 +406,18 @@
       </dialog>
     </div>
 
-    <script type="module" src="./src/app.js?v=customer-agent-rag-demo-v22"></script>
+    <dialog class="developer-center-dialog" id="developerCenterDialog" aria-label="开发者中心">
+      <header class="developer-center-header">
+        <div class="developer-center-heading">
+          <span class="developer-center-brand">PROSPECTMONITOR</span>
+          <i aria-hidden="true"></i>
+          <strong id="developerCenterTitle">开发者中心</strong>
+        </div>
+        <button type="button" id="closeDeveloperCenter">返回攻防演示台</button>
+      </header>
+      <iframe id="developerCenterFrame" title="开发者中心与 API Token" allow="clipboard-write 'self'"></iframe>
+    </dialog>
+    <script type="module" src="./src/developer-navigation.js?v=admin-console-v6"></script>
+    <script type="module" src="./src/app.js?v=guard-risk-display-v2"></script>
   </body>
 </html>

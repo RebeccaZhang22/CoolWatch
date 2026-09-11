@@ -5,7 +5,8 @@ GUARD_NAMES = {
     "baseline": "无防护",
     "qwen_guard": "Qwen3 安全护栏",
     "llama_prompt_guard": "Llama 安全护栏",
-    "netease_yidun": "易盾文本安全",
+    "netease_yidun": "网易易盾文本安全护栏",
+    "fangcun_guard": "方寸跃迁安全护栏",
     "safegauge": "后缀概率探针",
     "inline_probing": "生成内探针",
     "rule_guard": "规则防护",
@@ -54,7 +55,7 @@ def evaluate_input_guard(guard_id: str, query_risky: bool, matched_labels: list[
             note="固定对照，不对输入做拦截或改写。",
         )
 
-    if guard_id in {"qwen_guard", "llama_prompt_guard", "netease_yidun", "safegauge", "inline_probing"}:
+    if guard_id in {"qwen_guard", "llama_prompt_guard", "netease_yidun", "fangcun_guard", "safegauge", "inline_probing"}:
         return GuardDecision(
             blocked=False,
             status="待接入",

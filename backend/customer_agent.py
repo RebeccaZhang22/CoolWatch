@@ -43,6 +43,7 @@ from backend.customer_agent_security import (
     with_delivery_status,
 )
 from backend.llm_client import LlmClient
+from backend.financial_tool_mock import FinancialToolMocker
 from backend.schemas import ModelParams
 from backend.session_store import ChatSession, SessionStore
 from backend.watchers.activation_probe import ActivationProbeGuard
@@ -55,6 +56,7 @@ from backend.watchers.netease_yidun import (
     NeteaseYidunAssessment,
     NeteaseYidunClient,
 )
+from backend.watchers.fangcun_guard import FangcunGuardAssessment, FangcunGuardClient
 from backend.watchers.qwen_guard import Qwen3GuardClient, QwenGuardAssessment
 from backend.watchers.safegauge.client import SafeGaugeAssessment, SafeGaugeGuard
 
@@ -67,16 +69,28 @@ DEFENSE_STAGE = {
     "qwen_guard": "input",
     "llama_prompt_guard": "input",
     "netease_yidun": "input",
+    "fangcun_guard": "input",
 }
 MAX_CUSTOMER_HISTORY_CHARS = 8000
 MAX_AGENT_MODEL_TURNS = 4
+MAX_FINAL_RESPONSE_ATTEMPTS = 2
 MAX_TOOL_CALLS_PER_TURN = 4
 DELIVERY_CHUNK_SIZE = 6
 DELIVERY_CHUNK_DELAY_SECONDS = 0.018
+HIGH_RISK_BLOCK_MESSAGE = (
+    "当前请求触发了安全风控检查，暂时无法继续处理。"
+    "请通过正常业务流程提问，或联系人工客服协助。"
+)
+FINAL_RESPONSE_INSTRUCTION = (
+    "业务工具阶段已经结束。请仅依据上面的真实工具结果，直接生成面向用户的最终答复。"
+    "不要继续调用工具，也不要输出工具调用标签、函数名、参数 JSON 或其他工具协议文本。"
+)
 RUNTIME_PROBE_DEFENSES = frozenset(
     {"activation_probe", "safegauge"}
 )
+SUPPORTED_CUSTOMER_MODELS = frozenset({"qwen3-8b", "qwen3-32b"})
 EventSink = Callable[[dict[str, Any]], Awaitable[None]]
+DeltaSink = Callable[[str], Awaitable[None]]
 
 
 class CustomerServiceAgent:
@@ -94,6 +108,8 @@ class CustomerServiceAgent:
         qwen_guard_client: Qwen3GuardClient,
         llama_prompt_guard_client: LlamaPromptGuardClient,
         netease_yidun_client: NeteaseYidunClient,
+        fangcun_guard_client: FangcunGuardClient | None = None,
+        financial_tool_mocker: FinancialToolMocker | None = None,
         runtime_config: CustomerAgentRuntimeConfig | None = None,
     ) -> None:
         self.settings = settings
@@ -112,6 +128,8 @@ class CustomerServiceAgent:
         self.qwen_guard_client = qwen_guard_client
         self.llama_prompt_guard_client = llama_prompt_guard_client
         self.netease_yidun_client = netease_yidun_client
+        self.fangcun_guard_client = fangcun_guard_client
+        self.financial_tool_mocker = financial_tool_mocker or FinancialToolMocker(settings)
         self.runtime_config = runtime_config or CustomerAgentRuntimeConfig()
 
     def bootstrap(self) -> CustomerAgentBootstrapResponse:
@@ -131,7 +149,7 @@ class CustomerServiceAgent:
             name=scenario.name,
             description=scenario.description,
             model=self.settings.customer_agent_model or scenario.default_model,
-            reasoning_enabled=True,
+            reasoning_enabled=False,
             capabilities=list(scenario.capabilities),
             tools=[str(tool["function"]["name"]) for tool in scenario.tools],
             knowledge_sources=public_knowledge_sources(scenario),
@@ -139,7 +157,7 @@ class CustomerServiceAgent:
             # The profile is the scenario catalog. Runtime availability is
             # reported separately by health(). This keeps the console stable
             # when a plain vLLM temporarily disables probe-backed methods.
-            defense_pipeline=list(scenario.defense_pipeline),
+            defense_pipeline=list(self._enabled_defenses()),
         )
 
     async def health(self) -> CustomerAgentHealthResponse:
@@ -194,6 +212,7 @@ class CustomerServiceAgent:
         request: CustomerAgentRunRequest,
         *,
         event_sink: EventSink | None = None,
+        delta_sink: DeltaSink | None = None,
     ) -> CustomerAgentRunResponse:
         scenario, retriever = self.runtime_config.snapshot()
         attack = _scenario_attack(scenario, request.attack_id) if request.attack_id else None
@@ -249,7 +268,8 @@ class CustomerServiceAgent:
         )
         signals = await self._run_input_guards(
             user_message=user_message,
-            selected=selected,
+            # Activation inspects the actual model messages in the tool loop.
+            selected=selected - {"activation_probe"} if self.settings.activation_probe_backend == "probe_bank" else selected,
             model_params=guard_model_params,
             base_url=guard_base_url,
             safegauge_threshold=request.safegauge_threshold,
@@ -257,26 +277,30 @@ class CustomerServiceAgent:
             system_prompt=scenario.system_prompt,
         )
         input_risk_detected = any(signal.status == "risk" for signal in signals)
-        # Input detectors run as an observation sidecar. A risk finding is
-        # recorded for the inspector, but the original query always continues
-        # into the business Agent loop.
         input_guard_failed = any(signal.status == "error" for signal in signals)
+        bank_unavailable = (self.settings.activation_probe_backend == "probe_bank"
+                            and any(s.defense_id == "activation_probe" and s.status == "error" for s in signals))
+        if bank_unavailable and request.defense_mode == "defended":
+            # Overload/timeouts are unavailable verdicts, never safe verdicts.
+            raise RuntimeError("风险检测暂不可用，本次业务执行已暂停，请稍后重试。")
         input_guards_enabled = bool(selected)
         completed_signals = _complete_signals(signals, requested_defenses)
         stage_trace.append(
             _stage(
                 "input_guard",
                 (
-                    "error"
+                    "blocked"
+                    if input_risk_detected
+                    else "error"
                     if input_guard_failed
                     else "success" if input_guards_enabled else "skipped"
                 ),
                 guard_started,
                 (
-                    "部分输入检测异常，详情见防护信号"
-                    if input_guard_failed
-                    else "输入检测命中风险，已标记并继续业务生成"
+                    "已命中高风险，业务生成已阻断并返回固定安全提示"
                     if input_risk_detected
+                    else "部分输入检测异常，详情见防护信号"
+                    if input_guard_failed
                     else "输入检测完成"
                     if input_guards_enabled
                     else "观察模式未执行输入防护"
@@ -289,21 +313,23 @@ class CustomerServiceAgent:
                 event_sink,
                 phase="input_guard",
                 message=(
-                    "部分检测器运行异常"
-                    if input_guard_failed
-                    else "检测到风险"
+                    "检测到风险"
                     if input_risk_detected
+                    else "部分检测器运行异常"
+                    if input_guard_failed
                     else "输入安全检测已完成"
                 ),
                 detail=(
-                    "检测结果已更新，业务模型将继续生成响应"
-                    if input_guard_failed
-                    else "风险信号仅用于审计，业务模型将继续生成响应"
+                    "高风险已识别，业务生成已阻断"
                     if input_risk_detected
+                    else "检测结果已更新，业务模型将继续生成响应"
+                    if input_guard_failed
                     else "所有已启用方法均已返回结果"
                 ),
                 status=(
-                    "error"
+                    "blocked"
+                    if input_risk_detected
+                    else "error"
                     if input_guard_failed
                     else "risk"
                     if input_risk_detected
@@ -312,23 +338,36 @@ class CustomerServiceAgent:
                 defense_signals=completed_signals,
             )
 
-        (
-            raw_output,
-            private_reasoning,
-            rag_trace,
-            tool_trace,
-            usage,
-        ) = await self._run_model_tool_loop(
-            session=session,
-            user_message=user_message,
-            base_url=base_url,
-            model_params=model_params,
-            request=request,
-            stage_trace=stage_trace,
-            event_sink=event_sink,
-            scenario=scenario,
-            retriever=retriever,
-        )
+        if input_risk_detected:
+            raw_output = HIGH_RISK_BLOCK_MESSAGE
+            private_reasoning = ""
+            rag_trace = []
+            tool_trace = []
+            usage = {}
+        else:
+            (
+                raw_output,
+                private_reasoning,
+                rag_trace,
+                tool_trace,
+                usage,
+            ) = await self._run_model_tool_loop(
+                session=session,
+                user_message=user_message,
+                base_url=base_url,
+                model_params=model_params,
+                request=request,
+                stage_trace=stage_trace,
+                event_sink=event_sink,
+                delta_sink=delta_sink,
+                scenario=scenario,
+                retriever=retriever,
+                activation_enabled="activation_probe" in selected and self.settings.activation_probe_backend == "probe_bank",
+                signals=signals,
+            )
+
+        input_risk_detected = any(signal.status == "risk" for signal in signals)
+        completed_signals = _complete_signals(signals, requested_defenses)
 
         raw_exposures = evaluate_asset_exposures(
             raw_output,
@@ -339,10 +378,11 @@ class CustomerServiceAgent:
             raw_exposures,
             rag_trace,
             attack_id=request.attack_id,
+            private_assets=scenario.private_assets,
         )
-        output_blocked = False
+        output_blocked = input_risk_detected
         assistant_message = raw_output
-        blocked_stage = None
+        blocked_stage = ("context" if tool_trace else "input") if input_risk_detected else None
         exposures = with_delivery_status(raw_exposures, delivered=not output_blocked)
         reasoning = build_reasoning_report(
             private_reasoning,
@@ -407,16 +447,31 @@ class CustomerServiceAgent:
         async def event_sink(payload: dict[str, Any]) -> None:
             await queue.put(("status", payload))
 
+        streamed_answer = False
+
+        async def delta_sink(content: str) -> None:
+            nonlocal streamed_answer
+            if not content:
+                return
+            streamed_answer = True
+            await queue.put(("delta", {"content": content}))
+
         async def execute() -> None:
             ok = False
             try:
-                response = await self.run(request, event_sink=event_sink)
-                # Input guards have completed before generation starts, so the
-                # selected Agent answer can be streamed without a generation
-                # side detector delaying delivery.
-                for content in _delivery_chunks(response.assistant_message):
-                    await queue.put(("delta", {"content": content}))
-                    await asyncio.sleep(DELIVERY_CHUNK_DELAY_SECONDS)
+                response = await self.run(
+                    request,
+                    event_sink=event_sink,
+                    delta_sink=delta_sink,
+                )
+                # The real business-model stream emits deltas as soon as the
+                # final answer is generated. Keep the old chunked fallback for
+                # lightweight test clients and legacy model adapters that only
+                # implement generate().
+                if not streamed_answer:
+                    for content in _delivery_chunks(response.assistant_message):
+                        await queue.put(("delta", {"content": content}))
+                        await asyncio.sleep(DELIVERY_CHUNK_DELAY_SECONDS)
                 await queue.put(("final", response.model_dump(mode="json")))
                 ok = True
             except Exception as error:
@@ -505,6 +560,10 @@ class CustomerServiceAgent:
             tasks.append(
                 (
                     "activation_probe",
+                    self.activation_probe_guard.bank_guard.moderate(
+                        [{"role": "user", "content": user_message}],
+                    )
+                    if self.settings.activation_probe_backend == "probe_bank" else
                     self.activation_probe_guard.moderate_messages(
                         system_prompt=system_prompt,
                         user_message=user_message,
@@ -549,6 +608,13 @@ class CustomerServiceAgent:
                     self.netease_yidun_client.moderate_prompt(user_message),
                 )
             )
+        if "fangcun_guard" in selected and self.fangcun_guard_client is not None:
+            tasks.append(
+                (
+                    "fangcun_guard",
+                    self.fangcun_guard_client.moderate_prompt(user_message),
+                )
+            )
         if tasks:
             results = await asyncio.gather(*(task for _, task in tasks))
             for (defense_id, _), assessment in zip(tasks, results, strict=True):
@@ -560,6 +626,8 @@ class CustomerServiceAgent:
                     signals.append(_qwen_guard_signal(assessment))
                 elif defense_id == "llama_prompt_guard":
                     signals.append(_llama_prompt_guard_signal(assessment))
+                elif defense_id == "fangcun_guard":
+                    signals.append(_fangcun_guard_signal(assessment))
                 else:
                     signals.append(_netease_yidun_signal(assessment))
         return signals
@@ -575,6 +643,9 @@ class CustomerServiceAgent:
             getattr(self.settings, "customer_agent_enable_runtime_probes", True)
         )
         if probes_enabled:
+            if self.settings.activation_probe_backend == "probe_bank":
+                # SafeGauge checkpoints are trained on Qwen3-8B, not this bank.
+                return tuple(d for d in scenario.defense_pipeline if d != "safegauge")
             return scenario.defense_pipeline
         return tuple(
             defense_id
@@ -583,28 +654,30 @@ class CustomerServiceAgent:
         )
 
     def _base_url(self, model_params: ModelParams) -> str:
-        # Never trust a client-supplied port: public requests are pinned to
-        # the ordinary business vLLM endpoint.
+        # The UI may choose either already-deployed business model. The port
+        # supplied by the browser is display-only; endpoint selection stays
+        # on the server so arbitrary client URLs cannot be injected.
+        if model_params.model == "qwen3-32b":
+            return self.settings.vllm_base_url.rstrip("/")
         return self.settings.customer_agent_business_base_url
 
     def _shadow_base_url(self) -> str:
         return self.settings.customer_agent_shadow_base_url
 
     def _business_model_params(self, model_params: ModelParams) -> ModelParams:
-        updates = {
-            "model": self.settings.customer_agent_model or SCENARIO.default_model,
-            "vllm_port": None,
-        }
-        if self._dual_model_enabled:
-            # The user-facing model emits only its final answer. The shadow
-            # model is used only by the pre-generation hidden-state/logprob
-            # probes; it never generates a second answer or reasoning trace.
-            updates["enable_reasoning"] = False
-        else:
-            # Preserve the original single-endpoint behavior for integrations
-            # that construct the Agent directly.
-            updates["enable_reasoning"] = True
-        return model_params.model_copy(update=updates)
+        # Keep the business model's generation mode independent from the
+        # shadow replay model. In particular, enabling the shadow endpoint must
+        # not silently disable Qwen3 reasoning/tool selection on the user-facing
+        # request. The shadow model is still used only by pre-generation probes
+        # and never produces a second customer-visible answer.
+        requested_model = _canonical_customer_model(model_params.model)
+        selected_model = requested_model or self.settings.customer_agent_model or SCENARIO.default_model
+        return model_params.model_copy(
+            update={
+                "model": selected_model,
+                "vllm_port": None,
+            }
+        )
 
     def _shadow_model_params(self, model_params: ModelParams) -> ModelParams:
         return model_params.model_copy(
@@ -628,8 +701,11 @@ class CustomerServiceAgent:
         request: CustomerAgentRunRequest,
         stage_trace: list[CustomerAgentStageTraceItem],
         event_sink: EventSink | None,
+        delta_sink: DeltaSink | None,
         scenario,
         retriever,
+        activation_enabled: bool = False,
+        signals: list[CustomerAgentDefenseSignal] | None = None,
     ) -> tuple[
         str,
         str,
@@ -642,6 +718,18 @@ class CustomerServiceAgent:
             *_trim_history(session.history),
             {"role": "user", "content": user_message},
         ]
+        language_instruction = _response_language_instruction(user_message)
+        final_response_instruction = (
+            f"{FINAL_RESPONSE_INSTRUCTION}\n{language_instruction}"
+            if language_instruction
+            else FINAL_RESPONSE_INSTRUCTION
+        )
+        if language_instruction:
+            # Keep language routing explicit at runtime.  A Chinese system
+            # prompt can otherwise make the business model fall back to
+            # Chinese for low-resource inputs even when the policy permits the
+            # customer's language.
+            messages.insert(1, {"role": "system", "content": language_instruction})
         tool_trace: list[CustomerAgentToolTraceItem] = []
         retrieved_items: list[Any] = []
         reasoning_parts: list[str] = []
@@ -654,26 +742,119 @@ class CustomerServiceAgent:
         )
         completed_tool_names: set[str] = set()
 
+        async def check_activation(tools=None) -> bool:
+            # The shadow template accepts a single leading system message.
+            # Consolidate runtime instructions in the BUSINESS messages too,
+            # so the detector receives exactly the same full conversation.
+            system_content = "\n\n".join(
+                message["content"] for message in messages if message.get("role") == "system"
+            )
+            messages[:] = [
+                {"role": "system", "content": system_content},
+                *(message for message in messages if message.get("role") != "system"),
+            ]
+            if not activation_enabled:
+                return False
+            started = perf_counter()
+            assessment = await self.activation_probe_guard.bank_guard.moderate(messages, tools=tools)
+            signal = _activation_signal(assessment)
+            signal.stage = "context" if tool_trace else "input"
+            signal.blocked = signal.status == "risk"
+            signal.metadata = {**signal.metadata, "message_count": len(messages), "scope": "full_messages"}
+            if signals is not None:
+                signals[:] = [item for item in signals if item.defense_id != "activation_probe"]
+                signals.append(signal)
+            stage_trace.append(_stage(
+                "input_guard", "blocked" if signal.blocked else "error" if signal.status == "error" else "success",
+                started, f"完整上下文 Activation 检测（{len(messages)} 条消息）：{signal.detail}",
+            ))
+            await _emit_event(
+                event_sink, phase="input_guard", message="完整上下文风险检测",
+                detail=signal.detail, status="blocked" if signal.blocked else signal.status,
+                defense_signals=signals or [signal],
+            )
+            if signal.status == "error":
+                raise RuntimeError("完整上下文风险检测暂不可用，本次业务执行已暂停，请稍后重试。")
+            return signal.blocked
+
         for turn_index in range(MAX_AGENT_MODEL_TURNS):
-            final_turn = turn_index == MAX_AGENT_MODEL_TURNS - 1
+            last_tool_turn = turn_index == MAX_AGENT_MODEL_TURNS - 1
+            if follows_tool_result:
+                messages.append({"role": "system", "content": final_response_instruction})
+            if await check_activation(None if follows_tool_result else list(scenario.tools)):
+                raw_output = HIGH_RISK_BLOCK_MESSAGE
+                break
             generation_started = perf_counter()
             await _emit_event(
                 event_sink,
                 phase="generation",
                 message=(
-                    "正在分析工具结果"
+                    "正在生成最终答复"
                     if follows_tool_result
                     else f"{scenario.name} 正在处理消息"
                 ),
                 detail=f"Agent loop 第 {turn_index + 1} 轮",
             )
-            generation = await self.llm_client.generate(
-                messages,
-                model_params,
-                base_url=base_url,
-                tools=list(scenario.tools),
-                tool_choice="none" if final_turn else "auto",
-            )
+            stream_chat = getattr(self.llm_client, "stream_chat", None)
+            if follows_tool_result and delta_sink is not None and callable(stream_chat):
+                # Once the business tools have returned, this is a public,
+                # tool-free synthesis turn. Stream it directly instead of
+                # buffering a second complete /chat/completions response.
+                streamed_parts: list[str] = []
+                try:
+                    async for delta in stream_chat(
+                        messages,
+                        model_params,
+                        base_url=base_url,
+                    ):
+                        if not delta:
+                            continue
+                        streamed_parts.append(delta)
+                        await delta_sink(delta)
+                except Exception:
+                    # A legacy adapter may expose stream_chat but not support
+                    # this endpoint. Only fall back before anything has been
+                    # delivered; never duplicate a partially streamed answer.
+                    if streamed_parts:
+                        raise
+                    streamed_parts = []
+                if streamed_parts:
+                    raw_output = "".join(streamed_parts).strip()
+                    stage_trace.append(
+                        _stage(
+                            "reasoning",
+                            "skipped",
+                            generation_started,
+                            "最终答复使用真实流式输出，未向客户端发送 reasoning",
+                        )
+                    )
+                    stage_trace.append(
+                        _stage(
+                            "generation",
+                            "success",
+                            generation_started,
+                            "工具结果已返回，最终答复正在流式输出",
+                        )
+                    )
+                    break
+            if follows_tool_result:
+                # Non-streaming callers still need the same tool-free,
+                # language-preserving synthesis turn as the browser stream.
+                # Otherwise a Chinese tool result can cause the model to take
+                # another tool turn and fall back to Chinese output.
+                generation = await self.llm_client.generate(
+                    messages,
+                    model_params,
+                    base_url=base_url,
+                )
+            else:
+                generation = await self.llm_client.generate(
+                    messages,
+                    model_params,
+                    base_url=base_url,
+                    tools=list(scenario.tools),
+                    tool_choice="auto",
+                )
             follows_tool_result = False
             _merge_usage(usage, generation.usage)
             reasoning_content = (
@@ -698,6 +879,8 @@ class CustomerServiceAgent:
                 :MAX_TOOL_CALLS_PER_TURN
             ]
             missing_required_tools = required_tool_names - completed_tool_names
+            candidate_output = generation.content.strip()
+            returned_tool_protocol = _contains_tool_protocol(candidate_output)
             stage_trace.append(
                 _stage(
                     "generation",
@@ -708,19 +891,23 @@ class CustomerServiceAgent:
                         if tool_calls
                         else (
                             "模型答复尚缺必要业务查询，Agent loop 将继续"
-                            if missing_required_tools and not final_turn
-                            else "模型生成最终答复"
+                            if missing_required_tools
+                            else (
+                                "模型返回了工具协议文本，将继续生成最终答复"
+                                if returned_tool_protocol
+                                else "模型生成最终答复"
+                            )
                         )
                     ),
                 )
             )
 
-            if tool_calls and not final_turn:
+            if tool_calls:
                 messages.append(_assistant_tool_call_message(generation.message, tool_calls))
                 tool_started = perf_counter()
                 turn_retrieved: list[Any] = []
                 for tool_call in tool_calls:
-                    tool_message, trace, retrieved = self._execute_tool_call(
+                    tool_message, trace, retrieved = await self._execute_tool_call(
                         tool_call,
                         fallback_query=user_message,
                         attack_id=request.attack_id,
@@ -781,7 +968,7 @@ class CustomerServiceAgent:
 
             missing_required_tools = required_tool_names - completed_tool_names
             if missing_required_tools:
-                if not final_turn:
+                if not last_tool_turn:
                     messages.append(
                         {
                             "role": "system",
@@ -805,8 +992,105 @@ class CustomerServiceAgent:
                 )
                 break
 
-            raw_output = generation.content.strip()
+            if returned_tool_protocol:
+                if not last_tool_turn:
+                    messages.append(
+                        {"role": "system", "content": final_response_instruction}
+                    )
+                    continue
+                break
+
+            raw_output = candidate_output
             break
+
+        # A tool call may legitimately occur on the last allowed tool turn.
+        # Always give the Agent a separate, tool-free synthesis turn after that
+        # result instead of exposing a serialized <tool_call> as its answer.
+        if not raw_output and tool_trace:
+            for final_attempt in range(MAX_FINAL_RESPONSE_ATTEMPTS):
+                final_started = perf_counter()
+                await _emit_event(
+                    event_sink,
+                    phase="generation",
+                    message="正在生成最终答复",
+                    detail=f"工具阶段后的最终输出，第 {final_attempt + 1} 次",
+                )
+                messages.append(
+                    {"role": "system", "content": final_response_instruction}
+                )
+                if await check_activation():
+                    raw_output = HIGH_RISK_BLOCK_MESSAGE
+                    break
+                stream_chat = getattr(self.llm_client, "stream_chat", None)
+                streamed_parts: list[str] = []
+                if final_attempt == 0 and delta_sink is not None and callable(stream_chat):
+                    # Tool selection has already completed. The final synthesis
+                    # request has no tools, so its public answer can be sent to
+                    # the browser token-by-token without exposing reasoning or
+                    # partially formed tool arguments.
+                    async for delta in stream_chat(
+                        messages,
+                        model_params,
+                        base_url=base_url,
+                    ):
+                        if not delta:
+                            continue
+                        streamed_parts.append(delta)
+                        await delta_sink(delta)
+                    candidate_output = "".join(streamed_parts).strip()
+                    stage_trace.append(
+                        _stage(
+                            "reasoning",
+                            "skipped",
+                            final_started,
+                            "最终答复使用真实流式输出，未向客户端发送 reasoning",
+                        )
+                    )
+                else:
+                    generation = await self.llm_client.generate(
+                        messages,
+                        model_params,
+                        base_url=base_url,
+                    )
+                    _merge_usage(usage, generation.usage)
+                    reasoning_content = (
+                        generation.reasoning_content
+                        if model_params.enable_reasoning
+                        else ""
+                    )
+                    if reasoning_content:
+                        reasoning_parts.append(reasoning_content)
+                    stage_trace.append(
+                        _stage(
+                            "reasoning",
+                            "success" if reasoning_content else "skipped",
+                            final_started,
+                            (
+                                "最终答复轮 reasoning 已在服务端生成"
+                                if reasoning_content
+                                else "最终答复轮未返回独立 reasoning"
+                            ),
+                        )
+                    )
+                    candidate_output = generation.content.strip()
+                valid_final_output = bool(candidate_output) and not _contains_tool_protocol(
+                    candidate_output
+                )
+                stage_trace.append(
+                    _stage(
+                        "generation",
+                        "success" if valid_final_output else "error",
+                        final_started,
+                        (
+                            "工具阶段完成后已生成最终答复"
+                            if valid_final_output
+                            else "最终答复仍包含工具协议，正在重试"
+                        ),
+                    )
+                )
+                if valid_final_output:
+                    raw_output = candidate_output
+                    break
 
         if not raw_output:
             raw_output = "抱歉，本轮没有生成可交付答复，请稍后重试。"
@@ -819,7 +1103,7 @@ class CustomerServiceAgent:
             usage,
         )
 
-    def _execute_tool_call(
+    async def _execute_tool_call(
         self,
         tool_call: dict[str, Any],
         *,
@@ -867,6 +1151,59 @@ class CustomerServiceAgent:
                 "min_score": retriever.config.min_score,
                 "k1": retriever.config.k1,
                 "b": retriever.config.b,
+                "returned_chunk_ids": [item.chunk_id for item in retrieved],
+            }
+        elif name == "search_financial_knowledge":
+            query = str(arguments.get("query") or fallback_query).strip()
+            retrieval_query = (
+                query
+                if query.lower() == fallback_query.lower()
+                else f"{query}\n{fallback_query}"
+            )
+            retrieved = retriever.search(retrieval_query)
+            result = build_knowledge_tool_result(retrieved, defended=defended)
+            included = sum(item.included for item in retrieved)
+            summary = f"返回 {included} 个金融知识片段"
+            metadata = {
+                "replay_schema": "bm25.retrieval.v1",
+                "retriever": retriever.config.algorithm,
+                "tokenizer": retriever.config.tokenizer,
+                "retrieval_query": retrieval_query,
+                "query_tokens": tokenize_for_bm25(retrieval_query),
+                "corpus_chunks": len(retriever.chunks),
+                "top_k": retriever.config.top_k,
+                "min_score": retriever.config.min_score,
+                "k1": retriever.config.k1,
+                "b": retriever.config.b,
+                "returned_chunk_ids": [item.chunk_id for item in retrieved],
+            }
+        elif name in {
+            "lookup_client_portfolio",
+            "check_transfer_authorization",
+            "prepare_rebalance_proposal",
+        }:
+            retrieval_query = " ".join(
+                [name, json.dumps(arguments, ensure_ascii=False), fallback_query]
+            )
+            retrieved = retriever.search(retrieval_query)
+            context = build_knowledge_tool_result(retrieved, defended=defended)
+            try:
+                result = await self.financial_tool_mocker.respond(
+                    tool_name=name,
+                    arguments=arguments,
+                    user_query=fallback_query,
+                    context=context,
+                )
+            except Exception as error:
+                status = "error"
+                result = {"ok": False, "error": f"mock tool response failed: {error}"}
+                summary = "金融工具模拟响应失败"
+            else:
+                summary = "返回合成金融业务结果"
+            metadata = {
+                "mocked": True,
+                "model": self.financial_tool_mocker.model,
+                "retrieval_query": retrieval_query,
                 "returned_chunk_ids": [item.chunk_id for item in retrieved],
             }
         elif name == "search_legal_corpus":
@@ -1004,6 +1341,22 @@ def _extract_tool_calls(message: dict[str, Any]) -> list[dict[str, Any]]:
     if not isinstance(raw_tool_calls, list):
         return []
     return [tool_call for tool_call in raw_tool_calls if isinstance(tool_call, dict)]
+
+
+def _contains_tool_protocol(value: str) -> bool:
+    """Prevent model-side tool serialization from becoming a client answer."""
+    return bool(re.search(r"<\s*/?\s*tool_call\b", value, flags=re.IGNORECASE))
+
+
+def _response_language_instruction(user_message: str) -> str:
+    """Return a runtime language directive for non-Chinese customer input."""
+    if re.search(r"[\u3400-\u4dbf\u4e00-\u9fff]", user_message):
+        return ""
+    return (
+        "语言路由：用户本轮消息不是中文。请识别用户消息的主要语言，并只用该语言回答；"
+        "如果用户使用冰岛语，就用冰岛语回答。禁止要求用户改用中文，禁止声称服务只支持中文，"
+        "也不要先输出中文说明再翻译。产品名称、风险等级、金额、日期和合规要求必须保持准确。"
+    )
 
 
 def _required_tool_names(
@@ -1162,6 +1515,18 @@ def _public_rag_trace(item) -> CustomerAgentRagTraceItem:
 
 
 def _activation_signal(assessment: Any) -> CustomerAgentDefenseSignal:
+    if hasattr(assessment, "payload"):
+        from backend.watchers.probe_bank import RISK_NAMES
+        per_risk = assessment.payload.get("per_risk", {})
+        hit = [RISK_NAMES[k] for k, v in per_risk.items() if v["flagged"]]
+        return CustomerAgentDefenseSignal(
+            defense_id="activation_probe", stage="input",
+            status="error" if assessment.error else "risk" if hit else "safe",
+            connected=not bool(assessment.error), blocked=False,
+            latency_ms=assessment.latency_ms,
+            detail=assessment.error or ("命中：" + "、".join(hit) if hit else "所有风险领域均未命中。"),
+            raw_output=assessment.raw_output, metadata=assessment.payload,
+        )
     if assessment.error:
         return CustomerAgentDefenseSignal(
             defense_id="activation_probe",
@@ -1188,7 +1553,7 @@ def _activation_signal(assessment: Any) -> CustomerAgentDefenseSignal:
         score=assessment.score,
         threshold=assessment.threshold,
         latency_ms=assessment.latency_ms,
-        detail="隐藏层激活探针命中窃密意图，风险已记录。" if risky else "隐藏层激活探针未命中。",
+        detail="基于隐藏层的可解释性技术命中窃密意图，风险已记录。" if risky else "基于隐藏层的可解释性技术未命中。",
         raw_output=assessment.raw_output,
         metadata={
             "protocol": assessment.protocol,
@@ -1238,10 +1603,17 @@ def _qwen_guard_signal(
             status="error",
             connected=False,
             latency_ms=assessment.latency_ms,
-            detail=assessment.error or "Qwen3 安全护栏未返回可解析的安全标签。",
+            detail=assessment.error or "Qwen3Guard 文本检测未返回可解析的安全标签。",
             raw_output=assessment.raw_output,
         )
     risky = assessment.risky is True
+    detail = (
+        f"Qwen3Guard 文本检测判定为 {assessment.safety_label}，风险已记录。"
+        if risky
+        else "Qwen3Guard 文本检测判定为 Controversial，按当前策略不计入风险且不阻断。"
+        if assessment.safety_label == "Controversial"
+        else "Qwen3Guard 文本检测未命中。"
+    )
     return CustomerAgentDefenseSignal(
         defense_id="qwen_guard",
         stage="input",
@@ -1249,11 +1621,7 @@ def _qwen_guard_signal(
         connected=True,
         blocked=False,
         latency_ms=assessment.latency_ms,
-        detail=(
-            f"Qwen3 安全护栏判定为 {assessment.safety_label}，风险已记录。"
-            if risky
-            else "Qwen3 安全护栏未命中。"
-        ),
+        detail=detail,
         raw_output=assessment.raw_output,
         metadata={
             "safety_label": assessment.safety_label,
@@ -1288,9 +1656,9 @@ def _llama_prompt_guard_signal(
         threshold=assessment.threshold,
         latency_ms=assessment.latency_ms,
         detail=(
-            "Llama 安全护栏命中风险输入，风险已记录。"
+            "Llama Prompt Guard 文本检测命中风险输入，风险已记录。"
             if risky
-            else "Llama 安全护栏未命中。"
+            else "Llama Prompt Guard 文本检测未命中。"
         ),
         raw_output=assessment.raw_output,
         metadata={"label": assessment.label, "enforcement": "observe_only"},
@@ -1307,7 +1675,7 @@ def _netease_yidun_signal(
             status="error",
             connected=False,
             latency_ms=assessment.latency_ms,
-            detail=assessment.error or "网易易盾未返回可用判定。",
+            detail=assessment.error or "网易易盾文本检测未返回可用判定。",
             raw_output=assessment.raw_output,
         )
     risky = assessment.risky is True
@@ -1320,9 +1688,9 @@ def _netease_yidun_signal(
         blocked=False,
         latency_ms=assessment.latency_ms,
         detail=(
-            f"网易易盾判定为“{suggestion}”，风险已记录。"
+            f"网易易盾文本检测判定为“{suggestion}”，风险已记录。"
             if risky
-            else "网易易盾判定为“通过”。"
+            else "网易易盾文本检测判定为“通过”。"
         ),
         raw_output=assessment.raw_output,
         metadata={
@@ -1331,6 +1699,47 @@ def _netease_yidun_signal(
             "labels": assessment.labels,
             "task_id": assessment.task_id,
             "chunk_count": assessment.chunk_count,
+            "enforcement": "observe_only",
+        },
+    )
+
+
+def _fangcun_guard_signal(
+    assessment: FangcunGuardAssessment,
+) -> CustomerAgentDefenseSignal:
+    if assessment.error or assessment.risky is None:
+        return CustomerAgentDefenseSignal(
+            defense_id="fangcun_guard",
+            stage="input",
+            status="error",
+            connected=False,
+            latency_ms=assessment.latency_ms,
+            detail=assessment.error or "方寸跃迁文本检测未返回可解析的风险判定。",
+            raw_output=assessment.raw_output,
+        )
+    risky = assessment.risky is True
+    detail = (
+        f"方寸跃迁文本检测判定为 {assessment.overall_risk_level or '未知'}"
+        f"（建议动作：{assessment.suggest_action or '未知'}），风险已记录。"
+        if risky
+        else "方寸跃迁文本检测未命中。"
+    )
+    return CustomerAgentDefenseSignal(
+        defense_id="fangcun_guard",
+        stage="input",
+        status="risk" if risky else "safe",
+        connected=True,
+        # Customer-agent input guards are currently observation sidecars;
+        # the business request continues so the console can compare outcomes.
+        blocked=False,
+        latency_ms=assessment.latency_ms,
+        detail=detail,
+        raw_output=assessment.raw_output,
+        metadata={
+            "overall_risk_level": assessment.overall_risk_level,
+            "suggest_action": assessment.suggest_action,
+            "suggest_answer": assessment.suggest_answer,
+            "categories": assessment.categories,
             "enforcement": "observe_only",
         },
     )
@@ -1357,7 +1766,27 @@ def _complete_signals(
                 defense_id,
                 "本轮在该方法执行前已经结束，或当前模式未启用防护。",
             )
-    return [by_id[defense_id] for defense_id in DEFENSE_ORDER if defense_id in by_id]
+    completed: list[CustomerAgentDefenseSignal] = []
+    for defense_id in DEFENSE_ORDER:
+        signal = by_id.get(defense_id)
+        if signal is None:
+            continue
+        if signal.status == "risk":
+            signal = signal.model_copy(
+                update={
+                    "blocked": True,
+                    "metadata": {**signal.metadata, "enforcement": "block"},
+                }
+            )
+        completed.append(signal)
+    return completed
+
+
+def _canonical_customer_model(value: str | None) -> str | None:
+    normalized = str(value or "").strip().lower().replace("_", "-")
+    if normalized in SUPPORTED_CUSTOMER_MODELS:
+        return normalized
+    return None
 
 
 def _verdict(success: bool, attempted: bool, blocked: bool) -> str:

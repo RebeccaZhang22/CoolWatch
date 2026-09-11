@@ -7,6 +7,7 @@ from backend.watchers.netease_yidun import (
 )
 from backend.watchers.llama_prompt_guard import LlamaPromptGuardAssessment, LlamaPromptGuardClient
 from backend.watchers.qwen_guard import Qwen3GuardClient, QwenGuardAssessment
+from backend.watchers.fangcun_guard import FangcunGuardAssessment, FangcunGuardClient
 from backend.watchers.rules import GUARD_NAMES, detect_attack_intent, evaluate_input_guard
 from backend.watchers.safegauge import SafeGaugeAssessment, SafeGaugeGuard
 from backend.watchers.activation_probe import ActivationProbeGuard
@@ -24,6 +25,8 @@ __all__ = [
     "LlamaPromptGuardClient",
     "Qwen3GuardClient",
     "QwenGuardAssessment",
+    "FangcunGuardAssessment",
+    "FangcunGuardClient",
     "SafeGaugeAssessment",
     "SafeGaugeGuard",
     "ActivationProbeGuard",

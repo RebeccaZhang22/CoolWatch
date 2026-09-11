@@ -91,8 +91,13 @@ class CustomerAgentRuntimeConfig:
         )
 
     def rag_config(self) -> CustomerAgentRagConfigResponse:
-        scenario, retriever = self.snapshot()
-        return _rag_config_response(scenario, retriever)
+        with self._lock:
+            contents = {
+                document.id: self.rag_document_content(document.id).content
+                for document in self._scenario.knowledge_documents
+                if document.visibility != "untrusted"
+            }
+            return _rag_config_response(self._scenario, self._retriever, contents)
 
     def rag_document_content(
         self,
@@ -192,7 +197,7 @@ class CustomerAgentRuntimeConfig:
                 self._write_document_configs(documents)
                 self._reload_locked()
                 raise
-            rag = _rag_config_response(self._scenario, self._retriever)
+            rag = self.rag_config()
             uploaded = next(
                 document for document in rag.documents if document.id == document_id
             )
@@ -230,7 +235,7 @@ class CustomerAgentRuntimeConfig:
                 self._reload_locked()
                 raise
             trash_path.unlink(missing_ok=True)
-            rag = _rag_config_response(self._scenario, self._retriever)
+            rag = self.rag_config()
         return CustomerAgentRagMutationResponse(rag=rag)
 
     def clear_uploaded_rag_documents(self) -> int:
@@ -316,6 +321,7 @@ async def _read_upload_limited(upload: UploadFile, maximum: int) -> bytes:
 def _rag_config_response(
     scenario: LoadedCustomerAgentScenario,
     retriever: Bm25KnowledgeRetriever,
+    contents: dict[str, str],
 ) -> CustomerAgentRagConfigResponse:
     chunk_counts: dict[str, int] = {}
     for chunk in retriever.chunks:
@@ -332,7 +338,8 @@ def _rag_config_response(
                 visibility=document.visibility,  # type: ignore[arg-type]
                 origin=document.origin,
                 filename=document.original_filename,
-                character_count=len(document.content),
+                character_count=len(contents[document.id]),
+                size_bytes=len(contents[document.id].encode("utf-8")),
                 chunk_count=chunk_counts.get(document.id, 0),
                 deletable=document.origin == "upload",
             )

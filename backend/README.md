@@ -1,8 +1,8 @@
 # ProspectMonitor Backend
 
-FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回护栏检测状态、泄露指标和 RAG Trace。在原有 `/api/chat` 中，Qwen3Guard、Llama Prompt Guard、Suffix Probe（界面名称为 SafeGauge）和易盾在生成前执行；FinVault/系统提示词场景的 Activation Probe 可由 patched vLLM worker 或独立 Transformers 服务执行；间接提示词注入的 Inline Probing 则嵌入新工具返回后的首次真实 assistant generation。这条旧链路中的护栏均不改写模型上下文或输出。
+FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回护栏检测状态、泄露指标和 RAG Trace。在原有 `/api/chat` 中，Qwen3Guard、Llama Prompt Guard、Suffix Probe（界面名称为 SafeGauge）和易盾在生成前执行；FinVault/系统提示词场景的基于隐藏层的可解释性技术可由 patched vLLM worker 或独立 Transformers 服务执行；间接提示词注入的 Inline Probing 则嵌入新工具返回后的首次真实 assistant generation。这条旧链路中的护栏均不改写模型上下文或输出。
 
-首页使用独立的 `/api/customer-agent/*` API：Qwen3-8B 法规 Agent 自主选择法规检索、文档读取或版本比较工具，并使用 `jieba + BM25Okapi` 检索带时效元数据的合成法规语料；defended 模式把输入检测作为旁路观测，只记录风险而不阻断业务模型生成。任意自然消息都可以直接运行或做同消息 baseline/defended 对照。启动方式、API 契约和双模型隔离规则见 [法规条款 Agent 后端](CUSTOMER_AGENT.md)。原有 `/api/chat` 仅供旧审计与回放页面兼容。
+首页使用独立的 `/api/customer-agent/*` API：面向终端客户的 Qwen3-8B 银行财富管理客服自主选择客户持仓、资金审批、调仓草稿或知识检索工具，并使用 `jieba + BM25Okapi` 检索合成金融语料；金融沙盒工具再使用 `gpt-4.1-mini` 生成合成业务响应。defended 模式会在业务模型生成前执行输入检测；任一已启用护栏命中风险，就跳过模型和工具调用，只返回固定安全提示。任意自然消息都可以直接运行或做“其他已有产品对照 / 我们的产品防护”对照。启动方式、API 契约和双模型隔离规则见 [银行财富管理客服后端](CUSTOMER_AGENT.md)。原有 `/api/chat` 仅供旧审计与回放页面兼容。
 
 ## Llama Prompt Guard 2
 
@@ -56,9 +56,9 @@ checkpoint。若融合请求中的某一项失败，聊天路径只对失败项�
 它没有训练过，不能作为泄露检测器。仓库默认的真实 checkpoint 仍是
 `indirect_prompt_injection`，不会被静默用于泄露任务。
 
-## Activation Probe
+## 基于隐藏层的可解释性技术
 
-FinVault 和私有资产窃取场景选择 Activation Probe 时，推荐让 patched vLLM 在 GPU worker 内直接打分。现有 checkpoint 均为单层 residual probe；Qwen3-8B 客服 Agent 默认使用统一 theft probe，一次覆盖 System/Developer Prompt、私有 RAG、私有 CoT 与私有 Skill/tool 窃取意图。请求按 `model + scenario_category` 选择显式 `probe_id`，并校验 probe ID、checkpoint SHA-256、任务和层号。完整启动命令见 [Activation Probe vLLM recipe](../recipe/activation_probing/README.md)。
+FinVault 和私有资产窃取场景选择基于隐藏层的可解释性技术时，推荐让 patched vLLM 在 GPU worker 内直接打分。现有 checkpoint 均为单层 residual probe；Qwen3-8B 客服 Agent 默认使用统一 theft probe，一次覆盖 System/Developer Prompt、私有 RAG、私有 CoT 与私有 Skill/tool 窃取意图。请求按 `model + scenario_category` 选择显式 `probe_id`，并校验 probe ID、checkpoint SHA-256、任务和层号。完整启动命令见 [Activation Probe vLLM recipe](../recipe/activation_probing/README.md)。
 
 ```dotenv
 ACTIVATION_PROBE_BACKEND=vllm
@@ -172,9 +172,9 @@ vllm serve Qwen/Qwen3Guard-Gen-8B \
 
 未设置 `QWEN3_GUARD_BASE_URL` 时，后端会懒加载本地 Transformers 模型。首次选择 Qwen3Guard 会加载 8B 模型，耗时和显存占用都比较高；演示环境更建议将 Qwen3Guard 作为独立 vLLM/SGLang 服务运行。
 
-## 网易易盾
+## 网易易盾文本安全护栏
 
-选择“网易易盾”时，后端会按文本单次同步检测接口，在本轮 query 进入 Agent Loop 前调用易盾文本检测。检测结果只写入 `guard_results.netease_yidun`，不拦截、不改写用户输入或模型输出。
+选择“网易易盾文本安全护栏”时，后端会按文本单次同步检测接口，在本轮 query 进入 Agent Loop 前调用易盾文本检测。检测结果只写入 `guard_results.netease_yidun`，不拦截、不改写用户输入或模型输出。
 
 实验审计路径与普通聊天路径不同。在 injected-decision-point 评测中，Qwen3Guard
 和易盾只检测 `tool_result`，即未经攻击抽取或裁剪的完整工具返回。
@@ -199,7 +199,28 @@ NETEASE_YIDUN_TIMEOUT_SECONDS=2
 NETEASE_YIDUN_CHECK_LABELS=
 ```
 
-未配置密钥时，选择“网易易盾”会返回“未配置”，用于提示当前环境还没有接入真实账号。
+未配置密钥时，选择“网易易盾文本安全护栏”会返回“未配置”，用于提示当前环境还没有接入真实账号。
+
+## 方寸跃迁安全护栏
+
+选择“方寸跃迁安全护栏”时，后端在模型调用前使用 Hook API 的
+`POST https://guard.fangcunleap.com/v1/hook/scan-input` 检测用户消息，
+请求使用 `Authorization: Bearer <FANGCUN_API_KEY>`。客户端同时提供
+`scan_output`，用于在模型生成后调用
+`POST https://guard.fangcunleap.com/v1/hook/scan-output`。
+当前演示界面把输入检测作为观察信号展示；Hook API 的错误按默认
+fail-open 处理，不会因为网络异常把业务模型强制拦截。
+
+项目根目录 `.env` 或 `backend/.env` 均可配置：
+
+```text
+FANGCUN_API_KEY=your_api_key
+FANGCUN_BASE_URL=https://guard.fangcunleap.com
+FANGCUN_TIMEOUT_SECONDS=15
+```
+
+输入请求体为 `{"messages":[{"role":"user","content":"..."}],"stream":false}`；
+Hook 返回顶层 `action`（例如 `allow` / `block`）和 `detection_result`。
 
 ## 运行
 

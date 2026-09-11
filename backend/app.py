@@ -1,21 +1,20 @@
-import asyncio
 import json
 import logging
+import time
 from contextlib import asynccontextmanager
+from pathlib import Path
+from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from backend.agent_loop import AgentLoop
 from backend.auth_store import AuthStore
-from backend.attack_library import load_attack_examples
-from backend.chat_orchestrator import ChatOrchestrator
 from backend.config import get_settings
 from backend.customer_agent import CustomerServiceAgent
 from backend.customer_agent_config import CustomerAgentRuntimeConfig
-from backend.customer_agent_catalog import LEGAL_REGULATIONS_AGENT_DATA_ROOT
+from backend.customer_agent_catalog import FINANCIAL_AGENT_DATA_ROOT
 from backend.customer_agent_schemas import (
     CustomerAgentAttackCard,
     CustomerAgentBootstrapResponse,
@@ -37,21 +36,13 @@ from backend.experiment_audit import (
     load_audit_catalog,
     load_case_detail,
     load_experiment_overview,
-    load_finvault_case_page,
-    load_finvault_case_detail,
-    load_finvault_overview,
     load_prompt_extraction_case_detail,
     load_prompt_extraction_overview,
 )
-from backend.finvault_replay import FinVaultReplayService, replay_catalog, replay_metadata
 from backend.llm_client import LlmClient
 from backend.moderation import ModerationService, SUPPORTED_GUARDS
-from backend.scenarios import default_scenario_catalog
 from backend.schemas import (
-    ChatRequest,
-    ChatResponse,
     HealthResponse,
-    FinVaultReplayRequest,
     ModerationRequest,
     ModerationResponse,
     SessionCreateRequest,
@@ -59,14 +50,18 @@ from backend.schemas import (
 )
 from pydantic import BaseModel, Field
 from backend.session_store import SessionStore
+from backend.usage_store import UsageStore
+from backend.watchers.probe_bank import ProbeBankGuard
 from backend.watchers import (
     ActivationProbeGuard,
     InlineProbingGuard,
     LlamaPromptGuardClient,
     NeteaseYidunClient,
+    FangcunGuardClient,
     Qwen3GuardClient,
     SafeGaugeGuard,
 )
+from backend.financial_tool_mock import FinancialToolMocker
 
 logger = logging.getLogger(__name__)
 
@@ -76,12 +71,23 @@ class GuardrailsApiRequest(BaseModel):
     session_id: str | None = Field(default=None, max_length=128)
 
 
+class CustomerAgentTranslationRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=30000)
+
+
+class CustomerAgentTranslationResponse(BaseModel):
+    content: str
+
+
 class AuthCredentials(BaseModel):
     email: str = Field(min_length=3, max_length=254)
     password: str = Field(min_length=8, max_length=256)
 
 settings = get_settings()
 auth_store = AuthStore()
+if settings.admin_password:
+    auth_store.ensure_admin(settings.admin_email, settings.admin_password)
+usage_store = UsageStore()
 session_store = SessionStore()
 business_llm_client = LlmClient(
     settings,
@@ -98,33 +104,26 @@ llm_client = business_llm_client
 qwen_guard_client = Qwen3GuardClient(settings)
 llama_prompt_guard_client = LlamaPromptGuardClient(settings)
 netease_yidun_client = NeteaseYidunClient(settings)
+fangcun_guard_client = FangcunGuardClient(settings)
 safegauge_guard = SafeGaugeGuard(settings)
 inline_probing_guard = InlineProbingGuard(settings)
 activation_probe_guard = ActivationProbeGuard(settings)
-agent_loop = AgentLoop(
-    llm_client=llm_client,
-    session_store=session_store,
-)
-chat_orchestrator = ChatOrchestrator(
-    agent_loop=agent_loop,
-    qwen_guard_client=qwen_guard_client,
-    llama_prompt_guard_client=llama_prompt_guard_client,
-    netease_yidun_client=netease_yidun_client,
-    safegauge_guard=safegauge_guard,
-    inline_probing_guard=inline_probing_guard,
-    activation_probe_guard=activation_probe_guard,
-)
+probe_bank_guard = ProbeBankGuard(settings)
+financial_tool_mocker = FinancialToolMocker(settings)
 moderation_service = ModerationService(
     qwen_guard_client=qwen_guard_client,
     llama_prompt_guard_client=llama_prompt_guard_client,
     netease_yidun_client=netease_yidun_client,
+    fangcun_guard_client=fangcun_guard_client,
     safegauge_guard=safegauge_guard,
     inline_probing_guard=inline_probing_guard,
 )
-finvault_replay_service = FinVaultReplayService(settings)
-customer_agent_runtime_config = CustomerAgentRuntimeConfig(
-    LEGAL_REGULATIONS_AGENT_DATA_ROOT
+customer_data_root = (
+    Path(settings.customer_agent_data_root).expanduser().resolve()
+    if settings.customer_agent_data_root.strip()
+    else FINANCIAL_AGENT_DATA_ROOT
 )
+customer_agent_runtime_config = CustomerAgentRuntimeConfig(customer_data_root)
 customer_agent_service = CustomerServiceAgent(
     settings=settings,
     llm_client=llm_client,
@@ -135,30 +134,26 @@ customer_agent_service = CustomerServiceAgent(
     qwen_guard_client=qwen_guard_client,
     llama_prompt_guard_client=llama_prompt_guard_client,
     netease_yidun_client=netease_yidun_client,
+    fangcun_guard_client=fangcun_guard_client,
+    financial_tool_mocker=financial_tool_mocker,
     runtime_config=customer_agent_runtime_config,
 )
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Building the FinVault audit index is CPU- and I/O-heavy on its first use.
-    # Warm it before the app reports itself ready so the audit page does not pay
-    # that cost on its first request. Audit data is optional, so a missing or
-    # incomplete local result set must not prevent the rest of the app starting.
-    try:
-        await asyncio.to_thread(load_finvault_overview, "qwen3-32b")
-    except Exception:
-        logger.warning("Unable to warm the FinVault audit cache", exc_info=True)
     yield
     await llm_client.close()
     await shadow_llm_client.close()
     await qwen_guard_client.close()
     await llama_prompt_guard_client.close()
     await netease_yidun_client.close()
+    await fangcun_guard_client.close()
     await safegauge_guard.close()
     await inline_probing_guard.close()
     await activation_probe_guard.close()
-    await finvault_replay_service.close()
+    await probe_bank_guard.close()
+    await financial_tool_mocker.close()
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
@@ -169,6 +164,33 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+PROTECTED_FRONTEND_PATHS = {
+    "/",
+    "/index.html",
+    "/audit.html",
+    "/cases.html",
+    "/competitors.html",
+    "/account.html",
+    "/developer-docs.html",
+    "/developer-examples.html",
+    "/admin.html",
+}
+
+
+@app.middleware("http")
+async def require_frontend_session(request: Request, call_next):
+    """Redirect protected HTML before it can render for a signed-out browser."""
+    if request.url.path not in PROTECTED_FRONTEND_PATHS:
+        return await call_next(request)
+    if request.query_params.get("demo") == "1":
+        return await call_next(request)
+    user = auth_store.current_user(session=request.cookies.get("pm_session"))
+    if not user:
+        return RedirectResponse(url="/login.html", status_code=303)
+    if request.url.path == "/admin.html" and user.get("role") != "admin":
+        return RedirectResponse(url="/account.html", status_code=303)
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -258,6 +280,62 @@ async def auth_logout(response: Response) -> dict:
     return {"ok": True}
 
 
+@app.get("/api/usage")
+async def usage_events(request: Request, limit: int = 100, page: int | None = None, page_size: int = 10) -> dict:
+    authorization = request.headers.get("authorization", "")
+    scheme, _, value = authorization.partition(" ")
+    user = auth_store.current_user(
+        session=request.cookies.get("pm_session"),
+        token=value.strip() if scheme.lower() == "bearer" else None,
+    )
+    if not user:
+        raise HTTPException(status_code=401, detail="尚未登录。")
+    if page is not None:
+        if page < 1 or not 1 <= page_size <= 100:
+            raise HTTPException(status_code=400, detail="分页参数无效。")
+        return usage_store.page_for_user(user["id"], page=page, page_size=page_size)
+    return {"events": usage_store.list_for_user(user["id"], limit=limit)}
+
+
+def _admin_user(request: Request) -> dict:
+    authorization = request.headers.get("authorization", "")
+    scheme, _, value = authorization.partition(" ")
+    user = auth_store.current_user(
+        session=request.cookies.get("pm_session"),
+        token=value.strip() if scheme.lower() == "bearer" else None,
+    )
+    if not user:
+        raise HTTPException(status_code=401, detail="尚未登录。")
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="仅管理员可访问。")
+    return user
+
+
+@app.get("/api/admin/users")
+async def admin_users(request: Request, page: int = 1, page_size: int = 20) -> dict:
+    _admin_user(request)
+    if page < 1 or not 1 <= page_size <= 100:
+        raise HTTPException(status_code=400, detail="分页参数无效。")
+    result = auth_store.list_users(page=page, page_size=page_size)
+    counts = usage_store.counts_by_account()
+    for user in result["users"]:
+        user["api_calls"] = counts.get(user["id"], 0)
+    return result
+
+
+@app.get("/api/admin/usage")
+async def admin_usage(request: Request, page: int = 1, page_size: int = 20) -> dict:
+    _admin_user(request)
+    if page < 1 or not 1 <= page_size <= 100:
+        raise HTTPException(status_code=400, detail="分页参数无效。")
+    result = usage_store.page_all(page=page, page_size=page_size)
+    users = auth_store.users_by_id()
+    for event in result["events"]:
+        user = users.get(event.get("account_id"), {})
+        event["account_email"] = event.get("account_email") or user.get("email") or "未知账户"
+    return result
+
+
 @app.post("/v1/guardrails")
 async def guardrails_api(payload: GuardrailsApiRequest) -> dict:
     """Minimal product API: one key, one input, one protected answer."""
@@ -299,17 +377,6 @@ async def health() -> HealthResponse:
         )
 
 
-@app.get("/api/scenarios")
-async def list_scenarios():
-    scenarios = default_scenario_catalog()
-    return {"scenarios": [scenario.model_dump(by_alias=True) for scenario in scenarios]}
-
-
-@app.get("/api/attacks")
-async def list_attacks(language: str = "cn"):
-    return {"attacks": load_attack_examples(language=language)}
-
-
 @app.get("/api/guards/safegauge/info")
 async def safegauge_info(task: str | None = None, model: str | None = None, port: int | None = None):
     if port is not None and not 1 <= port <= 65535:
@@ -326,13 +393,79 @@ async def moderation_guards():
     return {"guards": list(SUPPORTED_GUARDS)}
 
 
-@app.post("/v1/moderations", response_model=ModerationResponse)
 @app.post("/api/moderate", response_model=ModerationResponse, include_in_schema=False)
-async def moderate(request: ModerationRequest) -> ModerationResponse:
+async def moderate(request: Request) -> Response:
     try:
-        return await moderation_service.moderate(request)
+        payload = await request.json()
+        result = await moderation_service.moderate(ModerationRequest.model_validate(payload))
+        return JSONResponse(result.model_dump())
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@app.post("/v1/moderations")
+async def standardized_moderate(request: Request) -> JSONResponse:
+    """Run every trained risk probe on the same complete conversation."""
+    try:
+        payload = await request.json()
+    except ValueError:
+        return JSONResponse(status_code=400, content={"error": {"type": "invalid_request_error", "code": "invalid_json", "message": "Request body must be valid JSON."}})
+    if not isinstance(payload, dict):
+        return JSONResponse(status_code=400, content={"error": {"type": "invalid_request_error", "code": "invalid_request", "message": "Request body must be a JSON object."}})
+    api_key = request.headers.get("authorization", "")
+    token = api_key.removeprefix("Bearer ").strip() if api_key.startswith("Bearer ") else ""
+    user = auth_store.current_user(token=token)
+    if not user:
+        return JSONResponse(status_code=401, content={"error": {"type": "invalid_request_error", "code": "invalid_api_key", "message": "A Bearer API key is required."}})
+    messages = payload.get("messages") or []
+    if not isinstance(messages, list) or not messages:
+        return JSONResponse(status_code=400, content={"error": {"type": "invalid_request_error", "code": "invalid_messages", "message": "messages must be a non-empty array."}})
+    normalized_messages: list[dict] = []
+    for item in messages:
+        if not isinstance(item, dict) or item.get("role") not in {"developer", "system", "user", "assistant", "tool"}:
+            return JSONResponse(status_code=400, content={"error": {"type": "invalid_request_error", "code": "invalid_messages", "message": "messages contain an invalid role."}})
+        content = item.get("content") or ""
+        if not isinstance(content, str):
+            return JSONResponse(status_code=400, content={"error": {"type": "invalid_request_error", "code": "unsupported_content_type", "message": "v1 currently supports text content only."}})
+        reasoning = item.get("reasoning_content") or ""
+        if not isinstance(reasoning, str):
+            return JSONResponse(status_code=400, content={"error": {"type": "invalid_request_error", "code": "unsupported_content_type", "message": "reasoning_content must be text."}})
+        normalized_messages.append({**item, "content": content})
+    tools = payload.get("tools")
+    if tools is not None and (not isinstance(tools, list) or any(not isinstance(t, dict) for t in tools)):
+        return JSONResponse(status_code=400, content={"error": {"code": "invalid_tools", "message": "tools must be an array of objects."}})
+    started = time.perf_counter()
+    detector_model = settings.customer_agent_shadow_model or "qwen3-8b"
+    assessment = await probe_bank_guard.moderate(normalized_messages, tools=payload.get("tools"))
+    if assessment.error:
+        request_id = f"req_{uuid4().hex}"
+        error_code = {400: "invalid_messages", 413: "input_too_large",
+                      429: "detector_overloaded", 504: "detector_timeout"}.get(assessment.status_code, "detector_unavailable")
+        return JSONResponse(
+            status_code=assessment.status_code,
+            content={"error": {"type": "server_error" if assessment.status_code >= 500 else "rate_limit_error" if assessment.status_code == 429 else "invalid_request_error", "code": error_code, "message": assessment.error, "request_id": request_id}},
+            headers={"X-Request-Id": request_id, "Retry-After": "5"},
+        )
+    bank_result = assessment.payload
+    flagged = assessment.risky
+    request_id = f"req_{uuid4().hex}"
+    elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
+    input_tokens = bank_result["input_tokens"]
+    response = {
+        "id": f"mod_{uuid4().hex}",
+        "request_id": request_id,
+        "created": int(time.time()),
+        "detector_model": detector_model,
+        "bank_version": bank_result["bank_version"],
+        "action": "block" if flagged else "pass",
+        "per_risk": bank_result["per_risk"],
+        "per_entry": bank_result["per_entry"],
+        "triggered_entries": bank_result["triggered_entries"],
+        "usage": {"input_tokens": input_tokens, "billable_tokens": input_tokens, "billable_units": round(input_tokens / 1000, 6), "unit": "1k_input_tokens"},
+        "latency_ms": {**bank_result["latency_ms"], "total": elapsed_ms},
+    }
+    usage_store.append(user=user, request_id=request_id, messages=normalized_messages, tools=tools, result=response)
+    return JSONResponse(response, headers={"X-Request-Id": request_id})
 
 
 @app.get("/api/guards/inline_probing/info")
@@ -342,6 +475,8 @@ async def inline_probing_info():
 
 @app.get("/api/guards/activation_probe/info")
 async def activation_probe_info():
+    if settings.activation_probe_backend == "probe_bank":
+        return await probe_bank_guard.get_model_info()
     return await activation_probe_guard.get_model_info()
 
 
@@ -392,45 +527,6 @@ async def prompt_extraction_audit_case(sample_index: int, model: str = "qwen3-32
         raise HTTPException(status_code=404, detail=str(error)) from error
 
 
-@app.get("/api/audit/finvault")
-async def finvault_audit_overview(include_cases: bool = True, model: str = "qwen3-8b"):
-    overview = load_finvault_overview(model)
-    if include_cases:
-        return overview
-    return {**overview, "cases": [], "case_count": len(overview["cases"])}
-
-
-@app.get("/api/audit/finvault/cases")
-async def finvault_audit_cases(
-    model: str = "qwen3-8b",
-    risk_type: str = "all",
-    domain: str = "all",
-    dataset_type: str = "all",
-    evaluation_status: str = "all",
-    search: str = "",
-    offset: int = 0,
-    limit: int = 50,
-):
-    return load_finvault_case_page(
-        agent_model=model,
-        risk_type=risk_type,
-        domain=domain,
-        dataset_type=dataset_type,
-        evaluation_status=evaluation_status,
-        search=search,
-        offset=offset,
-        limit=limit,
-    )
-
-
-@app.get("/api/audit/finvault/cases/{sample_index}")
-async def finvault_audit_case(sample_index: int, model: str = "qwen3-8b"):
-    try:
-        return load_finvault_case_detail(sample_index, model)
-    except KeyError as error:
-        raise HTTPException(status_code=404, detail=str(error)) from error
-
-
 @app.get("/api/case-studies")
 async def case_studies():
     return list_case_studies()
@@ -469,23 +565,6 @@ async def create_session(request: SessionCreateRequest) -> SessionCreateResponse
 async def reset_session(session_id: str):
     session_store.reset(session_id)
     return {"ok": True}
-
-
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest) -> ChatResponse:
-    return await chat_orchestrator.run(request)
-
-
-@app.post("/api/chat/stream")
-async def chat_stream(request: ChatRequest) -> StreamingResponse:
-    return StreamingResponse(
-        chat_orchestrator.stream(request),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
-    )
 
 
 @app.get("/api/customer-agent", response_model=CustomerAgentBootstrapResponse)
@@ -646,6 +725,23 @@ async def compare_customer_agent(
         ) from error
 
 
+@app.post(
+    "/api/customer-agent/translate",
+    response_model=CustomerAgentTranslationResponse,
+)
+async def translate_customer_agent_output(
+    request: CustomerAgentTranslationRequest,
+) -> CustomerAgentTranslationResponse:
+    try:
+        content = await financial_tool_mocker.translate_to_chinese(request.text)
+        return CustomerAgentTranslationResponse(content=content)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    except Exception as error:
+        logger.exception("Customer Agent output translation failed")
+        raise HTTPException(status_code=502, detail=f"输出翻译失败：{error}") from error
+
+
 @app.post("/api/customer-agent/run/stream")
 async def stream_customer_agent(request: CustomerAgentRunRequest) -> StreamingResponse:
     async def events():
@@ -654,25 +750,6 @@ async def stream_customer_agent(request: CustomerAgentRunRequest) -> StreamingRe
 
     return StreamingResponse(
         events(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
-
-
-@app.get("/api/replay/finvault/default")
-async def finvault_replay_default():
-    return replay_metadata()
-
-
-@app.get("/api/replay/finvault/cases")
-async def finvault_replay_cases(limit: int = 18):
-    return replay_catalog(limit=limit)
-
-
-@app.post("/api/replay/finvault/stream")
-async def finvault_replay_stream(request: FinVaultReplayRequest) -> StreamingResponse:
-    return StreamingResponse(
-        finvault_replay_service.stream(request.sample_index, request.selected_guards),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

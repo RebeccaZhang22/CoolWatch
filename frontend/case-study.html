@@ -3,25 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="./src/section-shell.js?v=2"></script>
     <title>权限越界案例 · ProspectMonitor</title>
     <link rel="stylesheet" href="./src/case-study.css?v=streamed-case-loading-20260804-v1" />
   </head>
   <body>
-    <header class="case-study-topbar">
-      <a class="case-study-brand" href="./index.html" aria-label="ProspectMonitor 攻防演示台">
-        <span class="case-study-brand-mark" aria-hidden="true"><span></span></span>
-        <span>
-          <strong>ProspectMonitor</strong>
-          <small>High-Risk Case Replay</small>
-        </span>
-      </a>
-      <nav class="case-study-nav" aria-label="主导航">
-        <a href="./index.html">攻防演示台</a>
-        <a href="./audit.html">实验审计</a>
-        <a class="active" href="./cases.html" aria-current="page">案例研究</a>
-      </nav>
-      <a class="case-header-back" href="./cases.html"><span aria-hidden="true">←</span> 返回案例研究</a>
-    </header>
+
 
     <main>
       <section class="hero">
@@ -58,7 +45,7 @@
           </button>
           <button type="button" class="view-tab" role="tab" aria-selected="false" data-view="guarded">
             <span class="tab-dot safe"></span>
-            <span><b>加入我们的检测方法</b><small>SafeGauge 与 Activation Probe 均在首轮检出</small></span>
+            <span><b>加入我们的检测方法</b><small>SafeGauge 与基于隐藏层的可解释性技术均在首轮检出</small></span>
             <em>风险拦截</em>
           </button>
         </div>
@@ -96,6 +83,6 @@
       <div id="panelBody" class="panel-body"></div>
     </aside>
 
-    <script type="module" src="./src/case-study.js?v=streamed-case-loading-v1"></script>
+    <script type="module" src="./src/case-study.js?v=streamed-case-loading-v2"></script>
   </body>
 </html>

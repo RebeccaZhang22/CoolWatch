@@ -1,7 +1,7 @@
 const GUARDS = [
   ["inline_probing", "Inline Probe"],
   ["qwen3_guard", "Qwen3Guard"],
-  ["netease_yidun", "网易易盾"],
+  ["netease_yidun", "网易易盾文本安全护栏"],
   ["no_guard", "No Guard"],
 ];
 

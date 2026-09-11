@@ -9,6 +9,7 @@ ProspectMonitor 是一个 Agent 安全审计与攻防演示系统。首页围绕
 - 实验审计：FinVault 高风险任务、系统提示词泄露、间接提示词注入。
 - 攻防演示台：单一 Qwen3-8B reasoning 客服 Agent，支持真实工具调用、RAG、逐阶段轨迹和同消息防护对照。
 - 护栏对比：Activation Probe、SafeGauge、Qwen3Guard、Llama Prompt Guard 2、网易易盾、XGuard，以及无防护基线。
+- 竞品资料：[护栏竞品对比与接入分析](竞品护栏对比与接入分析.md)，梳理输入输出、产品形态、部署方式和本项目接入边界。
 - Case Study：用流程图对比无防护与有防护的 Agent 行为。
 
 审计页和录制回放不要求 GPU 或外部模型服务。只有实时聊天、实时护栏判定和 Activation Probe 推理需要额外模型服务。
@@ -87,7 +88,7 @@ Qwen3Guard 可用 `vllm_setups/run_vllm_qwen3guard_8b.sh` 启动。Llama Prompt 
 
 ### SafeGauge + Inline Probing：单个 task 的一次 prefill
 
-统一文本判定接口为 `POST /v1/moderations`。同时选择
+内部多护栏调试接口为 `POST /api/moderate`。同时选择
 `safegauge` 和 `inline_probing` 时，后端可以只向 patched vLLM
 发送一次 raw-token `/v1/completions` 请求：
 
@@ -105,7 +106,7 @@ Qwen3Guard 可用 `vllm_setups/run_vllm_qwen3guard_8b.sh` 启动。Llama Prompt 
   每个请求必须用 `probe_id`（或唯一 checkpoint ID）选择其中一个。注册表本身不能热更新。
 - SafeGauge 的每个行为使用独立 suffix 和配套 MLP；每换一个 suffix，都必须重新
   prefill 一次。
-- 当前 `/v1/moderations` 每次只接受一个 `task`，SafeGauge 路由也只选择一个 suffix。
+- 当前 `/api/moderate` 每次只接受一个 `task`，SafeGauge 路由也只选择一个 suffix。
   因此多个 task/多个 suffix 应分别调用，不能把总运行次数描述为一次。
 
 当前接口的用途是：在某一次 SafeGauge suffix prefill 中，顺便捕获同一原始上下文
@@ -170,7 +171,7 @@ INLINE_PROBING_TIMEOUT_SECONDS=120
 #### 3. 调用统一 moderation 接口
 
 ```bash
-curl http://127.0.0.1:18088/v1/moderations \
+curl http://127.0.0.1:18088/api/moderate \
   -H 'Content-Type: application/json' \
   -d '{
     "messages": [
@@ -233,7 +234,7 @@ curl http://127.0.0.1:18088/v1/moderations \
 
 `prompt` 会路由到 `system_prompt_leakage_intent`。实时聊天不执行
 FinVault 高风险任务；`financially_malicious_action` 融合请通过上面的
-`/v1/moderations` 接口显式传入 task，FinVault 页面继续使用录制回放。只有自动选出的
+`/api/moderate` 接口显式传入 task，FinVault 页面继续使用录制回放。只有自动选出的
 task 与 `INLINE_PROBING_TASK` 一致时才会融合。任务不一致时，后端保留原有的独立检测路径，不会把一个 checkpoint 当作另一个任务使用。聊天路径中融合请求的某一项解析失败时，只会对该项回退到原检测服务。
 
 常见错误：

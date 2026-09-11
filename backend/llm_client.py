@@ -63,6 +63,7 @@ class LlmClient:
         base_url: str | None = None,
         tools: list[dict[str, Any]] | None = None,
         tool_choice: Any | None = None,
+        include_chat_template_kwargs: bool = True,
         enable_inline_probing: bool = False,
         inline_probing_threshold: float | None = None,
     ) -> LlmGeneration:
@@ -75,10 +76,11 @@ class LlmClient:
             "top_p": model_params.top_p,
             "max_tokens": model_params.max_tokens,
             "stream": False,
-            "chat_template_kwargs": {
-                "enable_thinking": model_params.enable_reasoning,
-            },
         }
+        if include_chat_template_kwargs:
+            payload["chat_template_kwargs"] = {
+                "enable_thinking": model_params.enable_reasoning,
+            }
         if tools is not None:
             payload["tools"] = tools
         if tool_choice is not None:

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>示例代码 · ProspectMonitor</title>
+    <link rel="stylesheet" href="./src/developer-help.css?v=1" />
+  </head>
+  <body class="help-page">
+    <main class="help-card">
+      <nav class="developer-tabs" aria-label="开发者中心">
+        <a href="./account.html?embedded=1">API Token</a>
+        <a href="./developer-docs.html">开发文档</a>
+        <a class="active" href="./developer-examples.html" aria-current="page">示例代码</a>
+        <a href="./admin.html" data-admin-link hidden>管理后台</a>
+      </nav>
+
+      <header class="help-hero">
+        <h1>示例代码</h1>
+        <p>把下面的检测函数放到已有智能体的模型调用前和工具返回后。请通过环境变量保存 Token，不要写入源码或提交到代码仓库。</p>
+      </header>
+
+      <article class="code-sample">
+        <header><span>Bash · 单次上下文检测</span><button type="button" data-copy-code="bashExample">复制代码</button></header>
+        <pre><code id="bashExample">export PROSPECTMONITOR_API_KEY="YOUR_TOKEN"
+export PROSPECTMONITOR_BASE_URL="http://localhost:18088"
+
+curl --fail-with-body --silent --show-error \
+  "$PROSPECTMONITOR_BASE_URL/v1/moderations" \
+  -H "Authorization: Bearer $PROSPECTMONITOR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "messages": [
+      {"role": "system", "content": "你是企业客服助手。"},
+      {"role": "user", "content": "请查询我的订单状态。"}
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "lookup_order",
+          "description": "查询订单"
+        }
+      }
+    ]
+  }'</code></pre>
+      </article>
+
+      <article class="code-sample">
+        <header><span>Python · 接入已有智能体</span><button type="button" data-copy-code="pythonExample">复制代码</button></header>
+        <pre><code id="pythonExample">import os
+import requests
+
+BASE_URL = os.getenv("PROSPECTMONITOR_BASE_URL", "http://localhost:18088")
+API_KEY = os.environ["PROSPECTMONITOR_API_KEY"]
+
+
+def moderate(messages, tools=None):
+    response = requests.post(
+        f"{BASE_URL}/v1/moderations",
+        headers={"Authorization": f"Bearer {API_KEY}"},
+        json={"messages": messages, "tools": tools},
+        timeout=65,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+def require_pass(messages, tools=None):
+    result = moderate(messages, tools)
+    if result["action"] == "block":
+        raise RuntimeError(
+            f"安全检测已拦截本轮执行，request_id={result['request_id']}"
+        )
+    return result
+
+
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "lookup_order",
+        "description": "查询订单",
+        "parameters": {"type": "object", "properties": {}},
+    },
+}]
+messages = [
+    {"role": "system", "content": "你是企业客服助手。"},
+    {"role": "user", "content": "请查询我的订单状态。"},
+]
+
+# 检测点 1：调用业务模型前
+require_pass(messages, tools)
+# assistant_message = your_existing_agent.run(messages, tools=tools)
+
+# 工具执行完毕后，将模型的工具调用和真实结果加入现有上下文
+messages.append({
+    "role": "assistant",
+    "content": "",
+    "tool_calls": [{
+        "id": "call_1",
+        "type": "function",
+        "function": {"name": "lookup_order", "arguments": "{}"},
+    }],
+})
+messages.append({
+    "role": "tool",
+    "tool_call_id": "call_1",
+    "content": '{"order_id":"A1024","status":"shipped"}',
+})
+
+# 检测点 2：把工具结果交回业务模型前
+require_pass(messages, tools)
+# final_answer = your_existing_agent.run(messages, tools=tools)</code></pre>
+      </article>
+      <p class="copy-feedback" id="copyFeedback" role="status" aria-live="polite"></p>
+    </main>
+    <script type="module" src="./src/developer-help.js?v=3"></script>
+  </body>
+</html>

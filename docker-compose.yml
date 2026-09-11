@@ -1,0 +1,36 @@
+services:
+  prospectmonitor:
+    image: ${PROSPECTMONITOR_IMAGE:-rebeccazhang22/agent-guard-open:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PROSPECTMONITOR_PORT:-18088}:18088"
+    environment:
+      # The browser demo works at /?demo=1 without these services. For real
+      # mode, point the two endpoints at host or separately deployed vLLM.
+      CUSTOMER_AGENT_BUSINESS_VLLM_BASE_URL: ${CUSTOMER_AGENT_BUSINESS_VLLM_BASE_URL:-http://host.docker.internal:8104/v1}
+      CUSTOMER_AGENT_SHADOW_VLLM_BASE_URL: ${CUSTOMER_AGENT_SHADOW_VLLM_BASE_URL:-http://host.docker.internal:8013/v1}
+      CUSTOMER_AGENT_MODEL: ${CUSTOMER_AGENT_MODEL:-qwen3-8b}
+      CUSTOMER_AGENT_SHADOW_MODEL: ${CUSTOMER_AGENT_SHADOW_MODEL:-qwen3-8b}
+      CUSTOMER_AGENT_ENABLE_RUNTIME_PROBES: ${CUSTOMER_AGENT_ENABLE_RUNTIME_PROBES:-true}
+      ACTIVATION_PROBE_BACKEND: ${ACTIVATION_PROBE_BACKEND:-vllm}
+      ACTIVATION_PROBE_VLLM_BASE_URL: ${ACTIVATION_PROBE_VLLM_BASE_URL:-http://host.docker.internal:8013/v1}
+      SAFEGAUGE_TOKENIZER_PATH: ${SAFEGAUGE_TOKENIZER_PATH:-}
+      QWEN3_GUARD_BACKEND: ${QWEN3_GUARD_BACKEND:-openai}
+      QWEN3_GUARD_BASE_URL: ${QWEN3_GUARD_BASE_URL:-http://host.docker.internal:8001/v1}
+      QWEN3_GUARD_MODEL: ${QWEN3_GUARD_MODEL:-qwen3guard-8b}
+      QWEN3_GUARD_API_KEY: ${QWEN3_GUARD_API_KEY:-EMPTY}
+      FANGCUN_API_KEY: ${FANGCUN_API_KEY:-}
+      NETEASE_YIDUN_SECRET_ID: ${NETEASE_YIDUN_SECRET_ID:-}
+      NETEASE_YIDUN_SECRET_KEY: ${NETEASE_YIDUN_SECRET_KEY:-}
+      NETEASE_YIDUN_BUSINESS_ID: ${NETEASE_YIDUN_BUSINESS_ID:-}
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-*}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - prospectmonitor-runtime:/app/.runtime
+    restart: unless-stopped
+
+volumes:
+  prospectmonitor-runtime:

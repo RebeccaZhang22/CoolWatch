@@ -3,7 +3,7 @@
 前端使用原生 HTML、CSS 和 JavaScript modules，无构建步骤。生产和本地演示均由 FastAPI 同源托管，避免浏览器直接访问模型服务造成 CORS、凭证和网络暴露问题。
 
 ```bash
-./vllm_setups/run_customer_agent_qwen3_8b.sh start
+./vllm_setups/run_probe_vllm_qwen3_8b.sh start
 ./vllm_setups/run_customer_agent_backend.sh
 ```
 
@@ -11,16 +11,16 @@
 
 先访问 `login.html` 注册或登录；登录后会进入 CLI Token 页面，再通过链接进入 ProspectWatch。Token 仅用于 CLI/API 调用，`index.html` 演示台使用浏览器会话 Cookie，不直接读取 Token。
 
-首页 `index.html` 是单一「法规条款 Agent」工作台：
+首页 `index.html` 是单一「机构财富管理与资金风控 Agent」工作台：
 
 - 保留原演示台的顶部三入口、左侧配置栏、中央聊天区和右侧详情抽屉；
 - 左侧「Agent 配置」只管理模型、vLLM 端口和生成参数；其下的「上下文配置」分别提供 System Prompt 编辑，以及 RAG 文档上传、查看和删除；
-- 「新聊天」会清空当前上传的临时 RAG 文档，内置法规语料库不受影响；
+- 「新聊天」会清空当前上传的临时 RAG 文档，内置金融语料库不受影响；
 - 用户直接输入自然消息，不选择场景类别或攻击类型；
-- 对话建议中的「演示 RAG 保护」是一条带评估标识的单轮窃取消息，可直接对照私有片段是否进入上下文及是否泄漏；
+- 首页对话建议聚焦正常的财富管理业务问题；RAG 窃取和外部注入攻击仍可通过隐藏评估接口调用；
 - 每轮调用 `/api/customer-agent/run/stream`，实时显示 Agent loop 阶段；
-- 五种生成前检测可独立勾选：隐藏层激活探针、后缀概率探针、Qwen3 安全护栏、Llama 安全护栏和易盾文本安全；
-- 默认启用 ProspectMonitor 的两种方法，三种 baseline 默认关闭，勾选后才执行真实检测；
+- 页面将生成前检测分为两类：我们的方案（基于隐藏层的可解释性技术）和护栏（包含 Qwen3Guard、网易易盾、方寸跃迁三种市面已有产品）；后缀概率探针与 Llama 安全护栏保留后端兼容能力但不在首页显示；
+- 默认启用我们的方案，护栏默认关闭；勾选护栏可一次启用全部竞品，也可以展开后分别选择，右侧结果仍保留各检测器的独立信号；
 - 可用同一条消息调用 `/api/customer-agent/compare` 做两次独立运行对照；
 - 右侧只展示本轮防护信号、工具/RAG 轨迹、reasoning 元数据和客户端泄漏结果；RAG 轨迹包含 BM25 Top-K、原始分数和 chunk ID。
 

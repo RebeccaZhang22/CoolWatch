@@ -42,6 +42,6 @@ customer_agent/
 
 所有订单、内部规则、攻击内容和评估标记都是合成演示数据，不是真实客户资料或生产凭证。配置在进程启动时执行严格一致性校验。
 
-`scenario.json` 的 `defense_pipeline` 只列出生成前输入检测：隐藏层激活探针、后缀概率探针、Qwen3 安全护栏、Llama 安全护栏和易盾文本安全。客服攻防演示台不再将生成内探针接入 Agent loop。
+`scenario.json` 的 `defense_pipeline` 只列出生成前输入检测：隐藏层激活探针、后缀概率探针、Qwen3 安全护栏、Llama 安全护栏、网易易盾文本安全护栏和方寸跃迁安全护栏。客服攻防演示台不再将生成内探针接入 Agent loop。
 
 前端「Agent 配置」可以直接保存完整 System Prompt，也可以上传 UTF-8 编码的 Markdown/TXT 文档。Prompt 写入 `agent/system_prompt.override.md`；上传文件写入 `rag/uploads/`，同时原子更新 `rag/documents.json`。两类变更都会在请求成功前完成严格加载校验并热更新运行时快照，上传文档还会立即重建 BM25 索引，不需要重启 FastAPI。内置文档在配置台中只读，只有前端上传的文档可以删除；点击「新聊天」时会清理上传文档并保留内置知识库。

@@ -31,11 +31,14 @@ class QwenGuardAssessment:
     def risky(self) -> bool | None:
         if self.safety_label is None:
             return None
-        return self.safety_label in {"Unsafe", "Controversial"}
+        # Qwen3Guard's Controversial label is a policy classification, not a
+        # security finding for this product. Only an explicit Unsafe label is
+        # allowed to raise the risk signal or participate in input blocking.
+        return self.safety_label.strip().lower() == "unsafe"
 
     @property
     def blocked(self) -> bool:
-        return self.safety_label == "Unsafe"
+        return bool(self.safety_label and self.safety_label.strip().lower() == "unsafe")
 
 
 class Qwen3GuardClient:

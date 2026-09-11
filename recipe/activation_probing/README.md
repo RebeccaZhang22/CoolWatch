@@ -1,14 +1,13 @@
 # Activation Probe inside patched vLLM
 
-These recipes load the existing trained Activation Probe checkpoints directly
+This recipe loads the current trained Activation Probe checkpoint directly
 inside the patched vLLM GPU worker. No checkpoint conversion or second
 Transformers model is required.
 
-The four historical checkpoints use one residual-stream block output and a
-linear scorer. The Qwen3-8B customer-Agent default is v16: it captures block
-outputs 21/22/23, standardizes and concatenates them, then scores them with a
-small MLP. Both paths share the same auxiliary-hidden-state executor, and the
-multi-probe registry can load several compatible recipes for one model server.
+The production recipe is Qwen3-8B v16: it captures block outputs 21/22/23,
+standardizes and concatenates them, then scores them with a small MLP. The
+historical single-layer linear recipes are archived under
+`aborted/activation_probing/legacy_recipes/`.
 
 The runtime is pinned to vLLM `0.25.1`. Install and apply the overlay first by
 following the [Inline Probing setup](../inline_probing/qwen3-8b-indirect-prompt-injection-assistant-prefix-probing/README.md).
@@ -30,26 +29,6 @@ LAUNCHER=recipe/inline_probing/qwen3-8b-indirect-prompt-injection-assistant-pref
   --probe-recipe recipe/activation_probing/qwen3-8b-theft-unified-v16-multilayer-mlp/recipe.json
 ```
 
-Qwen3-32B example (both Activation Probes):
-
-```bash
-"$LAUNCHER" start \
-  --state-dir .runtime/qwen3-32b-activation-multiprobe-server \
-  --model .runtime/models/Qwen3-32B \
-  --served-model-name qwen3-32b \
-  --gpu 4 \
-  --port 8014 \
-  --gpu-memory-utilization 0.95 \
-  --max-model-len 2048 \
-  --max-num-batched-tokens 2048 \
-  --probe-recipe recipe/activation_probing/qwen3-32b-finvault/recipe.json \
-  --probe-recipe recipe/activation_probing/qwen3-32b-prompt-extraction/recipe.json
-```
-
-The 32B command above is an A800-80GB single-GPU validation profile. Adjust the
-memory and sequence limits for the deployment GPU, while keeping TP=1 for this
-overlay.
-
 Then configure ProspectMonitor:
 
 ```dotenv
@@ -57,18 +36,12 @@ ACTIVATION_PROBE_BACKEND=vllm
 ACTIVATION_PROBE_VLLM_BASE_URL=http://127.0.0.1:8013/v1
 ```
 
-Use port `8014` in the example configuration when running the 32B command.
-
-The backend selects a probe by `model + scenario_category`, sends its explicit
-`probe_id` and checkpoint SHA-256, and preserves the standalone service's
-`add_special_tokens` behavior. The response is rejected if the probe ID,
+The backend selects the Qwen3-8B `prompt` route and sends its explicit
+`probe_id` and checkpoint SHA-256. The response is rejected if the probe ID,
 checkpoint ID, or layer differs from the selected route.
 
 For Qwen3-8B customer and legal Agents, the `prompt` route uses the v16
 multilayer MLP unified theft probe covering System/Developer Prompt, private
-RAG, private CoT, and private Skill/tool disclosure intent. The older
-prompt-extraction and FinVault recipes remain available for historical
-evaluation and compatibility.
-
-The legacy standalone service remains available with
-`ACTIVATION_PROBE_BACKEND=standalone`.
+RAG, private CoT, and private Skill/tool disclosure intent. Older
+prompt-extraction, FinVault and standalone-service implementations are kept
+only under `aborted/activation_probing/`.

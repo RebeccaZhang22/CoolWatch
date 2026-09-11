@@ -110,3 +110,10 @@ results/evaluations/**/logs/
 results/evaluations/**/features/
 
 regression
+aborted/
+
+# Private unified leakage checkpoint, deployed locally only.
+/best_probe.pt
+
+
+.other/

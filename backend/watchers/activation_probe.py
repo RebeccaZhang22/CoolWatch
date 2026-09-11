@@ -13,6 +13,7 @@ from typing import Any
 import httpx
 
 from backend.config import Settings
+from backend.watchers.probe_bank import ProbeBankGuard
 from backend.watchers.inline_probing.client import (
     InlineProbingAssessment,
     build_inline_probing_request,
@@ -21,28 +22,24 @@ from backend.watchers.inline_probing.client import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 ACTIVATION_VLLM_ROUTES = {
-    ("qwen3-8b", "finvault"): PROJECT_ROOT
-    / "recipe/activation_probing/qwen3-8b-finvault/recipe.json",
     ("qwen3-8b", "prompt"): PROJECT_ROOT
     / "recipe/activation_probing/qwen3-8b-theft-unified-v16-multilayer-mlp/recipe.json",
-    ("qwen3-32b", "finvault"): PROJECT_ROOT
-    / "recipe/activation_probing/qwen3-32b-finvault/recipe.json",
-    ("qwen3-32b", "prompt"): PROJECT_ROOT
-    / "recipe/activation_probing/qwen3-32b-prompt-extraction/recipe.json",
 }
 
 
 class ActivationProbeGuard:
-    """Run Activation Probe through a standalone model or patched vLLM."""
+    """Run the current Activation Probe through patched vLLM."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        self.bank_guard = ProbeBankGuard(settings)
         self._client = httpx.AsyncClient(
             timeout=settings.activation_probe_timeout_seconds
         )
 
     async def close(self) -> None:
         await self._client.aclose()
+        await self.bank_guard.close()
 
     async def moderate_messages(
         self,
@@ -56,6 +53,11 @@ class ActivationProbeGuard:
     ) -> InlineProbingAssessment:
         started = perf_counter()
         backend = self.settings.activation_probe_backend.strip().lower()
+        if backend == "probe_bank":
+            return await self.bank_guard.moderate([
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ])
         try:
             if backend == "vllm":
                 return await self._moderate_messages_vllm(
@@ -171,7 +173,16 @@ class ActivationProbeGuard:
             "return_token_ids": True,
             "add_generation_prompt": True,
             "add_special_tokens": scenario_category == "prompt",
-            "truncate_prompt_tokens": int(route.get("max_length", 4096)),
+            # vLLM validates the prompt budget against ``max_model_len -
+            # max_tokens``.  The activation request reserves one generated
+            # token, so using the recipe's full context length makes a server
+            # configured with the same max_model_len reject every request
+            # with HTTP 400 (for example, 4096 > 4096 - 1).  Keep the recipe
+            # limit while leaving room for that token.
+            "truncate_prompt_tokens": max(
+                1,
+                int(route.get("max_length", 4096)) - 1,
+            ),
             "truncation_side": "left",
             "chat_template_kwargs": {"enable_thinking": False},
             "cache_salt": f"prospect-watch-activation-{uuid.uuid4()}",

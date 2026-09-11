@@ -5,12 +5,22 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 BACKEND_ENV_FILE = Path(__file__).resolve().with_name(".env")
+PROJECT_ROOT = BACKEND_ENV_FILE.parents[1]
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=BACKEND_ENV_FILE, env_file_encoding="utf-8", extra="ignore")
+    # Keep all local credentials and model settings in backend/.env. The
+    # project-level file remains an optional compatibility fallback.
+    model_config = SettingsConfigDict(
+        env_file=(BACKEND_ENV_FILE, PROJECT_ROOT / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_name: str = "ProspectMonitor"
+    admin_email: str = Field(default="admin@admin.com", alias="PROSPECTMONITOR_ADMIN_EMAIL")
+    admin_password: str = Field(default="", alias="PROSPECTMONITOR_ADMIN_PASSWORD")
+    probe_bank_base_url: str = Field(default="http://127.0.0.1:8302", alias="PROBE_BANK_BASE_URL")
     vllm_base_url: str = Field(default="http://127.0.0.1:8013/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
     vllm_model: str = Field(default="qwen3-8b", alias="VLLM_MODEL")
@@ -40,6 +50,14 @@ class Settings(BaseSettings):
     customer_agent_enable_runtime_probes: bool = Field(
         default=True,
         alias="CUSTOMER_AGENT_ENABLE_RUNTIME_PROBES",
+    )
+    customer_agent_data_root: str = Field(default="", alias="CUSTOMER_AGENT_DATA_ROOT")
+    openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
+    financial_tool_model: str = Field(default="gpt-4.1-mini", alias="FINANCIAL_TOOL_MODEL")
+    financial_tool_timeout_seconds: float = Field(
+        default=180.0,
+        alias="FINANCIAL_TOOL_TIMEOUT_SECONDS",
     )
     qwen3_guard_backend: str = Field(default="auto", alias="QWEN3_GUARD_BACKEND")
     qwen3_guard_base_url: str = Field(default="", alias="QWEN3_GUARD_BASE_URL")
@@ -85,7 +103,7 @@ class Settings(BaseSettings):
         alias="ACTIVATION_PROBE_TIMEOUT_SECONDS",
     )
     activation_probe_backend: str = Field(
-        default="standalone",
+        default="vllm",
         alias="ACTIVATION_PROBE_BACKEND",
     )
     activation_probe_vllm_base_url: str = Field(
@@ -100,6 +118,12 @@ class Settings(BaseSettings):
     netease_yidun_signature_method: str = Field(default="", alias="NETEASE_YIDUN_SIGNATURE_METHOD")
     netease_yidun_timeout_seconds: float = Field(default=2.0, alias="NETEASE_YIDUN_TIMEOUT_SECONDS")
     netease_yidun_check_labels: str = Field(default="", alias="NETEASE_YIDUN_CHECK_LABELS")
+    fangcun_api_key: str = Field(default="", alias="FANGCUN_API_KEY")
+    fangcun_base_url: str = Field(
+        default="https://guard.fangcunleap.com",
+        alias="FANGCUN_BASE_URL",
+    )
+    fangcun_timeout_seconds: float = Field(default=15.0, alias="FANGCUN_TIMEOUT_SECONDS")
     cors_allow_origins: str = Field(default="*", alias="CORS_ALLOW_ORIGINS")
 
     @property

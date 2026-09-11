@@ -1,0 +1,76 @@
+<!doctype html>
+<html class="competitors-document" lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="大模型安全护栏竞品对比" />
+    <title>ProspectMonitor · 竞品分析</title>
+    <script src="./src/section-shell.js?v=1"></script>
+    <link rel="stylesheet" href="./src/styles.css" />
+    <link rel="stylesheet" href="./src/competitors.css?v=interpretability-slogan-v1" />
+  </head>
+  <body class="competitors-body">
+    <div class="competitors-shell">
+      <header class="audit-topbar">
+        <a class="audit-brand" href="./index.html" aria-label="ProspectMonitor">
+          <span class="brand-mark" aria-hidden="true"><span></span></span>
+          <strong>ProspectMonitor</strong>
+        </a>
+        <nav class="audit-nav" aria-label="主导航">
+          <a href="./index.html">攻防演示台</a>
+          <a href="./audit.html">实验审计</a>
+          <a href="./cases.html">案例研究</a>
+          <a class="active" href="./competitors.html" aria-current="page">竞品分析</a>
+        </nav>
+      </header>
+
+      <main class="competitors-main">
+        <section class="comparison-section" aria-labelledby="comparisonTitle">
+          <div class="section-heading">
+            <div>
+              <h1 id="comparisonTitle">安全护栏竞品对比</h1>
+            </div>
+            <span class="product-count">共 5 个产品</span>
+          </div>
+
+          <div class="method-difference">
+            <div class="method-message">
+              <h2>让模型内部的风险信号，<span>变得可见。</span></h2>
+              <p>以模型可解释性为核心，从内部表征中提取风险信号，为安全检测提供依据。</p>
+            </div>
+          </div>
+
+          <div class="comparison-table-wrap">
+            <table class="comparison-table">
+              <thead>
+                <tr>
+                  <th>产品</th><th>厂商</th><th>产品形态</th><th>核心定位</th>
+                  <th>部署方式</th><th>防御位置</th>
+                </tr>
+              </thead>
+              <tbody id="comparisonBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="example-section" aria-labelledby="exampleTitle">
+          <div class="example-heading">
+            <div><h2 id="exampleTitle"></h2></div>
+            <span class="selection-hint">点击上方表格切换</span>
+          </div>
+          <div class="example-grid">
+            <article class="code-card input-card">
+              <div class="code-head"><span>输入</span><span class="code-status"><i class="code-dot input-dot" aria-hidden="true"></i>待检测内容</span></div>
+              <pre id="inputExample"></pre>
+            </article>
+            <article class="code-card output-card">
+              <div class="code-head"><span>输出</span><span class="code-status"><i class="code-dot output-dot" aria-hidden="true"></i>检测结果</span></div>
+              <pre id="outputExample"></pre>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="./src/competitors.js"></script>
+  </body>
+</html>

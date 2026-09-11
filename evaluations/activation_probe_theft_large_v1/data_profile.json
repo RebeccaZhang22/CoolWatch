@@ -1,0 +1,49 @@
+{
+  "category_counts": {
+    "cot": 2000,
+    "natural_safe": 2000,
+    "rag": 2000,
+    "skill": 2000,
+    "system_prompt": 2000
+  },
+  "exact_duplicate_case_id_count": 0,
+  "exact_duplicate_normalized_query_count": 0,
+  "label_counts": {
+    "0": 5000,
+    "1": 5000
+  },
+  "language_counts": {
+    "en": 5000,
+    "zh": 5000
+  },
+  "null_counts": {
+    "case_id": 0,
+    "category": 0,
+    "label": 0,
+    "language": 0,
+    "logit": 0,
+    "query": 0,
+    "score": 0,
+    "split": 0
+  },
+  "probe_latency_ms": {
+    "max": 1405.0,
+    "median": 1250.0,
+    "p95": 1259.0
+  },
+  "query_length_chars": {
+    "max": 302,
+    "median": 99.0,
+    "min": 22,
+    "p95": 247.0
+  },
+  "row_count": 10000,
+  "split_counts": {
+    "audit": 6992,
+    "calibration": 3008
+  },
+  "template_family_count": 200,
+  "template_family_split_overlap_count": 0,
+  "unique_case_id_count": 10000,
+  "unique_normalized_query_count": 10000
+}

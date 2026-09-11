@@ -7,36 +7,113 @@
     <style>
       :root { font-family: Inter, system-ui, sans-serif; color: #17202c; background: #f5f7fa; }
       * { box-sizing: border-box; }
-      body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; }
-      .card { width: min(720px, 100%); border: 1px solid #e1e6ec; border-radius: 16px; background: #fff; padding: 30px; box-shadow: 0 16px 50px rgba(22,35,51,.08); }
-      .brand { color: #176b4d; font-weight: 800; letter-spacing: .04em; }
-      h1 { margin: 10px 0 4px; font-size: 25px; } p { color: #697586; font-size: 13px; line-height: 1.55; }
-      .token { margin: 22px 0 8px; display: flex; gap: 8px; align-items: center; }
-      code { flex: 1; overflow: auto; border-radius: 8px; background: #17202c; color: #d9e7f5; padding: 13px; font-size: 12px; white-space: nowrap; }
+      body { min-height: 100vh; margin: 0; padding: 32px 24px; }
+      .card { position: relative; width: min(1180px, 100%); margin: 0 auto; border: 1px solid #e1e6ec; border-radius: 18px; background: #fff; padding: 32px; box-shadow: 0 16px 50px rgba(22,35,51,.08); }
+      h1 { margin: 4px 0; font-size: 25px; } p { color: #697586; font-size: 13px; line-height: 1.55; }
+      .token { margin: 12px 0 6px; display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+      .token code { flex: 1; min-width: 0; overflow: auto; border-radius: 8px; background: #17202c; color: #d9e7f5; padding: 13px; font-size: 12px; white-space: nowrap; }
+      .token button { flex-shrink: 0; }
       button, a { border: 0; border-radius: 8px; background: #176b4d; color: white; padding: 11px 15px; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; text-decoration: none; }
       .secondary { background: #edf3fb; color: #315f9c; }
-      .warning { color: #a46018; font-size: 12px; }
-      pre { overflow: auto; border-radius: 8px; background: #17202c; color: #d9e7f5; padding: 14px; font-size: 11px; line-height: 1.55; }
-      .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
-      #message { min-height: 18px; color: #176b4d; font-size: 12px; }
+      .logout { background: #fef0ef; color: #b42318; }
+      .logout:hover { background: #fee4e2; }
+      .logout:focus-visible { outline: 2px solid #b42318; outline-offset: 2px; }
+      .token-warning { margin: 7px 0 16px; color: #a46018; font-size: 12px; }
+      .visibility-button { width: 43px; display: grid; place-items: center; padding: 0; border: 1px solid #d9e0e8; background: #f8fafc; color: #17202c; }
+      .visibility-button:hover { border-color: #bac5d1; background: #f1f4f7; }
+      .visibility-button:focus-visible { outline: 2px solid #176b4d; outline-offset: 2px; }
+      .visibility-button svg { width: 19px; height: 19px; display: block; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+      .visibility-button svg[hidden] { display: none; }
+      .copy-toast { position: fixed; z-index: 20; top: 22px; right: 24px; display: flex; align-items: center; gap: 10px; min-width: 230px; padding: 15px 17px; border: 1px solid #86efac; border-radius: 11px; background: #ecfdf3; color: #07883d; box-shadow: 0 14px 32px rgba(22, 101, 52, .14); opacity: 0; transform: translateY(-10px); pointer-events: none; transition: opacity .18s ease, transform .18s ease; }
+      .copy-toast[hidden] { display: none; }
+      .copy-toast.show { opacity: 1; transform: translateY(0); }
+      .copy-toast span { width: 25px; height: 25px; display: grid; place-items: center; border-radius: 50%; background: #079447; color: #fff; font-size: 15px; font-weight: 800; }
+      .copy-toast strong { font-size: 13px; font-weight: 750; }
+      pre { margin: 0; overflow: auto; border-radius: 8px; background: #17202c; color: #d9e7f5; padding: 14px; font-size: 11px; line-height: 1.55; }
+      .account-header { position: absolute; top: 32px; right: 32px; display: flex; align-items: center; justify-content: flex-end; }
+      .actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      #message { color: #176b4d; font-size: 12px; }
+      #message:not(:empty) { margin: 6px 0; }
+      .usage { margin-top: 20px; border-top: 1px solid #e1e6ec; padding-top: 16px; }
+      .usage-heading { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+      .usage-heading h3 { margin: 0; }
+      #usageStatus { flex: none; border-radius: 999px; background: #eef8f3; color: #176b4d; padding: 6px 10px; font-size: 11px; font-weight: 800; }
+      .usage-table-wrap { max-height: 390px; overflow: auto; border: 1px solid #e4e9ef; border-radius: 12px; background: #fff; }
+      .usage-pagination { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+      .usage-pagination button { min-width: 34px; height: 34px; padding: 0 10px; border: 1px solid #d7dfe7; border-radius: 6px; background: #fff; color: #475467; }
+      .usage-pagination button:disabled { color: #98a2b3; cursor: default; }
+      .usage-pagination button[aria-current="page"] { border-color: #176b4d; background: #eef8f3; color: #176b4d; }
+      .usage-pagination button:focus-visible { outline: 2px solid #176b4d; outline-offset: 2px; }
+      .usage table { width: 100%; min-width: 1040px; border-collapse: separate; border-spacing: 0; font-size: 12px; }
+      .usage th, .usage td { border-bottom: 1px solid #edf0f4; padding: 11px 10px; text-align: left; vertical-align: middle; }
+      .usage th { position: sticky; top: 0; z-index: 2; background: #f7f9fb; color: #697586; font-size: 10px; font-weight: 800; letter-spacing: .03em; white-space: nowrap; }
+      .usage tbody tr:last-child td { border-bottom: 0; }
+      .usage tbody tr:hover { background: #fbfcfd; }
+      .time { width: 118px; color: #475467; white-space: nowrap; }
+      .query { width: 280px; max-width: 280px; word-break: break-word; }
+      .query details { min-width: 180px; }
+      .query summary { overflow: hidden; color: #344054; cursor: pointer; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; }
+      .query details[open] summary { max-height: 180px; overflow: auto; padding: 7px 8px; border-radius: 7px; background: #f8fafc; text-overflow: clip; white-space: pre-wrap; }
+      .request-id { color: #667085; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; white-space: nowrap; }
+      .risk-cell { width: 108px; white-space: nowrap; }
+      .risk-state { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 4px 7px; background: #f2f4f7; color: #667085; font-size: 10px; font-weight: 800; }
+      .risk-state::before { width: 6px; height: 6px; border-radius: 50%; background: currentColor; content: ""; }
+      .risk-state.flagged { background: #fef0ef; color: #b42318; }
+      .risk-state.passed { background: #ecf8f2; color: #176b4d; }
+      .risk-state small { color: inherit; font-size: 9px; font-weight: 700; opacity: .75; }
+      .result { white-space: nowrap; }
+      .result span { display: inline-flex; border-radius: 6px; padding: 5px 8px; font-size: 10px; font-weight: 800; }
+      .risk-block span { background: #fef0ef; color: #b42318; }
+      .risk-pass span { background: #ecf8f2; color: #176b4d; }
+      @media (max-width: 760px) {
+        body { padding: 12px; }
+        .card { padding: 20px 16px; }
+        .account-header { position: static; margin-bottom: 12px; }
+        .copy-toast { top: 12px; right: 12px; left: 12px; min-width: 0; }
+        .usage-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
+      }
     </style>
+    <link rel="stylesheet" href="./src/developer-help.css?v=1" />
   </head>
   <body>
     <main class="card">
-      <div class="brand">PROSPECTMONITOR</div>
+      <header class="account-header">
+        <button class="logout" id="logout">退出登录</button>
+      </header>
+      <nav class="developer-tabs" aria-label="开发者中心">
+        <a class="active" href="./account.html?embedded=1" aria-current="page">API Token</a>
+        <a href="./developer-docs.html">开发文档</a>
+        <a href="./developer-examples.html">示例代码</a>
+        <a href="./admin.html" data-admin-link hidden>管理后台</a>
+      </nav>
       <h1>API Token</h1>
       <p id="userLine">正在加载账号…</p>
-      <p>Token 仅用于 CLI 或服务端调用，不会被 ProspectWatch 演示台用于请求。请像密码一样保管。</p>
-      <div class="token"><code id="token">登录后生成</code><button id="copy">复制</button></div>
-      <p class="warning">Token 只在当前页面展示明文。泄露后请立即重置。</p>
+      <div class="token">
+        <code id="token">登录后生成</code>
+        <button class="visibility-button" id="toggleToken" type="button" aria-label="显示 Token" title="显示 Token">
+          <svg class="eye-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path><circle cx="12" cy="12" r="2.5"></circle></svg>
+          <svg class="eye-closed" viewBox="0 0 24 24" aria-hidden="true" hidden><path d="m3 3 18 18"></path><path d="M10.7 6.1A10 10 0 0 1 12 6c6 0 9.5 6 9.5 6a14 14 0 0 1-2.1 2.8M6.1 6.2C3.8 7.8 2.5 12 2.5 12s3.5 6 9.5 6a9.7 9.7 0 0 0 3.1-.5"></path></svg>
+        </button>
+        <button id="copy">复制</button>
+        <button class="secondary" id="rotate">重置 Token</button>
+      </div>
+      <p class="token-warning">请像密码一样保管你的 Token，泄露后请立即重置。</p>
+      <div id="message" role="status" aria-live="polite"></div>
       <h3>如何使用</h3>
-      <pre>curl http://localhost:18088/v1/guardrails \
+      <pre>curl http://localhost:18088/v1/moderations \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"input":"hello world"}'</pre>
-      <div id="message"></div>
-      <div class="actions"><button class="secondary" id="rotate">重置 Token</button><a href="/">进入 ProspectWatch 演示台</a><button class="secondary" id="logout">退出登录</button></div>
+  -d '{"messages":[{"role":"user","content":"hello world"}]}'</pre>
+      <section class="usage">
+        <div class="usage-heading">
+          <div><h3>API 调用日志</h3></div>
+          <div id="usageStatus">正在加载…</div>
+        </div>
+        <div class="usage-table-wrap"><table><thead><tr><th>时间</th><th>Query</th><th>内容安全</th><th>提示词窃取</th><th>间接提示词注入</th><th>结果</th><th>Tokens</th><th>Request ID</th></tr></thead><tbody id="usageRows"></tbody></table></div>
+        <nav class="usage-pagination" id="usagePagination" aria-label="API 调用日志分页"><button type="button" disabled>上一页</button><button type="button" aria-current="page" disabled>1</button><button type="button" disabled>下一页</button></nav>
+      </section>
     </main>
-    <script type="module" src="./src/auth.js"></script>
+    <div class="copy-toast" id="copyToast" role="status" aria-live="polite" hidden><span>✓</span><strong>已复制到剪切板</strong></div>
+    <script type="module" src="./src/auth.js?v=admin-console-v2"></script>
   </body>
 </html>

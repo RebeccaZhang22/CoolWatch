@@ -19,13 +19,12 @@
       button.secondary { margin-top: 10px; background: #edf3fb; color: #315f9c; }
       .switch { margin-top: 18px; text-align: center; color: #315f9c; cursor: pointer; font-size: 12px; }
       .error { min-height: 20px; margin: 12px 0 0; color: #a63b35; font-size: 12px; }
-      .terms { margin-top: 18px; color: #8a94a3; font-size: 11px; }
     </style>
   </head>
   <body>
     <main class="card">
-      <div class="brand">PROSPECTMONITOR</div>
-      <h1 id="title">登录 ProspectMonitor</h1>
+      <div class="brand">ProspectMonitor</div>
+      <h1 id="title">登录</h1>
       <form id="authForm">
         <label>邮箱<input id="email" type="email" autocomplete="email" required placeholder="you@example.com" /></label>
         <label>密码<input id="password" type="password" autocomplete="current-password" required minlength="8" placeholder="至少 8 位" /></label>
@@ -33,8 +32,7 @@
       </form>
       <p class="error" id="error"></p>
       <div class="switch" id="switchMode">还没有账号？注册</div>
-      <div class="terms">账号用于管理平台访问权限。请勿与他人共享 CLI Token。</div>
     </main>
-    <script type="module" src="./src/auth.js"></script>
+    <script type="module" src="./src/auth.js?v=role-login-redirect-v2"></script>
   </body>
 </html>

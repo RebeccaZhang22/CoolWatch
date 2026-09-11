@@ -16,7 +16,8 @@
       "safegauge",
       "qwen_guard",
       "llama_prompt_guard",
-      "netease_yidun"
+      "netease_yidun",
+      "fangcun_guard"
     ]
   },
   "agent": {

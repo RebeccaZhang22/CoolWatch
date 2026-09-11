@@ -1,5 +1,4 @@
 const CASE_INDEX = 771;
-const MODEL = "qwen3-32b";
 
 const TOOL_META = {
   analyze_customer_profile: { title: "读取客户画像", plain: "查看客户年龄、风险偏好和已有保单，为后续推荐产品做准备。" },
@@ -20,7 +19,7 @@ const LOADING_MESSAGES = [
   "正在连接案例数据",
   "正在读取真实执行轨迹",
   "正在核验 SafeGauge 检测结果",
-  "正在核验 Activation Probe 检测结果",
+  "正在核验基于隐藏层的可解释性技术检测结果",
 ];
 
 function escapeHtml(value) {
@@ -175,7 +174,7 @@ function renderGuarded() {
   const activationThresholdLeft = Math.max(0, Math.min(100, activationThreshold * 100));
 
   return `<section class="view-overview stream-chunk">
-    <div><h2>两种方法都能在执行前拦住请求</h2><p>对同一条攻击请求，SafeGauge 与 Activation Probe 的独立实测均在首轮超过各自阈值。任一方法接入策略网关，都能在 Agent 产生回复和调用工具之前终止执行。</p></div>
+    <div><h2>两种方法都能在执行前拦住请求</h2><p>对同一条攻击请求，SafeGauge 与基于隐藏层的可解释性技术的独立实测均在首轮超过各自阈值。任一方法接入策略网关，都能在 Agent 产生回复和调用工具之前终止执行。</p></div>
     <div class="view-verdict safe"><span>最终结果</span><strong>越权被阻断</strong></div>
   </section>
   <section class="flow">
@@ -188,20 +187,20 @@ function renderGuarded() {
         <div class="score-card-meta"><span>请求上下文风险评分</span><button type="button" class="detail-button" data-guard-detail="safegauge">查看实测数据</button></div>
       </article>
       <article class="score-card activation-card stream-chunk">
-        <header><strong>Activation Probe 激活检测</strong><span>首轮检出</span></header>
+        <header><strong>基于隐藏层的可解释性技术</strong><span>首轮检出</span></header>
         <div class="score-line"><div><div class="score-track"><i style="width:${activationWidth}%"></i><b style="left:${activationThresholdLeft}%"></b></div><div class="score-caption"><span>0%</span><span>判定阈值 ${percentage(activationThreshold)}</span><span>100%</span></div></div><strong>${percentage(activationProbability)}</strong></div>
         <div class="score-card-meta"><span>Qwen3-32B · Layer ${escapeHtml(activationProbe.selected_layer ?? "—")}</span><button type="button" class="detail-button" data-guard-detail="activation">查看实测数据</button></div>
       </article>
-      <div class="guard-explain stream-chunk"><strong>两种结果分别意味着什么？</strong><p>SafeGauge 从请求上下文中识别高风险金融操作；Activation Probe 从 Agent 的内部激活中识别危险执行倾向。该案例中两者首轮得分分别为 ${percentage(safeGaugeScore)} 和 ${percentage(activationProbability)}，均高于各自阈值。</p></div>
+      <div class="guard-explain stream-chunk"><strong>两种结果分别意味着什么？</strong><p>SafeGauge 从请求上下文中识别高风险金融操作；基于隐藏层的可解释性技术从 Agent 的内部激活中识别危险执行倾向。该案例中两者首轮得分分别为 ${percentage(safeGaugeScore)} 和 ${percentage(activationProbability)}，均高于各自阈值。</p></div>
     </div>
     <div class="flow-list">
       <article class="flow-item safe stream-chunk"><span class="step-number">01</span><div class="flow-copy"><header><h4>请求进入执行前检测点</h4><span class="safe-tag">尚未产生 Agent 回复</span></header><p>此时没有访问客户数据，也没有调用任何业务工具。</p></div></article>
       <article class="flow-item safe stream-chunk"><span class="step-number">02</span><div class="flow-copy"><header><h4>SafeGauge 首轮检出</h4><span class="safe-tag">${percentage(safeGaugeScore)} &gt; ${percentage(safeGaugeThreshold)}</span></header><p>请求上下文风险分数超过阈值，SafeGauge 给出阻断判定。</p></div></article>
-      <article class="flow-item safe stream-chunk"><span class="step-number">03</span><div class="flow-copy"><header><h4>Activation Probe 同样首轮检出</h4><span class="safe-tag">${percentage(activationProbability)} &gt; ${percentage(activationThreshold)}</span></header><p>第 ${escapeHtml(activationProbe.selected_layer ?? "—")} 层激活显示高风险执行倾向，独立给出阻断判定。</p></div></article>
+      <article class="flow-item safe stream-chunk"><span class="step-number">03</span><div class="flow-copy"><header><h4>基于隐藏层的可解释性技术同样首轮检出</h4><span class="safe-tag">${percentage(activationProbability)} &gt; ${percentage(activationThreshold)}</span></header><p>第 ${escapeHtml(activationProbe.selected_layer ?? "—")} 层激活显示高风险执行倾向，独立给出阻断判定。</p></div></article>
       <article class="flow-item safe stream-chunk"><span class="step-number">04</span><div class="flow-copy"><header><h4>策略网关终止执行</h4><span class="safe-tag">blocked = true</span></header><p>接入任一方法，请求都不会继续生成 Agent 回复，后续 11 次工具调用与业务状态修改均不会发生。</p></div></article>
     </div>
     <div class="outcome safe stream-chunk">
-      <div><span>首轮检出方法</span><strong>SafeGauge + Activation Probe</strong></div>
+      <div><span>首轮检出方法</span><strong>SafeGauge + 基于隐藏层的可解释性技术</strong></div>
       <div><span>工具调用</span><strong>0 次</strong></div>
       <div><span>业务系统变化</span><strong>无</strong></div>
     </div>
@@ -334,9 +333,9 @@ function openGuardPanel(method) {
         phase: firstTurn.phase,
       };
   openPanel({
-    kicker: isActivation ? "Activation Probe 实测证据" : "SafeGauge 实测证据",
+    kicker: isActivation ? "基于隐藏层的可解释性技术实测证据" : "SafeGauge 实测证据",
     title: "首轮执行前检测",
-    body: panelSection("中文解释", `<div class="translation-box">${isActivation ? `Activation Probe 在 Qwen3-32B 生成回复前读取第 ${escapeHtml(guard.selected_layer ?? "—")} 层激活，得到风险概率 ${percentage(score)}` : `SafeGauge 在 Agent 运行前读取请求上下文，得到风险分数 ${percentage(score)}`}。该结果高于 ${percentage(threshold)} 的判定阈值，所以首轮判定为高风险并阻断。</div>`)
+    body: panelSection("中文解释", `<div class="translation-box">${isActivation ? `基于隐藏层的可解释性技术在 Qwen3-32B 生成回复前读取第 ${escapeHtml(guard.selected_layer ?? "—")} 层激活，得到风险概率 ${percentage(score)}` : `SafeGauge 在 Agent 运行前读取请求上下文，得到风险分数 ${percentage(score)}`}。该结果高于 ${percentage(threshold)} 的判定阈值，所以首轮判定为高风险并阻断。</div>`)
       + panelSection("结构化检测结果", `<pre>${escapeHtml(pretty(structuredResult))}</pre>`),
   });
 }
@@ -383,7 +382,7 @@ async function loadCase() {
     status.textContent = LOADING_MESSAGES[loadingIndex];
   }, 720);
   try {
-    const response = await fetch(`/api/audit/finvault/cases/${CASE_INDEX}?model=${MODEL}`);
+    const response = await fetch(`./assets/case-studies/financial-${CASE_INDEX}.json`);
     if (!response.ok) throw new Error(`接口返回 ${response.status}`);
     const detail = await response.json();
     if (Number(detail.case?.sample_index) !== CASE_INDEX || detail.evaluation?.attack_success !== true) throw new Error("案例数据校验失败");

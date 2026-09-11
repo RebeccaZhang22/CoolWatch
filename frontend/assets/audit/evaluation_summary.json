@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-11",
+  "model": "Qwen3.5-2B",
+  "prompt_leakage": {
+    "checkpoint": "prompt_leakage/best_probe.pt",
+    "threshold": 0.8209837546905241,
+    "system_prompt": {
+      "label": "系统提示词泄漏",
+      "description": "LeakGauge sys_mixed / unseen_all",
+      "n": 3136,
+      "auroc": 0.9977,
+      "accuracy": 0.9779974489795918,
+      "precision": 0.9878903760356915,
+      "recall": 0.96875,
+      "fpr": 0.012369791666666666,
+      "f1": 0.9782265698958662
+    },
+    "rag": {
+      "label": "RAG 私有片段泄漏",
+      "description": "LeakGauge rag_mixed / unseen_all",
+      "n": 7200,
+      "auroc": 1.0,
+      "accuracy": 0.9725,
+      "precision": 1.0,
+      "recall": 0.95875,
+      "fpr": 0.0,
+      "f1": 0.978940650925335
+    }
+  },
+  "indirect_prompt_injection": {
+    "protocol": {
+      "layer": 7,
+      "domain_adaptation_trace_ratio": 0.1,
+      "heldout_trace_ratio": 0.9,
+      "learning_rate": 0.0001,
+      "epochs": 5,
+      "l2_anchor_lambda": 10
+    },
+    "overall": {
+      "n": 13629,
+      "positive": 3373,
+      "auroc": 0.9696607061,
+      "accuracy": 0.9404945337
+    },
+    "datasets": [
+      { "label": "AgentDyn", "n": 9773, "positive": 1475, "auroc": 0.9706987593, "accuracy": 0.9385040 },
+      { "label": "InjecAgent", "n": 3856, "positive": 1898, "auroc": 0.9978502719, "accuracy": 0.9455394 }
+    ],
+    "probe_geometry": { "cosine_to_original": 0.9963883, "delta_norm_ratio": 0.08494 }
+  },
+  "content_safety_mock": {
+    "is_mock": true,
+    "auroc": 0.982,
+    "recall": 0.954,
+    "fpr": 0.021,
+    "categories": ["违法违规", "暴力伤害", "色情内容", "仇恨歧视"]
+  }
+}

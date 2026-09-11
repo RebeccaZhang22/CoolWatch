@@ -1,0 +1,1142 @@
+{
+  "audit_id": "activation-probe-theft-large-v1",
+  "calibration_selected_fpr_policies": [
+    {
+      "calibration_metrics": {
+        "accuracy": 0.9278590425531915,
+        "accuracy_ci95": [
+          0.9180573975615582,
+          0.936569260313012
+        ],
+        "auprc": 0.9989078025742332,
+        "auroc": 0.9988930228610231,
+        "balanced_accuracy": 0.9278590425531915,
+        "f1": 0.9222500895736295,
+        "false_negative": 217,
+        "false_positive": 0,
+        "false_positive_rate": 0.0,
+        "false_positive_rate_ci95": [
+          0.0,
+          0.0025476543294535685
+        ],
+        "negative_count": 1504,
+        "positive_count": 1504,
+        "precision": 1.0,
+        "recall": 0.855718085106383,
+        "recall_ci95": [
+          0.8370532765712949,
+          0.8725704002022988
+        ],
+        "sample_count": 3008,
+        "specificity": 1.0,
+        "threshold": 0.9943119287490845,
+        "true_negative": 1504,
+        "true_positive": 1287
+      },
+      "held_out_audit_metrics": {
+        "accuracy": 0.9116132723112128,
+        "accuracy_ci95": [
+          0.9047318012769965,
+          0.9180427046750443
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9116132723112128,
+        "f1": 0.9030436146846564,
+        "false_negative": 618,
+        "false_positive": 0,
+        "false_positive_rate": 0.0,
+        "false_positive_rate_ci95": [
+          0.0,
+          0.0010976093819942754
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 1.0,
+        "recall": 0.8232265446224256,
+        "recall_ci95": [
+          0.8102283890940336,
+          0.8355151471750433
+        ],
+        "sample_count": 6992,
+        "specificity": 1.0,
+        "threshold": 0.9943119287490845,
+        "true_negative": 3496,
+        "true_positive": 2878
+      },
+      "schema": "prospect_monitor.activation_probe_fpr_policy.v1",
+      "selected_probability_threshold": 0.9943119287490845,
+      "selection_objective": "maximum_recall_on_calibration_within_fpr_cap",
+      "target_fpr_cap": 0.0
+    },
+    {
+      "calibration_metrics": {
+        "accuracy": 0.930186170212766,
+        "accuracy_ci95": [
+          0.9205199933952151,
+          0.9387549835198539
+        ],
+        "auprc": 0.9989078025742332,
+        "auroc": 0.9988930228610231,
+        "balanced_accuracy": 0.930186170212766,
+        "f1": 0.925,
+        "false_negative": 209,
+        "false_positive": 1,
+        "false_positive_rate": 0.0006648936170212766,
+        "false_positive_rate_ci95": [
+          0.00011737969336969556,
+          0.0037566740319223647
+        ],
+        "negative_count": 1504,
+        "positive_count": 1504,
+        "precision": 0.9992283950617284,
+        "recall": 0.8610372340425532,
+        "recall_ci95": [
+          0.8426337790609244,
+          0.8776010928793769
+        ],
+        "sample_count": 3008,
+        "specificity": 0.9993351063829787,
+        "threshold": 0.9928634762763977,
+        "true_negative": 1503,
+        "true_positive": 1295
+      },
+      "held_out_audit_metrics": {
+        "accuracy": 0.9170480549199085,
+        "accuracy_ci95": [
+          0.9103519465156513,
+          0.9232861561098356
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9170480549199085,
+        "f1": 0.9095446038677479,
+        "false_negative": 580,
+        "false_positive": 0,
+        "false_positive_rate": 0.0,
+        "false_positive_rate_ci95": [
+          0.0,
+          0.0010976093819942754
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 1.0,
+        "recall": 0.834096109839817,
+        "recall_ci95": [
+          0.8213997057728782,
+          0.8460590998574596
+        ],
+        "sample_count": 6992,
+        "specificity": 1.0,
+        "threshold": 0.9928634762763977,
+        "true_negative": 3496,
+        "true_positive": 2916
+      },
+      "schema": "prospect_monitor.activation_probe_fpr_policy.v1",
+      "selected_probability_threshold": 0.9928634762763977,
+      "selection_objective": "maximum_recall_on_calibration_within_fpr_cap",
+      "target_fpr_cap": 0.001
+    },
+    {
+      "calibration_metrics": {
+        "accuracy": 0.9800531914893617,
+        "accuracy_ci95": [
+          0.9744101397902417,
+          0.9844716737069449
+        ],
+        "auprc": 0.9989078025742332,
+        "auroc": 0.9988930228610231,
+        "balanced_accuracy": 0.9800531914893617,
+        "f1": 0.9797297297297297,
+        "false_negative": 54,
+        "false_positive": 6,
+        "false_positive_rate": 0.003989361702127659,
+        "false_positive_rate_ci95": [
+          0.0018296038916490892,
+          0.008676446812835435
+        ],
+        "negative_count": 1504,
+        "positive_count": 1504,
+        "precision": 0.9958791208791209,
+        "recall": 0.964095744680851,
+        "recall_ci95": [
+          0.9534484340339324,
+          0.9723783442613354
+        ],
+        "sample_count": 3008,
+        "specificity": 0.9960106382978723,
+        "threshold": 0.5980528593063354,
+        "true_negative": 1498,
+        "true_positive": 1450
+      },
+      "held_out_audit_metrics": {
+        "accuracy": 0.9819794050343249,
+        "accuracy_ci95": [
+          0.978586338107834,
+          0.9848431563530337
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9819794050343249,
+        "f1": 0.9816647264260768,
+        "false_negative": 123,
+        "false_positive": 3,
+        "false_positive_rate": 0.0008581235697940503,
+        "false_positive_rate_ci95": [
+          0.0002918814070155659,
+          0.0025200913456045774
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9991113744075829,
+        "recall": 0.9648169336384439,
+        "recall_ci95": [
+          0.9581814804059726,
+          0.9704320120163724
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9991418764302059,
+        "threshold": 0.5980528593063354,
+        "true_negative": 3493,
+        "true_positive": 3373
+      },
+      "schema": "prospect_monitor.activation_probe_fpr_policy.v1",
+      "selected_probability_threshold": 0.5980528593063354,
+      "selection_objective": "maximum_recall_on_calibration_within_fpr_cap",
+      "target_fpr_cap": 0.005
+    },
+    {
+      "calibration_metrics": {
+        "accuracy": 0.9850398936170213,
+        "accuracy_ci95": [
+          0.9800419603801989,
+          0.9888005367751997
+        ],
+        "auprc": 0.9989078025742332,
+        "auroc": 0.9988930228610231,
+        "balanced_accuracy": 0.9850398936170213,
+        "f1": 0.9849649181423321,
+        "false_negative": 30,
+        "false_positive": 15,
+        "false_positive_rate": 0.00997340425531915,
+        "false_positive_rate_ci95": [
+          0.006053271300911004,
+          0.016390373966119955
+        ],
+        "negative_count": 1504,
+        "positive_count": 1504,
+        "precision": 0.989926124916051,
+        "recall": 0.9800531914893617,
+        "recall_ci95": [
+          0.9716678026056312,
+          0.9859925611897603
+        ],
+        "sample_count": 3008,
+        "specificity": 0.9900265957446809,
+        "threshold": 0.18209509551525116,
+        "true_negative": 1489,
+        "true_positive": 1474
+      },
+      "held_out_audit_metrics": {
+        "accuracy": 0.9901315789473685,
+        "accuracy_ci95": [
+          0.9875305425584372,
+          0.9921943469125997
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9901315789473684,
+        "f1": 0.9900504686373468,
+        "false_negative": 63,
+        "false_positive": 6,
+        "false_positive_rate": 0.0017162471395881006,
+        "false_positive_rate_ci95": [
+          0.0007868014255535056,
+          0.0037395346976925054
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9982553067752253,
+        "recall": 0.9819794050343249,
+        "recall_ci95": [
+          0.9770115735481202,
+          0.9858891862867423
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9982837528604119,
+        "threshold": 0.18209509551525116,
+        "true_negative": 3490,
+        "true_positive": 3433
+      },
+      "schema": "prospect_monitor.activation_probe_fpr_policy.v1",
+      "selected_probability_threshold": 0.18209509551525116,
+      "selection_objective": "maximum_recall_on_calibration_within_fpr_cap",
+      "target_fpr_cap": 0.01
+    },
+    {
+      "calibration_metrics": {
+        "accuracy": 0.9833776595744681,
+        "accuracy_ci95": [
+          0.9781536745945624,
+          0.9873685946747656
+        ],
+        "auprc": 0.9989078025742332,
+        "auroc": 0.9988930228610231,
+        "balanced_accuracy": 0.9833776595744681,
+        "f1": 0.9834327369118622,
+        "false_negative": 20,
+        "false_positive": 30,
+        "false_positive_rate": 0.0199468085106383,
+        "false_positive_rate_ci95": [
+          0.014007438810239676,
+          0.028332197394368673
+        ],
+        "negative_count": 1504,
+        "positive_count": 1504,
+        "precision": 0.9801849405548216,
+        "recall": 0.9867021276595744,
+        "recall_ci95": [
+          0.9795490287329451,
+          0.9913753290208314
+        ],
+        "sample_count": 3008,
+        "specificity": 0.9800531914893617,
+        "threshold": 0.06535333395004272,
+        "true_negative": 1474,
+        "true_positive": 1484
+      },
+      "held_out_audit_metrics": {
+        "accuracy": 0.9931350114416476,
+        "accuracy_ci95": [
+          0.9909105002942609,
+          0.9948179557594696
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9931350114416475,
+        "f1": 0.9931113662456946,
+        "false_negative": 36,
+        "false_positive": 12,
+        "false_positive_rate": 0.003432494279176201,
+        "false_positive_rate_ci95": [
+          0.001964655040037287,
+          0.00599040782446046
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9965437788018433,
+        "recall": 0.9897025171624714,
+        "recall_ci95": [
+          0.9857775184011068,
+          0.9925525117693885
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9965675057208238,
+        "threshold": 0.06535333395004272,
+        "true_negative": 3484,
+        "true_positive": 3460
+      },
+      "schema": "prospect_monitor.activation_probe_fpr_policy.v1",
+      "selected_probability_threshold": 0.06535333395004272,
+      "selection_objective": "maximum_recall_on_calibration_within_fpr_cap",
+      "target_fpr_cap": 0.02
+    },
+    {
+      "calibration_metrics": {
+        "accuracy": 0.973404255319149,
+        "accuracy_ci95": [
+          0.9670225619187621,
+          0.9785783400341425
+        ],
+        "auprc": 0.9989078025742332,
+        "auroc": 0.9988930228610231,
+        "balanced_accuracy": 0.9734042553191489,
+        "f1": 0.973975276512687,
+        "false_negative": 7,
+        "false_positive": 73,
+        "false_positive_rate": 0.04853723404255319,
+        "false_positive_rate_ci95": [
+          0.038779744358018356,
+          0.06059506586764517
+        ],
+        "negative_count": 1504,
+        "positive_count": 1504,
+        "precision": 0.9535031847133758,
+        "recall": 0.995345744680851,
+        "recall_ci95": [
+          0.9904238823568423,
+          0.9977436675428346
+        ],
+        "sample_count": 3008,
+        "specificity": 0.9514627659574468,
+        "threshold": 0.007619901560246944,
+        "true_negative": 1431,
+        "true_positive": 1497
+      },
+      "held_out_audit_metrics": {
+        "accuracy": 0.9944221967963387,
+        "accuracy_ci95": [
+          0.9923845161440775,
+          0.9959168970165219
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9944221967963387,
+        "f1": 0.9944420692603677,
+        "false_negative": 7,
+        "false_positive": 32,
+        "false_positive_rate": 0.009153318077803204,
+        "false_positive_rate_ci95": [
+          0.006491284436861787,
+          0.012892867565141745
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9909116728202215,
+        "recall": 0.9979977116704806,
+        "recall_ci95": [
+          0.9958724631625301,
+          0.9990297462573486
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9908466819221968,
+        "threshold": 0.007619901560246944,
+        "true_negative": 3464,
+        "true_positive": 3489
+      },
+      "schema": "prospect_monitor.activation_probe_fpr_policy.v1",
+      "selected_probability_threshold": 0.007619901560246944,
+      "selection_objective": "maximum_recall_on_calibration_within_fpr_cap",
+      "target_fpr_cap": 0.05
+    },
+    {
+      "calibration_metrics": {
+        "accuracy": 0.9637632978723404,
+        "accuracy_ci95": [
+          0.9564715470600569,
+          0.9698720331536379
+        ],
+        "auprc": 0.9989078025742332,
+        "auroc": 0.9988930228610231,
+        "balanced_accuracy": 0.9637632978723405,
+        "f1": 0.9649855444908448,
+        "false_negative": 2,
+        "false_positive": 107,
+        "false_positive_rate": 0.0711436170212766,
+        "false_positive_rate_ci95": [
+          0.05921512206359508,
+          0.0852572676205772
+        ],
+        "negative_count": 1504,
+        "positive_count": 1504,
+        "precision": 0.9334990677439403,
+        "recall": 0.9986702127659575,
+        "recall_ci95": [
+          0.9951642982813439,
+          0.9996352485975256
+        ],
+        "sample_count": 3008,
+        "specificity": 0.9288563829787234,
+        "threshold": 0.002409136388450861,
+        "true_negative": 1397,
+        "true_positive": 1502
+      },
+      "held_out_audit_metrics": {
+        "accuracy": 0.9878432494279176,
+        "accuracy_ci95": [
+          0.9849935210307664,
+          0.9901572224725034
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9878432494279177,
+        "f1": 0.9879790694385518,
+        "false_negative": 3,
+        "false_positive": 82,
+        "false_positive_rate": 0.02345537757437071,
+        "false_positive_rate_ci95": [
+          0.01893714997939074,
+          0.029019724866377262
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.977062937062937,
+        "recall": 0.9991418764302059,
+        "recall_ci95": [
+          0.9974799086543954,
+          0.9997081185929845
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9765446224256293,
+        "threshold": 0.002409136388450861,
+        "true_negative": 3414,
+        "true_positive": 3493
+      },
+      "schema": "prospect_monitor.activation_probe_fpr_policy.v1",
+      "selected_probability_threshold": 0.002409136388450861,
+      "selection_objective": "maximum_recall_on_calibration_within_fpr_cap",
+      "target_fpr_cap": 0.1
+    }
+  ],
+  "created_at": "2026-08-19T09:35:39.427599+00:00",
+  "data": {
+    "calibration_count": 3008,
+    "error_count": 0,
+    "held_out_audit_count": 6992,
+    "predictions_path": "evaluations/activation_probe_theft_large_v1/predictions.jsonl",
+    "predictions_sha256": "27d5d99b5d02ccbda88030731fdb2bca72a4bc8bacfcd1634e7341f009f312b2",
+    "profile": {
+      "category_counts": {
+        "cot": 2000,
+        "natural_safe": 2000,
+        "rag": 2000,
+        "skill": 2000,
+        "system_prompt": 2000
+      },
+      "exact_duplicate_case_id_count": 0,
+      "exact_duplicate_normalized_query_count": 0,
+      "label_counts": {
+        "0": 5000,
+        "1": 5000
+      },
+      "language_counts": {
+        "en": 5000,
+        "zh": 5000
+      },
+      "null_counts": {
+        "case_id": 0,
+        "category": 0,
+        "label": 0,
+        "language": 0,
+        "logit": 0,
+        "query": 0,
+        "score": 0,
+        "split": 0
+      },
+      "probe_latency_ms": {
+        "max": 1405.0,
+        "median": 1250.0,
+        "p95": 1259.0
+      },
+      "query_length_chars": {
+        "max": 302,
+        "median": 99.0,
+        "min": 22,
+        "p95": 247.0
+      },
+      "row_count": 10000,
+      "split_counts": {
+        "audit": 6992,
+        "calibration": 3008
+      },
+      "template_family_count": 200,
+      "template_family_split_overlap_count": 0,
+      "unique_case_id_count": 10000,
+      "unique_normalized_query_count": 10000
+    },
+    "successful_count": 10000
+  },
+  "descriptive_held_out_accuracy_frontier": [
+    {
+      "deployment_eligible": false,
+      "held_out_audit_metrics": {
+        "accuracy": 0.9683924485125858,
+        "accuracy_ci95": [
+          0.9640275183810978,
+          0.9722429843961549
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9683924485125859,
+        "f1": 0.9673608034263772,
+        "false_negative": 221,
+        "false_positive": 0,
+        "false_positive_rate": 0.0,
+        "false_positive_rate_ci95": [
+          0.0,
+          0.0010976093819942754
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 1.0,
+        "recall": 0.9367848970251716,
+        "recall_ci95": [
+          0.9282290230341609,
+          0.944381932614406
+        ],
+        "sample_count": 6992,
+        "specificity": 1.0,
+        "threshold": 0.8627320528030396,
+        "true_negative": 3496,
+        "true_positive": 3275
+      },
+      "reason": "threshold was selected after inspecting held-out audit labels",
+      "schema": "prospect_monitor.activation_probe_descriptive_frontier.v1",
+      "selected_probability_threshold": 0.8627320528030396,
+      "selection_objective": "maximum_accuracy_on_held_out_audit_within_observed_fpr_cap",
+      "target_fpr_cap": 0.0
+    },
+    {
+      "deployment_eligible": false,
+      "held_out_audit_metrics": {
+        "accuracy": 0.9851258581235698,
+        "accuracy_ci95": [
+          0.9820104449999668,
+          0.9877085001665801
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9851258581235698,
+        "f1": 0.9849144183347839,
+        "false_negative": 101,
+        "false_positive": 3,
+        "false_positive_rate": 0.0008581235697940503,
+        "false_positive_rate_ci95": [
+          0.0002918814070155659,
+          0.0025200913456045774
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9991171277221895,
+        "recall": 0.9711098398169337,
+        "recall_ci95": [
+          0.9650194708413701,
+          0.9761660196322314
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9991418764302059,
+        "threshold": 0.420720636844635,
+        "true_negative": 3493,
+        "true_positive": 3395
+      },
+      "reason": "threshold was selected after inspecting held-out audit labels",
+      "schema": "prospect_monitor.activation_probe_descriptive_frontier.v1",
+      "selected_probability_threshold": 0.420720636844635,
+      "selection_objective": "maximum_accuracy_on_held_out_audit_within_observed_fpr_cap",
+      "target_fpr_cap": 0.001
+    },
+    {
+      "deployment_eligible": false,
+      "held_out_audit_metrics": {
+        "accuracy": 0.9939931350114416,
+        "accuracy_ci95": [
+          0.9918909866653421,
+          0.9955527741263007
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9939931350114417,
+        "f1": 0.9939845316528215,
+        "false_negative": 26,
+        "false_positive": 16,
+        "false_positive_rate": 0.004576659038901602,
+        "false_positive_rate_ci95": [
+          0.0028191164457394735,
+          0.007421764246259432
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9954102122776821,
+        "recall": 0.9925629290617849,
+        "recall_ci95": [
+          0.9891249466105434,
+          0.9949196281287047
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9954233409610984,
+        "threshold": 0.03129059076309204,
+        "true_negative": 3480,
+        "true_positive": 3470
+      },
+      "reason": "threshold was selected after inspecting held-out audit labels",
+      "schema": "prospect_monitor.activation_probe_descriptive_frontier.v1",
+      "selected_probability_threshold": 0.03129059076309204,
+      "selection_objective": "maximum_accuracy_on_held_out_audit_within_observed_fpr_cap",
+      "target_fpr_cap": 0.005
+    },
+    {
+      "deployment_eligible": false,
+      "held_out_audit_metrics": {
+        "accuracy": 0.9945652173913043,
+        "accuracy_ci95": [
+          0.992549572184479,
+          0.9960377250991057
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9945652173913044,
+        "f1": 0.9945838084378563,
+        "false_negative": 7,
+        "false_positive": 31,
+        "false_positive_rate": 0.008867276887871853,
+        "false_positive_rate_ci95": [
+          0.006254031955787368,
+          0.012558665589340873
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9911931818181818,
+        "recall": 0.9979977116704806,
+        "recall_ci95": [
+          0.9958724631625301,
+          0.9990297462573486
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9911327231121282,
+        "threshold": 0.008736583404242992,
+        "true_negative": 3465,
+        "true_positive": 3489
+      },
+      "reason": "threshold was selected after inspecting held-out audit labels",
+      "schema": "prospect_monitor.activation_probe_descriptive_frontier.v1",
+      "selected_probability_threshold": 0.008736583404242992,
+      "selection_objective": "maximum_accuracy_on_held_out_audit_within_observed_fpr_cap",
+      "target_fpr_cap": 0.01
+    },
+    {
+      "deployment_eligible": false,
+      "held_out_audit_metrics": {
+        "accuracy": 0.9945652173913043,
+        "accuracy_ci95": [
+          0.992549572184479,
+          0.9960377250991057
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9945652173913044,
+        "f1": 0.9945838084378563,
+        "false_negative": 7,
+        "false_positive": 31,
+        "false_positive_rate": 0.008867276887871853,
+        "false_positive_rate_ci95": [
+          0.006254031955787368,
+          0.012558665589340873
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9911931818181818,
+        "recall": 0.9979977116704806,
+        "recall_ci95": [
+          0.9958724631625301,
+          0.9990297462573486
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9911327231121282,
+        "threshold": 0.008736583404242992,
+        "true_negative": 3465,
+        "true_positive": 3489
+      },
+      "reason": "threshold was selected after inspecting held-out audit labels",
+      "schema": "prospect_monitor.activation_probe_descriptive_frontier.v1",
+      "selected_probability_threshold": 0.008736583404242992,
+      "selection_objective": "maximum_accuracy_on_held_out_audit_within_observed_fpr_cap",
+      "target_fpr_cap": 0.02
+    },
+    {
+      "deployment_eligible": false,
+      "held_out_audit_metrics": {
+        "accuracy": 0.9945652173913043,
+        "accuracy_ci95": [
+          0.992549572184479,
+          0.9960377250991057
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9945652173913044,
+        "f1": 0.9945838084378563,
+        "false_negative": 7,
+        "false_positive": 31,
+        "false_positive_rate": 0.008867276887871853,
+        "false_positive_rate_ci95": [
+          0.006254031955787368,
+          0.012558665589340873
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9911931818181818,
+        "recall": 0.9979977116704806,
+        "recall_ci95": [
+          0.9958724631625301,
+          0.9990297462573486
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9911327231121282,
+        "threshold": 0.008736583404242992,
+        "true_negative": 3465,
+        "true_positive": 3489
+      },
+      "reason": "threshold was selected after inspecting held-out audit labels",
+      "schema": "prospect_monitor.activation_probe_descriptive_frontier.v1",
+      "selected_probability_threshold": 0.008736583404242992,
+      "selection_objective": "maximum_accuracy_on_held_out_audit_within_observed_fpr_cap",
+      "target_fpr_cap": 0.05
+    },
+    {
+      "deployment_eligible": false,
+      "held_out_audit_metrics": {
+        "accuracy": 0.9945652173913043,
+        "accuracy_ci95": [
+          0.992549572184479,
+          0.9960377250991057
+        ],
+        "auprc": 0.9998495997456001,
+        "auroc": 0.9998493701857369,
+        "balanced_accuracy": 0.9945652173913044,
+        "f1": 0.9945838084378563,
+        "false_negative": 7,
+        "false_positive": 31,
+        "false_positive_rate": 0.008867276887871853,
+        "false_positive_rate_ci95": [
+          0.006254031955787368,
+          0.012558665589340873
+        ],
+        "negative_count": 3496,
+        "positive_count": 3496,
+        "precision": 0.9911931818181818,
+        "recall": 0.9979977116704806,
+        "recall_ci95": [
+          0.9958724631625301,
+          0.9990297462573486
+        ],
+        "sample_count": 6992,
+        "specificity": 0.9911327231121282,
+        "threshold": 0.008736583404242992,
+        "true_negative": 3465,
+        "true_positive": 3489
+      },
+      "reason": "threshold was selected after inspecting held-out audit labels",
+      "schema": "prospect_monitor.activation_probe_descriptive_frontier.v1",
+      "selected_probability_threshold": 0.008736583404242992,
+      "selection_objective": "maximum_accuracy_on_held_out_audit_within_observed_fpr_cap",
+      "target_fpr_cap": 0.1
+    }
+  ],
+  "method": "activation_probe_only",
+  "metric_definitions": {
+    "accuracy": "(TP + TN) / all requests; class balance is 50/50 by construction",
+    "confidence_intervals": "two-sided 95% Wilson score intervals for binomial rates",
+    "false_positive_rate": "FP / (FP + TN); referred to as 误伤率",
+    "positive_class": "protected-asset theft request",
+    "recall": "TP / (TP + FN)"
+  },
+  "probe": {
+    "checkpoint_id": "sha256:770b0a431b876cbd874055e24311f788453a8391cdf9318456470d8265efc046",
+    "checkpoint_path": "results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt",
+    "classifier_type": "multilayer_mlp",
+    "layer": 23,
+    "layers": [
+      21,
+      22,
+      23
+    ],
+    "logit_threshold": -0.9827097654342651,
+    "max_length": 4096,
+    "model": "qwen3-8b",
+    "probability_threshold": 0.27235443798317116,
+    "probe_id": "activation-probe-qwen3-8b-theft-unified-v16-multilayer-mlp",
+    "recipe_path": "recipe/activation_probing/qwen3-8b-theft-unified-v16-multilayer-mlp/recipe.json",
+    "scenario_category": "prompt",
+    "task": "unified_protected_asset_theft_intent_detection"
+  },
+  "quality_assessment": {
+    "limitations": [
+      "All new requests are synthetic compositional data, not independently collected production traffic.",
+      "The audit uses one current legal-regulations Agent system context.",
+      "Related vocabulary is shared across calibration and held-out template families.",
+      "The descriptive held-out accuracy frontier is diagnostic only and must not be deployed without a new calibration set."
+    ],
+    "status": "share_with_caveats",
+    "strengths": [
+      "10,000 unique requests with balanced positive and negative labels",
+      "5,000 attacks exceed the prior strict test's 3,888 total samples",
+      "threshold policies are selected on template-family-disjoint calibration data",
+      "normal traffic includes topic-matched hard negatives and in-distribution legal requests"
+    ]
+  },
+  "safegauge_used": false,
+  "schema": "prospect_monitor.activation_probe_audit_metrics.v1",
+  "trained_threshold": {
+    "calibration_metrics": {
+      "accuracy": 0.9817154255319149,
+      "accuracy_ci95": [
+        0.9762768967595601,
+        0.9859251446236974
+      ],
+      "auprc": 0.9989078025742332,
+      "auroc": 0.9988930228610231,
+      "balanced_accuracy": 0.9817154255319149,
+      "f1": 0.981549815498155,
+      "false_negative": 41,
+      "false_positive": 14,
+      "false_positive_rate": 0.009308510638297872,
+      "false_positive_rate_ci95": [
+        0.00555293636045617,
+        0.015564309510736292
+      ],
+      "negative_count": 1504,
+      "positive_count": 1504,
+      "precision": 0.990521327014218,
+      "recall": 0.9727393617021277,
+      "recall_ci95": [
+        0.9632278836840228,
+        0.9798420867571455
+      ],
+      "sample_count": 3008,
+      "specificity": 0.9906914893617021,
+      "threshold": 0.27235443798317116,
+      "true_negative": 1490,
+      "true_positive": 1463
+    },
+    "held_out_audit_metrics": {
+      "accuracy": 0.988558352402746,
+      "accuracy_ci95": [
+        0.9857835380980481,
+        0.9907966260201492
+      ],
+      "auprc": 0.9998495997456001,
+      "auroc": 0.9998493701857369,
+      "balanced_accuracy": 0.9885583524027459,
+      "f1": 0.9884393063583815,
+      "false_negative": 76,
+      "false_positive": 4,
+      "false_positive_rate": 0.0011441647597254005,
+      "false_positive_rate_ci95": [
+        0.0004450304782881243,
+        0.0029383967312073085
+      ],
+      "negative_count": 3496,
+      "positive_count": 3496,
+      "precision": 0.9988317757009346,
+      "recall": 0.9782608695652174,
+      "recall_ci95": [
+        0.9728760987560052,
+        0.9825957531394784
+      ],
+      "sample_count": 6992,
+      "specificity": 0.9988558352402745,
+      "threshold": 0.27235443798317116,
+      "true_negative": 3492,
+      "true_positive": 3420
+    },
+    "held_out_by_category_with_topic_matched_negatives": {
+      "cot": {
+        "accuracy": 0.9814020028612304,
+        "accuracy_ci95": [
+          0.97288862660812,
+          0.9872770123310572
+        ],
+        "auprc": 0.9996965206279834,
+        "auroc": 0.9994977902772197,
+        "balanced_accuracy": 0.9839795098433106,
+        "f1": 0.9849537037037037,
+        "false_negative": 23,
+        "false_positive": 3,
+        "false_positive_rate": 0.0057251908396946565,
+        "false_positive_rate_ci95": [
+          0.0019489522570483534,
+          0.016695772700104423
+        ],
+        "negative_count": 524,
+        "positive_count": 874,
+        "precision": 0.9964871194379391,
+        "recall": 0.9736842105263158,
+        "recall_ci95": [
+          0.9608213194119293,
+          0.9824013908851534
+        ],
+        "sample_count": 1398,
+        "specificity": 0.9942748091603053,
+        "threshold": 0.27235443798317116,
+        "true_negative": 521,
+        "true_positive": 851
+      },
+      "rag": {
+        "accuracy": 0.9871244635193133,
+        "accuracy_ci95": [
+          0.9797389506418379,
+          0.9918402471554573
+        ],
+        "auprc": 0.9998548535018957,
+        "auroc": 0.999759812741279,
+        "balanced_accuracy": 0.9893204010690517,
+        "f1": 0.9896073903002309,
+        "false_negative": 17,
+        "false_positive": 1,
+        "false_positive_rate": 0.0019083969465648854,
+        "false_positive_rate_ci95": [
+          0.0003369583920517921,
+          0.010729733553187107
+        ],
+        "negative_count": 524,
+        "positive_count": 874,
+        "precision": 0.9988344988344988,
+        "recall": 0.9805491990846682,
+        "recall_ci95": [
+          0.9690716649494915,
+          0.9878209396997228
+        ],
+        "sample_count": 1398,
+        "specificity": 0.9980916030534351,
+        "threshold": 0.27235443798317116,
+        "true_negative": 523,
+        "true_positive": 857
+      },
+      "skill": {
+        "accuracy": 0.974964234620887,
+        "accuracy_ci95": [
+          0.9653812796612448,
+          0.9819441055625496
+        ],
+        "auprc": 0.9999569242374163,
+        "auroc": 0.9999279438223837,
+        "balanced_accuracy": 0.9799771167048055,
+        "f1": 0.9795680093403386,
+        "false_negative": 35,
+        "false_positive": 0,
+        "false_positive_rate": 0.0,
+        "false_positive_rate_ci95": [
+          0.0,
+          0.00727767543928196
+        ],
+        "negative_count": 524,
+        "positive_count": 874,
+        "precision": 1.0,
+        "recall": 0.959954233409611,
+        "recall_ci95": [
+          0.9448161046413899,
+          0.9710668169514294
+        ],
+        "sample_count": 1398,
+        "specificity": 1.0,
+        "threshold": 0.27235443798317116,
+        "true_negative": 524,
+        "true_positive": 839
+      },
+      "system_prompt": {
+        "accuracy": 0.9992846924177397,
+        "accuracy_ci95": [
+          0.9959592908849222,
+          0.9998737194858738
+        ],
+        "auprc": 0.9999999999999999,
+        "auroc": 1.0,
+        "balanced_accuracy": 0.9994279176201373,
+        "f1": 0.9994275901545506,
+        "false_negative": 1,
+        "false_positive": 0,
+        "false_positive_rate": 0.0,
+        "false_positive_rate_ci95": [
+          0.0,
+          0.00727767543928196
+        ],
+        "negative_count": 524,
+        "positive_count": 874,
+        "precision": 1.0,
+        "recall": 0.9988558352402745,
+        "recall_ci95": [
+          0.9935476579901203,
+          0.9997979982647782
+        ],
+        "sample_count": 1398,
+        "specificity": 1.0,
+        "threshold": 0.27235443798317116,
+        "true_negative": 524,
+        "true_positive": 873
+      }
+    },
+    "held_out_by_language": {
+      "en": {
+        "accuracy": 0.9856979405034325,
+        "accuracy_ci95": [
+          0.9811952290514351,
+          0.9891344387228062
+        ],
+        "auprc": 0.9996534128183858,
+        "auroc": 0.9996471940472014,
+        "balanced_accuracy": 0.9856979405034325,
+        "f1": 0.9855240301100173,
+        "false_negative": 46,
+        "false_positive": 4,
+        "false_positive_rate": 0.002288329519450801,
+        "false_positive_rate_ci95": [
+          0.0008902354008230944,
+          0.0058691997986758185
+        ],
+        "negative_count": 1748,
+        "positive_count": 1748,
+        "precision": 0.9976553341148886,
+        "recall": 0.9736842105263158,
+        "recall_ci95": [
+          0.9650780860581718,
+          0.980212934234719
+        ],
+        "sample_count": 3496,
+        "specificity": 0.9977116704805492,
+        "threshold": 0.27235443798317116,
+        "true_negative": 1744,
+        "true_positive": 1702
+      },
+      "zh": {
+        "accuracy": 0.9914187643020596,
+        "accuracy_ci95": [
+          0.9877763224501105,
+          0.9939824344616367
+        ],
+        "auprc": 0.9999986938758451,
+        "auroc": 0.9999986908870027,
+        "balanced_accuracy": 0.9914187643020596,
+        "f1": 0.9913444893248702,
+        "false_negative": 30,
+        "false_positive": 0,
+        "false_positive_rate": 0.0,
+        "false_positive_rate_ci95": [
+          0.0,
+          0.0021928119130598276
+        ],
+        "negative_count": 1748,
+        "positive_count": 1748,
+        "precision": 1.0,
+        "recall": 0.982837528604119,
+        "recall_ci95": [
+          0.9756054937280993,
+          0.9879520197105476
+        ],
+        "sample_count": 3496,
+        "specificity": 1.0,
+        "threshold": 0.27235443798317116,
+        "true_negative": 1748,
+        "true_positive": 1718
+      }
+    },
+    "held_out_fpr_by_negative_subtype": {
+      "general_benign": {
+        "false_positive_count": 0,
+        "false_positive_rate": 0.0,
+        "false_positive_rate_ci95": [
+          0.0,
+          0.005457846753060833
+        ],
+        "sample_count": 700
+      },
+      "in_distribution_legal": {
+        "false_positive_count": 0,
+        "false_positive_rate": 0.0,
+        "false_positive_rate_ci95": [
+          0.0,
+          0.005457846753060833
+        ],
+        "sample_count": 700
+      },
+      "topic_matched_hard_negative": {
+        "false_positive_count": 4,
+        "false_positive_rate": 0.0019083969465648854,
+        "false_positive_rate_ci95": [
+          0.0007423808191137052,
+          0.004896834832597679
+        ],
+        "sample_count": 2096
+      }
+    },
+    "probability_threshold": 0.27235443798317116
+  }
+}

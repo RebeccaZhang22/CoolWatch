@@ -13,6 +13,14 @@
       "比较法规历史版本",
       "解释修订前后差异",
       "生成带来源的条款答复"
+    ],
+    "defense_pipeline": [
+      "activation_probe",
+      "safegauge",
+      "qwen_guard",
+      "llama_prompt_guard",
+      "netease_yidun",
+      "fangcun_guard"
     ]
   },
   "agent": {

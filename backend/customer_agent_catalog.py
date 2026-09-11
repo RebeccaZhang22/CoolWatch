@@ -35,7 +35,11 @@ AssetSource = Literal[
 DocumentVisibility = Literal["public", "private", "untrusted"]
 ToolName = Literal[
     "search_knowledge_base",
+    "search_financial_knowledge",
     "lookup_order",
+    "lookup_client_portfolio",
+    "check_transfer_authorization",
+    "prepare_rebalance_proposal",
     "search_legal_corpus",
     "get_legal_document",
     "compare_legal_versions",
@@ -44,6 +48,7 @@ ToolName = Literal[
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CUSTOMER_AGENT_DATA_ROOT = REPO_ROOT / "data" / "customer_agent"
 LEGAL_REGULATIONS_AGENT_DATA_ROOT = REPO_ROOT / "data" / "legal_regulations_agent"
+FINANCIAL_AGENT_DATA_ROOT = REPO_ROOT / "data" / "financial_agent"
 SCENARIO_MANIFEST_PATH = CUSTOMER_AGENT_DATA_ROOT / "scenario.json"
 EXPECTED_ATTACK_IDS = frozenset(get_args(AttackId))
 SUPPORTED_TOOL_NAMES = frozenset(get_args(ToolName))
@@ -95,7 +100,7 @@ class LoadedCustomerAgentScenario:
     tool_requirements: dict[ToolName, tuple[str, ...]]
     orders: dict[str, dict[str, object]]
     target_asset_by_attack: dict[AttackId, str | None]
-    prompt_injection_document_id: str
+    prompt_injection_document_id: str | None
     prompt_injection_success_markers: tuple[str, ...]
     prompt_injection_success_phrase_groups: tuple[tuple[str, ...], ...]
 
@@ -116,6 +121,7 @@ class _ProfileConfig(_StrictModel):
             "qwen_guard",
             "llama_prompt_guard",
             "netease_yidun",
+            "fangcun_guard",
         ],
         min_length=1,
     )
@@ -347,11 +353,11 @@ def load_customer_agent_scenario(
         if "prompt_injection" in config.risk_flags
         and "attack_fixture" in config.risk_flags
     ]
-    if len(injection_candidates) != 1:
+    if len(injection_candidates) > 1:
         raise ValueError(
-            "RAG data must define exactly one prompt-injection attack fixture"
+            "RAG data must define at most one prompt-injection attack fixture"
         )
-    injection_document_id = injection_candidates[0]
+    injection_document_id = injection_candidates[0] if injection_candidates else None
 
     documents = tuple(
         KnowledgeDocument(
@@ -362,7 +368,7 @@ def load_customer_agent_scenario(
             risk_flags=tuple(config.risk_flags),
             origin=config.origin,
             original_filename=config.original_filename,
-            metadata=_legal_document_metadata(config),
+            metadata=_document_metadata(config),
         )
         for config in document_configs
     )
@@ -422,16 +428,6 @@ def load_customer_agent_scenario(
         )
 
     conversation_starters = _load_conversation_starters(root, manifest)
-    if not any(starter.attack_id == "rag_extraction" for starter in conversation_starters):
-        rag_attack = next(attack for attack in attacks if attack.id == "rag_extraction")
-        conversation_starters += (
-            CustomerAgentConversationStarter(
-                id="rag-theft-demo",
-                label="演示 RAG 保护",
-                message=rag_attack.prompt,
-                attack_id="rag_extraction",
-            ),
-        )
     _require_unique(
         "conversation starter id",
         [starter.id for starter in conversation_starters],
@@ -455,7 +451,8 @@ def load_customer_agent_scenario(
     if invalid_targets:
         raise ValueError(f"unknown target asset ids: {sorted(invalid_targets)}")
 
-    _validate_injection_document(injection_document_id, documents_by_id)
+    if injection_document_id is not None:
+        _validate_injection_document(injection_document_id, documents_by_id)
 
     phrase_groups = tuple(
         tuple(term.strip() for term in group if term.strip())
@@ -630,7 +627,7 @@ def _resolve_private_asset(
     )
 
 
-def _legal_document_metadata(config: _KnowledgeDocumentConfig) -> dict[str, Any] | None:
+def _document_metadata(config: _KnowledgeDocumentConfig) -> dict[str, Any] | None:
     fields = (
         "canonical_law_id",
         "document_type",
@@ -718,7 +715,9 @@ def _load_tools(
             "Agent tool data contains unsupported sandbox executors: "
             f"{sorted(unsupported_tool_names)}"
         )
-    if not tool_names.intersection({"search_knowledge_base", "search_legal_corpus"}):
+    if not tool_names.intersection(
+        {"search_knowledge_base", "search_financial_knowledge", "search_legal_corpus"}
+    ):
         raise ValueError("Agent tool data must define a supported knowledge search tool")
     for tool in configs:
         if any(not phrase.strip() for phrase in tool.required_when_any):
@@ -891,27 +890,11 @@ def build_knowledge_tool_result(
     # payload; this keeps the comparison about the product controls rather than
     # a special warning injected into one side's prompt.
     _ = defended
-    lines = ["知识检索结果："]
-    source_names = {
-        "public": "published_help_center",
-        "private": "operations_handbook",
-        "untrusted": "external_bulletin_feed",
-    }
-    for item in included:
-        heading = f' heading="{item.heading}"' if item.heading else ""
-        legal_metadata = (
-            " metadata="
-            + json.dumps(item.document.metadata, ensure_ascii=False, separators=(",", ":"))
-            if item.document.metadata
-            else ""
-        )
-        lines.append(
-            f"[document id={item.document.id} chunk_id={item.chunk_id}{heading} "
-            f"source={source_names[item.document.visibility]} rank={item.rank} "
-            f"retriever={item.retriever} score={item.score:.6f}{legal_metadata}] "
-            f"{item.content}"
-        )
-    return "\n".join(lines)
+    # The retrieval layer has already resolved each internal chunk id to its
+    # source text. Only that text is sent to the model. IDs, ranking scores and
+    # document metadata stay in ``rag_trace``/``tool_trace`` for the inspector
+    # and are deliberately not serialized into the model-visible message.
+    return "\n\n".join(item.content for item in included)
 
 
 def lookup_order(order_id: str) -> dict[str, object]:

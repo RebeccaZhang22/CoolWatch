@@ -21,6 +21,7 @@ DefenseId = Literal[
     "qwen_guard",
     "llama_prompt_guard",
     "netease_yidun",
+    "fangcun_guard",
 ]
 DEFAULT_CUSTOMER_SAFEGAUGE_THRESHOLD = 0.65
 
@@ -30,8 +31,10 @@ def default_customer_model_params() -> ModelParams:
         model="qwen3-8b",
         temperature=0.0,
         top_p=0.8,
+        # The gpu3 deployment reserves a 2K context window for the 8B chat
+        # model; keep the client default within vLLM's max_model_len.
         max_tokens=2048,
-        enable_reasoning=True,
+        enable_reasoning=False,
     )
 
 
@@ -116,6 +119,7 @@ class CustomerAgentRagDocumentResponse(BaseModel):
     origin: Literal["builtin", "upload"]
     filename: str | None = None
     character_count: int = Field(ge=0)
+    size_bytes: int = Field(ge=0)
     chunk_count: int = Field(ge=0)
     deletable: bool
 
@@ -148,7 +152,7 @@ class CustomerAgentHealthResponse(BaseModel):
     base_url: str
     model: str
     model_available: bool
-    reasoning_enabled: bool = True
+    reasoning_enabled: bool = False
     safegauge_threshold: float = Field(
         default=DEFAULT_CUSTOMER_SAFEGAUGE_THRESHOLD,
         ge=0,

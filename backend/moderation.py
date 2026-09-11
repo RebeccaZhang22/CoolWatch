@@ -9,6 +9,7 @@ from backend.schemas import ModerationGuardResult, ModerationRequest, Moderation
 from backend.watchers import (
     GUARD_NAMES,
     SUGGESTION_TEXT,
+    FangcunGuardClient,
     LlamaPromptGuardClient,
     NeteaseYidunClient,
     Qwen3GuardClient,
@@ -26,6 +27,7 @@ SUPPORTED_GUARDS = (
     "qwen_guard",
     "llama_prompt_guard",
     "netease_yidun",
+    "fangcun_guard",
     "rule_guard",
 )
 
@@ -36,12 +38,14 @@ class ModerationService:
         qwen_guard_client: Qwen3GuardClient,
         llama_prompt_guard_client: LlamaPromptGuardClient,
         netease_yidun_client: NeteaseYidunClient,
+        fangcun_guard_client: FangcunGuardClient,
         safegauge_guard: SafeGaugeGuard,
         inline_probing_guard: InlineProbingGuard,
     ) -> None:
         self.qwen_guard_client = qwen_guard_client
         self.llama_prompt_guard_client = llama_prompt_guard_client
         self.netease_yidun_client = netease_yidun_client
+        self.fangcun_guard_client = fangcun_guard_client
         self.safegauge_guard = safegauge_guard
         self.inline_probing_guard = inline_probing_guard
 
@@ -156,6 +160,20 @@ class ModerationService:
                 blocked=value.blocked,
                 connected=value.error is None,
                 labels=value.labels,
+                latency_ms=value.latency_ms,
+                error=value.error,
+            )
+        if guard_id == "fangcun_guard":
+            value = await self.fangcun_guard_client.moderate_prompt(prompt)
+            labels = [item for item in ([value.overall_risk_level, value.suggest_action] + value.categories) if item]
+            return ModerationGuardResult(
+                guard_id=guard_id,
+                guard_name=GUARD_NAMES[guard_id],
+                label=value.overall_risk_level,
+                risky=value.risky,
+                blocked=value.blocked,
+                connected=value.error is None,
+                labels=labels,
                 latency_ms=value.latency_ms,
                 error=value.error,
             )

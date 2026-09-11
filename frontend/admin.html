@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>管理后台 · ProspectMonitor</title>
+    <link rel="stylesheet" href="./src/developer-help.css?v=2" />
+  </head>
+  <body class="help-page">
+    <main class="help-card">
+      <nav class="developer-tabs" aria-label="开发者中心">
+        <a href="./account.html?embedded=1">API Token</a>
+        <a href="./developer-docs.html">开发文档</a>
+        <a href="./developer-examples.html">示例代码</a>
+        <a class="active" href="./admin.html" aria-current="page">管理后台</a>
+      </nav>
+
+      <header class="help-hero admin-hero">
+        <div>
+          <h1>管理后台</h1>
+          <p>查看所有注册用户及其 API 调用记录。页面不会展示密码、浏览器会话或完整 API Token。</p>
+        </div>
+        <span class="admin-identity" id="adminIdentity">正在验证管理员身份…</span>
+      </header>
+
+      <section class="admin-stats" aria-label="平台概览">
+        <article class="admin-stat"><span>注册用户</span><strong id="registeredUsers">—</strong></article>
+        <article class="admin-stat"><span>API 调用总数</span><strong id="totalCalls">—</strong></article>
+        <article class="admin-stat"><span>风险拦截</span><strong id="blockedCalls">—</strong></article>
+      </section>
+
+      <section class="admin-section">
+        <div class="admin-section-heading"><h2>注册用户</h2><span id="usersStatus">正在加载…</span></div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead><tr><th>邮箱</th><th>角色</th><th>注册时间</th><th>API 调用</th><th>用户 ID</th></tr></thead>
+            <tbody id="adminUsers"><tr><td colspan="5">正在加载…</td></tr></tbody>
+          </table>
+        </div>
+        <nav class="admin-pagination" id="usersPagination" aria-label="注册用户分页"><button disabled>上一页</button><button aria-current="page" disabled>1</button><button disabled>下一页</button></nav>
+      </section>
+
+      <section class="admin-section">
+        <div class="admin-section-heading"><h2>全账户 API 调用日志</h2><span id="logsStatus">正在加载…</span></div>
+        <div class="admin-table-wrap">
+          <table class="admin-table admin-log-table">
+            <thead><tr><th>时间</th><th>调用用户</th><th>Query</th><th>内容安全</th><th>提示词泄漏</th><th>间接提示词注入</th><th>结果</th><th>Tokens</th><th>Request ID</th></tr></thead>
+            <tbody id="adminLogs"><tr><td colspan="9">正在加载…</td></tr></tbody>
+          </table>
+        </div>
+        <nav class="admin-pagination" id="logsPagination" aria-label="全账户调用日志分页"><button disabled>上一页</button><button aria-current="page" disabled>1</button><button disabled>下一页</button></nav>
+      </section>
+    </main>
+    <script type="module" src="./src/admin.js?v=1"></script>
+  </body>
+</html>

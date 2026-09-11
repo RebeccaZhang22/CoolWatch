@@ -3,14 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="ProspectMonitor 三类安全风险的实验评测结果" />
     <title>ProspectMonitor 实验审计</title>
+    <script src="./src/section-shell.js?v=1"></script>
     <link rel="stylesheet" href="./src/styles.css?v=shared-header-20260726-v4" />
-    <link rel="stylesheet" href="./src/audit.css?v=prompt-probe-model-switch-20260804-v69" />
+    <link rel="stylesheet" href="./src/audit.css?v=single-page-20260911-v1" />
   </head>
   <body class="audit-body">
     <div class="audit-shell">
       <header class="audit-topbar">
-        <a class="audit-brand" href="./index.html" aria-label="返回 ProspectMonitor 演示台">
+        <a class="audit-brand" href="./index.html" aria-label="ProspectMonitor">
           <span class="brand-mark" aria-hidden="true"><span></span></span>
           <strong>ProspectMonitor</strong>
         </a>
@@ -18,169 +20,94 @@
           <a href="./index.html">攻防演示台</a>
           <a class="active" href="./audit.html" aria-current="page">实验审计</a>
           <a href="./cases.html">案例研究</a>
+          <a href="./competitors.html">竞品分析</a>
         </nav>
       </header>
 
       <main class="audit-main">
-        <section class="audit-hero">
-          <div>
-            <h1 id="riskTitle">AI 助手能否识别隐藏在外部数据中的恶意指令？</h1>
+        <section class="audit-hero" aria-labelledby="audit-title">
+          <div class="hero-copy">
+            <span class="hero-kicker">Qwen3.5-2B · Activation Probes</span>
+            <h1 id="audit-title">检测效果审计</h1>
+            <p>在统一页面查看提示词泄漏、间接提示词注入与内容安全三类检测能力。</p>
+          </div>
+          <div class="hero-summary" aria-label="审计概览">
+            <strong>2</strong><span>项真实评测</span>
+            <i aria-hidden="true"></i>
+            <strong>1</strong><span>项待评测</span>
           </div>
         </section>
 
-        <section class="audit-risk-switcher" aria-label="风险类别" id="riskSwitcher"></section>
-        <section class="finvault-model-bar" id="finvaultModelBar" hidden aria-label="被测模型">
-          <span>被测模型</span>
-          <div id="finvaultModelButtons"></div>
-        </section>
-        <section class="audit-risk-empty" id="riskEmpty" hidden></section>
+        <nav class="audit-section-nav" aria-label="审计项目">
+          <a href="#prompt-leakage" class="active">提示词泄漏</a>
+          <a href="#indirect-injection">间接提示词注入</a>
+          <a href="#content-safety">内容安全</a>
+        </nav>
 
-        <section class="audit-overview-grid risk-audit-section" aria-label="实验概览">
-          <article class="audit-card audit-results-card">
-            <header class="audit-card-header">
-              <h2 id="guardResultTitle">检测结果</h2>
-            </header>
-            <div class="guard-result-list" id="guardResultList"></div>
-          </article>
+        <div id="auditLoadError" class="audit-load-error" hidden>评测数据暂时无法读取，请刷新页面后重试。</div>
 
-          <article class="audit-card audit-facts-card">
-            <header class="audit-card-header">
-              <h2>实验信息</h2>
-            </header>
-            <dl class="audit-fact-grid" id="experimentFacts"></dl>
-          </article>
-        </section>
-
-        <section class="audit-card behavior-summary-card risk-audit-section">
-          <header class="audit-card-header">
-            <h2>模型行为</h2>
+        <section class="evaluation-section" id="prompt-leakage" data-audit-section>
+          <header class="section-heading">
+            <div><span class="section-number">01</span><h2>提示词泄漏</h2><span class="status-pill verified"><i></i>真实评测</span></div>
+            <p>一个 Probe 同时检测系统提示词与 RAG 私有片段泄漏，并分别报告两类数据集的效果。</p>
           </header>
-          <div class="behavior-summary" id="behaviorSummary"></div>
-        </section>
-
-        <section class="audit-card audit-integrity-card risk-audit-section" id="integritySection">
-          <header class="audit-card-header">
-            <h2>实验一致性</h2>
-          </header>
-          <div class="integrity-grid" id="integrityGrid"></div>
-        </section>
-
-        <section class="audit-card audit-settings-card risk-audit-section">
-          <header class="audit-card-header">
-              <h2 id="settingsTitle">分类结果</h2>
-              <div class="finvault-view-switcher" id="finvaultViewSwitcher" hidden aria-label="FinVault 分类视图">
-                <button class="active" data-finvault-view="domain" type="button">按金融领域</button>
-                <button data-finvault-view="risk" type="button">按风险类型</button>
-              </div>
-          </header>
-          <div class="settings-table-wrap">
-            <table class="audit-table settings-table">
-              <thead id="settingsTableHead">
-                <tr>
-                  <th>业务场景</th>
-                  <th>助手安全策略</th>
-                  <th>攻击伪装方式</th>
-                  <th>测试次数</th>
-                  <th>Inline Probe</th>
-                  <th>Activation Probe (Ours)</th>
-                  <th>Llama Prompt Guard 2</th>
-                  <th>Qwen3Guard</th>
-                  <th>网易易盾</th>
-                </tr>
-              </thead>
-              <tbody id="settingsTableBody"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="audit-card audit-explorer-card risk-audit-section">
-          <header class="audit-card-header explorer-heading">
-            <h2 id="explorerTitle">案例记录</h2>
-            <span class="case-count" id="caseCountLabel">0 条</span>
-          </header>
-
-          <div class="audit-filterbar">
-            <label class="audit-search-field">
-              <span class="sr-only">搜索 trace</span>
-              <svg viewBox="0 0 20 20" aria-hidden="true">
-                <circle cx="8.5" cy="8.5" r="5.5"></circle>
-                <path d="m13 13 4 4"></path>
-              </svg>
-              <input id="caseSearchInput" type="search" placeholder="搜索案例或攻击类型" />
-            </label>
-            <label id="guardFilterLabel">
-              <span class="sr-only">检测器</span>
-              <select id="guardFilter">
-                <option value="all">全部检测器</option>
-                <option value="inline_probing">Inline Probe</option>
-                <option value="llama_prompt_guard">Llama Prompt Guard 2</option>
-                <option value="qwen3_guard">Qwen3Guard</option>
-                <option value="netease_yidun">网易易盾</option>
-                <option value="no_guard">No Guard</option>
-              </select>
-            </label>
-            <label id="resultFilterLabel">
-              <span class="sr-only">检测结果</span>
-              <select id="resultFilter">
-                <option value="all">全部结果</option>
-                <option value="detected">已检出</option>
-                <option value="missed">未检出</option>
-              </select>
-            </label>
-            <label>
-              <span class="sr-only">Setting</span>
-              <select id="settingFilter"><option value="all">全部业务场景</option></select>
-            </label>
-            <label id="riskTypeFilterLabel" hidden>
-              <span class="sr-only">风险类型</span>
-              <select id="riskTypeFilter"><option value="all">全部风险类型</option></select>
-            </label>
-          </div>
-
-          <div class="trace-explorer">
-            <div class="trace-list-panel">
-              <div class="trace-list-header">
-                <span>案例</span>
-                <span id="traceSubjectTitle">风险场景</span>
-                <span id="traceResultTitle">检测结果</span>
-              </div>
-              <div class="trace-list" id="traceList"></div>
-              <div class="trace-empty" id="traceEmpty" hidden>没有符合当前筛选条件的记录。</div>
-              <nav class="finvault-pagination" id="finvaultPagination" hidden aria-label="案例分页">
-                <button id="finvaultPrevPage" type="button">上一页</button>
-                <span id="finvaultPageLabel">第 1 页</span>
-                <button id="finvaultNextPage" type="button">下一页</button>
-              </nav>
+          <div class="headline-metrics" id="leakageHeadline"></div>
+          <article class="audit-panel">
+            <div class="panel-heading">
+              <div><h3>跨数据集检测结果</h3><p>固定阈值评测，测试过程中未针对 LeakGauge 重新调参。</p></div>
+              <span class="model-chip">Qwen3.5-2B</span>
             </div>
-            <article class="trace-detail-panel" id="traceDetail">
-              <div class="trace-detail-placeholder">
-                <span class="audit-loading-dot"></span>
-                <p>选择一条记录查看风险输入、判定规则与执行证据</p>
-              </div>
+            <div class="result-table-wrap">
+              <table class="result-table">
+                <thead><tr><th>检测对象</th><th>样本数</th><th>AUROC</th><th>召回率</th><th>误报率</th><th>F1</th></tr></thead>
+                <tbody id="leakageTable"></tbody>
+              </table>
+            </div>
+          </article>
+          <div class="protocol-note">
+            <strong>如何理解</strong>
+            <p>系统提示词与 RAG 泄漏使用各自的数据分布单独评估。AUROC 衡量整体区分能力，召回率衡量攻击检出覆盖，误报率衡量正常请求被误判的比例。</p>
+          </div>
+        </section>
+
+        <section class="evaluation-section" id="indirect-injection" data-audit-section>
+          <header class="section-heading">
+            <div><span class="section-number">02</span><h2>间接提示词注入</h2><span class="status-pill verified"><i></i>真实评测</span></div>
+            <p>复用影子模型的一次激活计算，通过专用 Probe 判断外部内容中是否藏有恶意指令。</p>
+          </header>
+          <div class="headline-metrics" id="ipiHeadline"></div>
+          <div class="ipi-grid">
+            <article class="audit-panel dataset-panel">
+              <div class="panel-heading"><div><h3>留出集检测效果</h3><p>10% trace 用于域适应，90% trace 留作评测。</p></div></div>
+              <div class="dataset-results" id="ipiDatasets"></div>
+            </article>
+            <article class="audit-panel chart-panel">
+              <div class="panel-heading"><div><h3>不同隐藏层的检测能力</h3><p>展示域适应后各层在两套外部数据集上的 AUROC。</p></div></div>
+              <img src="./assets/audit/layer_auroc_domain_adapted.png" alt="不同隐藏层在 AgentDyn 与 InjecAgent 数据集上的 AUROC 曲线" loading="lazy" />
             </article>
           </div>
+          <div class="protocol-note">
+            <strong>评测协议</strong>
+            <p>Layer 7 Probe，学习率 1e-4，训练 5 个 epoch，并使用 L2 锚定（λ=10）约束更新。页面仅呈现域适应后的留出集结果。</p>
+          </div>
         </section>
+
+        <section class="evaluation-section mock-section" id="content-safety" data-audit-section>
+          <header class="section-heading">
+            <div><span class="section-number">03</span><h2>内容安全</h2><span class="status-pill mock">Mock · 待评测</span></div>
+            <p>面向违法违规、暴力、色情与仇恨等内容风险的检测能力占位展示。</p>
+          </header>
+          <div class="mock-banner"><span>示意数据</span><p>本区域用于预览最终审计页面结构，以下数值不是实际实验结论，将在内容安全 Probe 完成正式评测后替换。</p></div>
+          <div class="headline-metrics mock-metrics" id="contentSafetyHeadline"></div>
+          <article class="audit-panel content-categories">
+            <div class="panel-heading"><div><h3>风险类别覆盖</h3><p>计划纳入正式评测的数据类别。</p></div></div>
+            <div class="category-list" id="contentSafetyCategories"></div>
+          </article>
+        </section>
+
+        <footer class="audit-footer"><span>ProspectMonitor 实验审计</span><span id="auditUpdatedAt"></span></footer>
       </main>
     </div>
-
-    <dialog class="method-dialog" id="methodDialog" aria-labelledby="methodDialogTitle">
-      <article>
-        <header>
-          <div>
-            <span id="methodDialogType">检测方法</span>
-            <h2 id="methodDialogTitle">方法说明</h2>
-          </div>
-          <button id="methodDialogClose" type="button" aria-label="关闭方法说明">×</button>
-        </header>
-        <p class="method-dialog-summary" id="methodDialogSummary"></p>
-        <dl class="method-dialog-facts" id="methodDialogFacts"></dl>
-        <section>
-          <h3>怎么做</h3>
-          <ol id="methodDialogSteps"></ol>
-        </section>
-      </article>
-    </dialog>
-
-    <script type="module" src="./src/audit.js?v=shared-method-details-20260804-v75"></script>
+    <script type="module" src="./src/audit.js?v=single-page-20260911-v1"></script>
   </body>
 </html>

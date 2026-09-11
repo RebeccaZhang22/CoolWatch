@@ -1,0 +1,10 @@
+[
+  {
+    "id": "financial-tool-access",
+    "name": "金融工具访问规范",
+    "version": "1.0",
+    "visibility": "private",
+    "description": "约束合成金融工具的只读查询、审批检查和草稿生成边界。",
+    "instructions_path": "skills/financial_tool_access/instructions.md"
+  }
+]

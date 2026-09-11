@@ -1,0 +1,16 @@
+# CPU/runtime dependencies for the web application container.
+# vLLM and the model weights stay outside this image and can be supplied by
+# a host or a separate GPU service through the OpenAI-compatible endpoints.
+fastapi
+uvicorn[standard]
+httpx
+jieba>=0.42.1,<0.43
+numpy
+openai
+pydantic
+pydantic-settings
+python-dotenv
+python-multipart
+rank-bm25>=0.2.2,<0.3
+transformers>=4.51.0
+accelerate

@@ -1,6 +1,6 @@
 export const FINVAULT_METHOD_DETAILS = {
   suffix_probe: {
-    title: "SafeGauge (Ours)",
+    title: "SafeGauge（我们的产品）",
     type: "Suffix Probe",
     summary: "用目标模型对一段风险语义后缀的自然反应作为特征，在不读取隐藏状态的情况下判断当前对话是否已经进入高风险金融请求。",
     input: "累计到当前轮的 System Prompt、用户输入与 Assistant 历史",
@@ -19,7 +19,7 @@ export const FINVAULT_METHOD_DETAILS = {
     ],
   },
   activation_probe: {
-    title: "Activation Probe (Ours)",
+    title: "基于隐藏层的可解释性技术（我们的产品）",
     type: "Linear Activation Probe",
     summary: "直接读取目标模型在生成回复前的内部 residual-stream 激活，用一个轻量线性分类器识别高风险金融操作意图。",
     input: "累计到当前轮的完整对话",
@@ -95,14 +95,14 @@ export const FINVAULT_METHOD_DETAILS = {
     ],
   },
   netease_yidun: {
-    title: "网易易盾",
+    title: "网易易盾文本安全护栏",
     type: "云端文本内容安全服务",
     summary: "只把 FinVault 的 Attack Query 发送给网易易盾文本检测接口，不上传 System Prompt、Assistant 历史、工具返回或 Agent 输出。",
     input: "Attack Query only",
     timing: "Agent 执行前",
     decision: "嫌疑或不通过视为命中",
     source: {
-      label: "网易易盾 · 商业闭源服务",
+      label: "网易易盾文本安全护栏 · 商业闭源服务",
       url: "https://dun.163.com/",
       linkLabel: "官方网站",
     },

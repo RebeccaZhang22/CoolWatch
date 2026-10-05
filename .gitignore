@@ -118,3 +118,7 @@ conftest.py
 
 # Private unified leakage checkpoint, deployed locally only.
 /best_probe.pt
+
+# Singprobe experiments, scripts, model weights and evaluation outputs.
+/evaluation/src/singprobe*/
+/evaluation/results/singprobe*/

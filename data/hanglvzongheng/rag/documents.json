@@ -1,0 +1,134 @@
+[
+  {
+    "id": "travel-public-01",
+    "title": "01 锚点航班表",
+    "visibility": "public",
+    "content_path": "rag/public/01 锚点航班表.md"
+  },
+  {
+    "id": "travel-public-02",
+    "title": "02 航旅纵横平台介绍",
+    "visibility": "public",
+    "content_path": "rag/public/02 航旅纵横平台介绍.md"
+  },
+  {
+    "id": "travel-public-03",
+    "title": "03 航班动态与不正常航班",
+    "visibility": "public",
+    "content_path": "rag/public/03 航班动态与不正常航班.md"
+  },
+  {
+    "id": "travel-public-04",
+    "title": "04 延误补偿标准",
+    "visibility": "public",
+    "content_path": "rag/public/04 延误补偿标准.md"
+  },
+  {
+    "id": "travel-public-05",
+    "title": "05 免费行李额",
+    "visibility": "public",
+    "content_path": "rag/public/05 免费行李额.md"
+  },
+  {
+    "id": "travel-public-06",
+    "title": "06 行李限制与危险品",
+    "visibility": "public",
+    "content_path": "rag/public/06 行李限制与危险品.md"
+  },
+  {
+    "id": "travel-public-07",
+    "title": "07 特殊旅客服务",
+    "visibility": "public",
+    "content_path": "rag/public/07 特殊旅客服务.md"
+  },
+  {
+    "id": "travel-public-08",
+    "title": "08 有效乘机证件",
+    "visibility": "public",
+    "content_path": "rag/public/08 有效乘机证件.md"
+  },
+  {
+    "id": "travel-public-09",
+    "title": "09 票价与儿童婴儿票",
+    "visibility": "public",
+    "content_path": "rag/public/09 票价与儿童婴儿票.md"
+  },
+  {
+    "id": "travel-public-10",
+    "title": "10 退改签规则",
+    "visibility": "public",
+    "content_path": "rag/public/10 退改签规则.md"
+  },
+  {
+    "id": "travel-public-11",
+    "title": "11 值机与登机",
+    "visibility": "public",
+    "content_path": "rag/public/11 值机与登机.md"
+  },
+  {
+    "id": "travel-public-12",
+    "title": "12 机上服务",
+    "visibility": "public",
+    "content_path": "rag/public/12 机上服务.md"
+  },
+  {
+    "id": "travel-public-13",
+    "title": "13 常见问题 FAQ",
+    "visibility": "public",
+    "content_path": "rag/public/13 常见问题 FAQ.md"
+  },
+  {
+    "id": "travel-kehu-01",
+    "title": "航旅旅客资料 01",
+    "visibility": "private",
+    "content_path": "rag/kehu/01.md"
+  },
+  {
+    "id": "travel-kehu-02",
+    "title": "航旅旅客资料 02",
+    "visibility": "private",
+    "content_path": "rag/kehu/02.md"
+  },
+  {
+    "id": "travel-kehu-03",
+    "title": "航旅旅客资料 03",
+    "visibility": "private",
+    "content_path": "rag/kehu/03.md"
+  },
+  {
+    "id": "travel-kehu-04",
+    "title": "航旅旅客资料 04",
+    "visibility": "private",
+    "content_path": "rag/kehu/04.md"
+  },
+  {
+    "id": "travel-kehu-05",
+    "title": "航旅旅客资料 05",
+    "visibility": "private",
+    "content_path": "rag/kehu/05.md"
+  },
+  {
+    "id": "travel-kehu-06",
+    "title": "航旅旅客资料 06",
+    "visibility": "private",
+    "content_path": "rag/kehu/06.md"
+  },
+  {
+    "id": "travel-kehu-07",
+    "title": "航旅旅客资料 07",
+    "visibility": "private",
+    "content_path": "rag/kehu/07.md"
+  },
+  {
+    "id": "travel-kehu-08",
+    "title": "航旅旅客资料 08",
+    "visibility": "private",
+    "content_path": "rag/kehu/08.md"
+  },
+  {
+    "id": "travel-kehu-09",
+    "title": "航旅旅客资料 09",
+    "visibility": "private",
+    "content_path": "rag/kehu/09.md"
+  }
+]

@@ -1,0 +1,36 @@
+{
+  "status": "available",
+  "samples": 11578,
+  "splits": {
+    "train": 7766,
+    "val": 1952,
+    "test": 1860
+  },
+  "split_label_counts": {
+    "train:0": 7086,
+    "train:1": 680,
+    "val:1": 240,
+    "val:0": 1712,
+    "test:0": 1740,
+    "test:1": 120
+  },
+  "label_definition": {
+    "0": "benign",
+    "1": "harmful"
+  },
+  "checkpoint": "/share/workspace/zyt/agent-guard-open/probe/qwen3-8b/content_safety/best_probe.pt",
+  "checkpoint_sha256": "5055a2c8bc3f863644758954a3888e4a2d7426c06777f1f3fdbaf40bc2df7280",
+  "external_audits": {},
+  "files": [
+    {
+      "path": "harmful/all_samples.jsonl",
+      "sha256": "16f79259c75912ec618c58fde165f4c3482186c2dfec65eabedc4236f2a0a79a",
+      "source": "/share/workspace/zyt/agent-guard-open/.runtime/qwen3-8b-retrain-20260915/harmful_v2_data/all_samples.jsonl"
+    },
+    {
+      "path": "harmful/source_manifest.json",
+      "sha256": "9d7699e0d3946793aaad8a66e68ce95244b54c4c271fcf95b8bad038e8c0aa00",
+      "source": "/share/workspace/zyt/agent-guard-open/.runtime/qwen3-8b-retrain-20260915/harmful_v2_data/manifest.json"
+    }
+  ]
+}

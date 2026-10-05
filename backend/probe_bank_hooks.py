@@ -18,8 +18,10 @@ def _flush_positions():
     ends = np.cumsum(lengths)
     record = {}
     for layer, hidden in pending['buf'].items():
-        # FYH layer 7 = HF 8 at T-3; original probes remain at T-1.
-        offset = 3 if layer == 8 else 1
+        # FYH layer 10 = HF 11 at T-3; original probes remain at T-1.
+        # ends == full template length in this engine build, so T-3 needs offset 3
+        # (empirically calibrated 2026-09-14: offset 5 reproduced T-5).
+        offset = 3 if layer == 11 else 1
         if min(lengths) < offset or hidden.shape[0] != int(ends[-1]):
             continue  # short warm-up / flush requests carry no real decision
         positions = torch.as_tensor(ends - offset, device=hidden.device)
@@ -36,7 +38,7 @@ def make_layer_hook(config):
 
     def layer_hook(module, args, output):
         original_hook(module, args, output)
-        if not upstream._is_real_decoder_layer(module) or module.layer_id not in (7, 14):
+        if not upstream._is_real_decoder_layer(module) or module.layer_id not in (10, 14):
             return
         with upstream._LOCK:
             layer_hf = module.layer_id + 1

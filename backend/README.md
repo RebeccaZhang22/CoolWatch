@@ -50,64 +50,11 @@ SafeGauge 返回的任务、标签、概率、阈值和原始响应会写入 `gu
 checkpoint。若融合请求中的某一项失败，聊天路径只对失败项回退到原检测服务。
 启用泄露意图融合时，需要部署与该任务配套的 inline checkpoint，并同时设置
 `INLINE_PROBING_TASK=system_prompt_leakage_intent` 和对应的
-`INLINE_PROBING_EXPECTED_CHECKPOINT_ID`。仓库提供了一个只验证 residual 捕获与
-融合通路、固定输出 safe 的
-[System Prompt Leakage holder recipe](../recipe/inline_probing/qwen3-8b-system-prompt-leakage-placeholder/README.md)；
-它没有训练过，不能作为泄露检测器。仓库默认的真实 checkpoint 仍是
-`indirect_prompt_injection`，不会被静默用于泄露任务。
+`INLINE_PROBING_EXPECTED_CHECKPOINT_ID`。配套的 patched-vLLM 服务和真实权重需要由外部部署提供。
 
 ## 基于隐藏层的可解释性技术
 
-FinVault 和私有资产窃取场景选择基于隐藏层的可解释性技术时，推荐让 patched vLLM 在 GPU worker 内直接打分。现有 checkpoint 均为单层 residual probe；Qwen3-8B 客服 Agent 默认使用统一 theft probe，一次覆盖 System/Developer Prompt、私有 RAG、私有 CoT 与私有 Skill/tool 窃取意图。请求按 `model + scenario_category` 选择显式 `probe_id`，并校验 probe ID、checkpoint SHA-256、任务和层号。完整启动命令见 [Activation Probe vLLM recipe](../recipe/activation_probing/README.md)。
-
-```dotenv
-ACTIVATION_PROBE_BACKEND=vllm
-# 留空时跟随聊天请求选择的 vLLM URL；固定部署也可填写完整 /v1 地址。
-ACTIVATION_PROBE_VLLM_BASE_URL=http://127.0.0.1:8013/v1
-ACTIVATION_PROBE_TIMEOUT_SECONDS=300
-```
-
-后端只读取 recipe 元数据并校验 checkpoint SHA-256，不加载 probe 参数，也不接收 raw hidden state。未应用仓库 overlay 的普通 vLLM 不提供 `inline_probing_request` / `inline_probing` 协议，不能用于此后端。
-
-原来的独立 `backend.activation_probe_server` 仍可用作兼容或数值对照。它通过 `--model` 加载一个 Qwen3-8B 或 Qwen3-32B Transformers 实例，并使用对应 checkpoint：
-
-- `results/activation_probe/finvault-qwen3-8b/best_probe.pt`
-- `results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt`（8B 默认）
-- `results/activation_probe/prompt-extraction-qwen3-8b/probe/best_probe.pt`
-- `results/activation_probe/finvault-qwen3-32b/best_probe.pt`
-- `results/activation_probe/prompt-extraction-qwen3-32b/probe/best_probe.pt`
-
-32B 启动示例：
-
-```bash
-CUDA_VISIBLE_DEVICES=5,6 \
-  HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
-  python -m backend.activation_probe_server \
-  --model qwen3-32b \
-  --model-path .runtime/models/Qwen3-32B \
-  --port 8910 --device-map balanced
-```
-
-8B 启动时改为：
-
-```bash
-CUDA_VISIBLE_DEVICES=5 \
-  HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
-  python -m backend.activation_probe_server \
-  --model qwen3-8b \
-  --model-path .runtime/models/Qwen3-8B \
-  --port 8910 --device-map auto
-```
-
-同一端口一次运行一种模型，所选模型应与前端 Agent 模型一致。
-
-后端配置：
-
-```dotenv
-ACTIVATION_PROBE_BACKEND=standalone
-ACTIVATION_PROBE_BASE_URL=http://127.0.0.1:8910
-ACTIVATION_PROBE_TIMEOUT_SECONDS=300
-```
+当前使用 Probe Bank，启动 `vllm_setups/run_probe_bank_qwen3_8b.sh`，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL=http://127.0.0.1:8302`。三个权重在 `probe/qwen3-8b/`；旧版 recipe 后端已移除。`standalone` Transformers 后端保留用于旧部署对照。
 
 ## Inline Probing
 
@@ -131,17 +78,7 @@ INLINE_PROBING_TIMEOUT_SECONDS=120
 融合 SafeGauge 时，patched vLLM 的 `/v1/completions` 还需支持同一个字段，
 并允许请求通过 `target_token_index` 指定 suffix 之前的原始上下文边界。
 
-仓库内置了
-`qwen3-8b-indirect-prompt-injection-assistant-prefix-probing` golden recipe：
-
-```bash
-python -m backend.watchers.inline_probing.golden_recipe
-```
-
-它包含 probe checkpoint 和覆盖 16 个 strict grid points 的 32 positive +
-32 negative replay cases，不包含 hidden states 或离线 feature tensors。连接
-patched Qwen3-8B vLLM 后可执行真实在线回归，具体命令见
-`recipe/inline_probing/qwen3-8b-indirect-prompt-injection-assistant-prefix-probing/README.md`。
+仓库不再提供 patched-vLLM 补丁、占位权重及 golden recipe 校验入口。此协议客户端仅兼容外部已部署服务。
 
 ## Qwen3Guard
 

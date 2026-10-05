@@ -15,7 +15,7 @@ const views = {
   "developer-examples.html": { hash: "developer-examples", title: "开发者中心" },
   "admin.html": { hash: "admin", title: "管理后台" },
   "audit.html": { hash: "audit", title: "实验审计" },
-  "cases.html": { hash: "cases", title: "案例研究" },
+  "cases.html": { hash: "cases", title: "案例演示" },
   "competitors.html": { hash: "competitors", title: "竞品分析" },
   "indirect-replay.html": { hash: "indirect-replay", title: "案例研究" },
   "case-study.html": { hash: "financial-case", title: "案例研究" },
@@ -115,5 +115,9 @@ window.addEventListener("hashchange", syncDeveloperView);
 window.addEventListener("message", (event) => {
   if (event.origin !== window.location.origin || event.source !== frame.contentWindow) return;
   if (event.data?.type === "developer-center:close") closeDeveloperView();
+  if (event.data?.type === "aviation-case:selected" && /^attack[123]-\d{2}$/.test(event.data.caseId)) {
+    window.history.replaceState(window.history.state, "", `#cases?case=${event.data.caseId}`);
+    currentView = new URL(`./cases.html?case=${event.data.caseId}`, window.location.href).href;
+  }
 });
 syncDeveloperView();

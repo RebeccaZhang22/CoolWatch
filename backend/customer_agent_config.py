@@ -13,7 +13,7 @@ from uuid import uuid4
 from fastapi import UploadFile
 
 from backend.customer_agent_catalog import (
-    CUSTOMER_AGENT_DATA_ROOT,
+    HANGLV_AGENT_DATA_ROOT,
     LoadedCustomerAgentScenario,
     load_customer_agent_scenario,
 )
@@ -39,7 +39,7 @@ _SAFE_STEM_PATTERN = re.compile(r"[^a-z0-9]+")
 class CustomerAgentRuntimeConfig:
     """Own the mutable customer-Agent data and its current BM25 snapshot."""
 
-    def __init__(self, data_root: Path = CUSTOMER_AGENT_DATA_ROOT) -> None:
+    def __init__(self, data_root: Path = HANGLV_AGENT_DATA_ROOT) -> None:
         self.data_root = data_root.resolve()
         self._lock = RLock()
         self._scenario = load_customer_agent_scenario(self.data_root)

@@ -1,0 +1,54 @@
+[
+  {
+    "checkpoint": 1,
+    "roles": [
+      "system",
+      "user"
+    ],
+    "input_tokens": 1781,
+    "per_risk": {
+      "harmful": {
+        "score": 0.6645133636991476,
+        "threshold": 0.9280345751631867,
+        "flagged": false
+      },
+      "ipi": {
+        "score": 0.17009441554546356,
+        "threshold": 0.5,
+        "flagged": false
+      },
+      "prompt_leakage": {
+        "score": 0.0013991091921718387,
+        "threshold": 0.8209837546905241,
+        "flagged": false
+      }
+    }
+  },
+  {
+    "checkpoint": 2,
+    "roles": [
+      "system",
+      "user",
+      "assistant",
+      "tool"
+    ],
+    "input_tokens": 2888,
+    "per_risk": {
+      "harmful": {
+        "score": 0.4726719851195932,
+        "threshold": 0.9280345751631867,
+        "flagged": false
+      },
+      "ipi": {
+        "score": 0.9959063529968262,
+        "threshold": 0.5,
+        "flagged": true
+      },
+      "prompt_leakage": {
+        "score": 0.007736014056727215,
+        "threshold": 0.8209837546905241,
+        "flagged": false
+      }
+    }
+  }
+]

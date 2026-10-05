@@ -1,0 +1,106 @@
+{
+  "schema": "probe_training_data_inventory.v2",
+  "risk_categories": {
+    "harmful": {
+      "status": "available",
+      "samples": 11578,
+      "splits": {
+        "train": 7766,
+        "val": 1952,
+        "test": 1860
+      },
+      "split_label_counts": {
+        "train:0": 7086,
+        "train:1": 680,
+        "val:1": 240,
+        "val:0": 1712,
+        "test:0": 1740,
+        "test:1": 120
+      },
+      "label_definition": {
+        "0": "benign",
+        "1": "harmful"
+      },
+      "checkpoint": "/share/workspace/zyt/agent-guard-open/probe/qwen3-8b/content_safety/best_probe.pt",
+      "checkpoint_sha256": "5055a2c8bc3f863644758954a3888e4a2d7426c06777f1f3fdbaf40bc2df7280",
+      "external_audits": {},
+      "files": [
+        {
+          "path": "train/data/harmful/train.jsonl",
+          "sha256": "ddd6a1d0cb23bcf17e8356bda87d68a2abbbdc93d3ac54458351aa29f7ac250b",
+          "split": "train",
+          "samples": 7766
+        },
+        {
+          "path": "train/data/harmful/validation.jsonl",
+          "sha256": "1f3c162e09f323bea90611cdfc6d7484b9ec63b96a4f44c03576ab8f9204203f",
+          "split": "val",
+          "samples": 1952
+        }
+      ],
+      "test_dataset": "evaluation/dataset/benchmark/harmful/probe_holdout/test.jsonl",
+      "samples_in_training_directory": 9718,
+      "label_policy": "original_frozen"
+    },
+    "prompt_leakage": {
+      "status": "available",
+      "samples": 22260,
+      "splits": {
+        "val": 3972,
+        "train": 13228,
+        "test": 5060
+      },
+      "split_label_counts": {
+        "val:0": 2231,
+        "val:1": 1741,
+        "train:0": 8473,
+        "train:1": 4755,
+        "test:0": 2495,
+        "test:1": 2565
+      },
+      "label_definition": {
+        "0": "benign",
+        "1": "prompt_leakage"
+      },
+      "checkpoint": "/share/workspace/zyt/agent-guard-open/probe/qwen3-8b/prompt_leakage/best_probe.pt",
+      "checkpoint_sha256": "141414e1543807a26a343165903408046c438227a7b6e1503470c560964520c0",
+      "external_audits": {
+        "external_attack_audit.jsonl": 512,
+        "natural_safe_audit.jsonl": 395,
+        "reported_rag_tool_context.jsonl": 5,
+        "reported_short_audit.jsonl": 232
+      },
+      "files": [
+        {
+          "path": "train/data/prompt_leakage/train.jsonl",
+          "sha256": "6dbf6c6bbc251a1e02c52d3d24f7f107c158c61761f38dfd809948656ee43f7d",
+          "split": "train",
+          "samples": 13228
+        },
+        {
+          "path": "train/data/prompt_leakage/validation.jsonl",
+          "sha256": "26bc684f3ab4c19350896dbbddfaf575d26e013941a9ce06c6a45a42321db2a6",
+          "split": "val",
+          "samples": 3972
+        }
+      ],
+      "test_dataset": "evaluation/dataset/benchmark/prompt_leakage/probe_holdout/test.jsonl",
+      "samples_in_training_directory": 17200,
+      "label_policy": "original_frozen"
+    },
+    "ipi": {
+      "status": "training_samples_unavailable",
+      "samples": null,
+      "dataset_name": "broad_zero_val",
+      "source_run": "results/probe_traces/v2/agentdojo-20260430T015534Z-qwen3-8b-dp4",
+      "label": "risk_faced",
+      "checkpoint": "/share/workspace/zyt/agent-guard-open/probe/qwen3-8b/indirect_prompt_injection/best_layer_22.pt",
+      "checkpoint_sha256": "a1e6ca136a49b769409d4b9679ae704f1f30b7d8550c4988a7a83aa8431f5278",
+      "note": "The shipped package includes weights and provenance, not original training conversations, labels and activation features. No substitute or empty training dataset was created."
+    }
+  },
+  "notes": [
+    "train.jsonl and validation.jsonl only; held-out test and external audits are under evaluation/dataset/benchmark.",
+    "Original labels preserved for checkpoint reproduction; public RAG export negatives conflict with rag_export_is_leakage_v1."
+  ]
+}

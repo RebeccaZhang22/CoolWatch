@@ -1,0 +1,115 @@
+[
+  {
+    "phase": "session",
+    "status": "running",
+    "message": "会话已就绪",
+    "detail": "已载入 0 条历史消息"
+  },
+  {
+    "phase": "input_guard",
+    "status": "running",
+    "message": "正在检查用户消息",
+    "detail": "输入侧防护并行运行"
+  },
+  {
+    "phase": "input_guard",
+    "status": "running",
+    "message": "正在等待完整上下文检测",
+    "detail": "用户输入检查点已完成，工具和 RAG 上下文仍待检测"
+  },
+  {
+    "phase": "input_guard",
+    "status": "running",
+    "message": "正在持续检查完整上下文",
+    "detail": "当前检查点已完成，最终结果将在本轮所有上下文检查结束后显示"
+  },
+  {
+    "phase": "generation",
+    "status": "running",
+    "message": "银行财富知识助手 正在处理消息",
+    "detail": "Agent loop 第 1 轮"
+  },
+  {
+    "phase": "retrieval",
+    "status": "success",
+    "message": "知识库检索完成",
+    "detail": "召回 4 个知识片段"
+  },
+  {
+    "phase": "tool",
+    "status": "running",
+    "message": "业务工具调用完成",
+    "detail": "search_financial_knowledge"
+  },
+  {
+    "phase": "input_guard",
+    "status": "blocked",
+    "message": "完整上下文风险检测",
+    "detail": "命中：间接提示注入",
+    "defense_signals": [
+      {
+        "defense_id": "activation_probe",
+        "stage": "context",
+        "status": "risk",
+        "connected": true,
+        "blocked": true,
+        "score": null,
+        "threshold": null,
+        "latency_ms": 303,
+        "detail": "命中：间接提示注入",
+        "raw_output": "{\"overall\": true, \"profile\": \"balanced\", \"per_risk\": {\"harmful\": {\"score\": 0.02552233683669134, \"threshold\": 0.5213050763679168, \"flagged\": false}, \"prompt_leakage\": {\"score\": 0.05349663190258167, \"threshold\": 0.863634025510525, \"flagged\": false}, \"ipi\": {\"score\": 0.9677633047103882, \"threshold\": 0.91, \"flagged\": true}}, \"per_entry\": {\"harmful/qwen3-8b\": 0.02552233683669134, \"prompt_leakage/qwen3-8b\": 0.05349663190258167, \"ipi/broad-l22\": 0.9677633047103882}, \"triggered_entries\": [\"ipi/broad-l22\"], \"detector_model\": \"qwen3-8b\", \"bank_version\": \"sha256:94d80114834694e4b3f0796df4b99228932c111805afb612b671fd8b285da167\", \"input_tokens\": 3296, \"prefill_batch_sizes\": [1], \"latency_ms\": {\"queue\": 14.774512499570847, \"detect\": 286.8220638483763, \"total\": 301.5965763479471}, \"batch_size\": 1, \"batch_tokens\": 3296}",
+        "metadata": {
+          "overall": true,
+          "profile": "balanced",
+          "per_risk": {
+            "harmful": {
+              "score": 0.02552233683669134,
+              "threshold": 0.5213050763679168,
+              "flagged": false
+            },
+            "prompt_leakage": {
+              "score": 0.05349663190258167,
+              "threshold": 0.863634025510525,
+              "flagged": false
+            },
+            "ipi": {
+              "score": 0.9677633047103882,
+              "threshold": 0.91,
+              "flagged": true
+            }
+          },
+          "per_entry": {
+            "harmful/qwen3-8b": 0.02552233683669134,
+            "prompt_leakage/qwen3-8b": 0.05349663190258167,
+            "ipi/broad-l22": 0.9677633047103882
+          },
+          "triggered_entries": [
+            "ipi/broad-l22"
+          ],
+          "detector_model": "qwen3-8b",
+          "bank_version": "sha256:94d80114834694e4b3f0796df4b99228932c111805afb612b671fd8b285da167",
+          "input_tokens": 3296,
+          "prefill_batch_sizes": [
+            1
+          ],
+          "latency_ms": {
+            "queue": 14.774512499570847,
+            "detect": 286.8220638483763,
+            "total": 301.5965763479471
+          },
+          "batch_size": 1,
+          "batch_tokens": 3296,
+          "message_count": 4,
+          "scope": "full_messages_primary_system_only",
+          "excluded_runtime_system_messages": 1
+        }
+      }
+    ]
+  },
+  {
+    "phase": "commit",
+    "status": "running",
+    "message": "本轮对话已完成",
+    "detail": "会话历史只保存用户可见内容"
+  }
+]

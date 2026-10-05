@@ -3,24 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="围绕银行财富管理客服的单场景攻防演示台" />
-    <title>ProspectMonitor · 银行财富管理客服攻防演示台</title>
+    <meta name="description" content="围绕客服助手-小航的单场景攻防演示台" />
+    <title>Demo · 客服助手-小航攻防演示台</title>
     <style>html.auth-pending body { visibility: hidden; }</style>
-    <link rel="stylesheet" href="./src/styles.css?v=guard-method-dialog-20260804-v39" />
-    <link rel="stylesheet" href="./src/customer-agent.css?v=guard-risk-display-v2" />
+    <link rel="stylesheet" href="./src/styles.css?v=demo-20260917-trajectory" />
+    <link rel="stylesheet" href="./src/customer-agent.css?v=ipi-highlights-20260920" />
   </head>
   <body>
     <div class="demo-page-shell">
       <header class="audit-topbar">
-        <a class="audit-brand" href="./index.html" aria-label="ProspectMonitor">
+        <a class="audit-brand" href="./index.html" aria-label="Demo">
           <span class="brand-mark" aria-hidden="true"><span></span></span>
-          <strong>ProspectMonitor</strong>
+          <strong>Demo</strong>
         </a>
 
         <nav class="audit-nav" aria-label="主导航">
           <a class="active" href="./index.html" aria-current="page">攻防演示台</a>
           <a href="./audit.html">实验审计</a>
-          <a href="./cases.html">案例研究</a>
+          <a href="./cases.html">案例演示</a>
           <a href="./competitors.html">竞品分析</a>
         </nav>
 
@@ -43,7 +43,7 @@
       </header>
 
       <div class="app-shell" id="appShell">
-        <aside class="sidebar" aria-label="银行财富管理客服配置">
+        <aside class="sidebar" aria-label="客服助手-小航配置">
           <div class="sidebar-actions">
             <div class="sidebar-action-row">
               <button class="button button-primary new-chat-button" id="resetSessionButton" type="button">
@@ -84,8 +84,21 @@
               </span>
               <div>
                 <strong id="agentConfigModel">qwen3-8b</strong>
-                <span id="agentConfigParams">业务 API :8104 · Temperature 0.0 · Top P 0.8 · Max 8192</span>
+                <span id="agentConfigParams">业务 API :8104 · Temperature 1.0 · Top P 0.8 · Max 8192</span>
               </div>
+            </div>
+          </section>
+
+          <section class="panel context-settings-panel" aria-labelledby="connectedToolsTitle">
+            <div class="panel-header"><h2 id="connectedToolsTitle">工具配置</h2></div>
+            <div class="context-settings-list">
+              <button class="context-settings-item" id="viewConnectedToolsButton" type="button" aria-label="查看已接入工具">
+                <span class="context-settings-icon rag" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" focusable="false"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"></path></svg>
+                </span>
+                <span class="context-settings-copy"><strong>已接入工具</strong><small id="connectedToolsCount">正在加载…</small></span>
+                <span class="context-settings-chevron" aria-hidden="true">›</span>
+              </button>
             </div>
           </section>
 
@@ -149,11 +162,11 @@
           <header class="topbar">
             <button class="nav-icon-button sidebar-open-button" id="sidebarOpenButton" type="button" aria-label="展开侧边栏" title="展开侧边栏">☰</button>
             <div class="topbar-copy">
-              <h1 id="agentTitle">银行财富管理客服</h1>
+              <h1 id="agentTitle">客服助手-小航</h1>
             </div>
           </header>
 
-          <section class="chat-surface" aria-label="银行财富管理客服对话">
+          <section class="chat-surface" aria-label="客服助手-小航对话">
             <div class="messages conversation-body" id="conversationBody">
               <div class="message-list" id="messageList" aria-live="polite"></div>
             </div>
@@ -165,8 +178,8 @@
                   id="messageInput"
                   rows="1"
                   maxlength="12000"
-                  placeholder="输入银行财富管理业务问题，Enter 发送，Shift + Enter 换行"
-                  aria-label="发送给银行财富管理客服的消息"
+                  placeholder="输入航班、行李或退改签问题，Enter 发送，Shift + Enter 换行"
+                  aria-label="发送给客服助手-小航的消息"
                 ></textarea>
                 <button class="send-button" id="sendButton" type="submit">运行 Agent</button>
               </div>
@@ -220,11 +233,6 @@
 
           <section class="drawer-section">
             <div class="drawer-section-title"><h3>RAG 检索详情</h3><span id="ragRetrievalCount">0 条</span></div>
-            <div class="rag-retrieval-summary" id="ragRetrievalSummary" data-status="idle">
-              <span>是否命中</span>
-              <strong id="ragRetrievalHit">—</strong>
-              <small id="ragRetrievalStatus">等待本轮检索</small>
-            </div>
             <div class="trace-list rag-retrieval-list" id="ragRetrievalList"><p class="empty-state">运行一条消息后显示 RAG 检索结果。</p></div>
           </section>
 
@@ -243,10 +251,15 @@
           </section>
 
           <section class="drawer-section">
+            <div class="drawer-section-title"><h3>Agent loop 执行轨迹</h3><span id="trajectoryCount">0 步</span></div>
+            <div id="trajectoryList" class="trace-list"><p class="empty-state">运行一条消息后显示逐步轨迹。</p></div>
+          </section>
+
+          <section class="drawer-section">
             <div class="drawer-section-title"><h3>执行过程</h3></div>
             <figure class="execution-flow-figure">
-              <a href="./assets/execution-flow-v3.png" target="_blank" rel="noopener noreferrer" aria-label="查看执行流程大图（新窗口）">
-                <img src="./assets/execution-flow-v3.png" alt="启用防护时，用户输入先由独立检测模型提取内部表征并输出风险评分；命中风险则拦截并返回安全提示，通过后进入业务执行：System Prompt 与用户消息组成上下文，RAG 相关片段作为 tool 消息加入，由业务模型生成最终回答。" loading="lazy" decoding="async" />
+              <a href="./assets/execution-flow-v4.png" target="_blank" rel="noopener noreferrer" aria-label="查看执行流程大图（新窗口）">
+                <img src="./assets/execution-flow-v4.png" alt="检测消息列表包括系统提示词、本轮用户输入和当前 loop 的工具返回，不累计已结束的历史轮次。每次业务模型生成前，影子模型提取本轮上下文的内部表征供 Activation 判定风险；通过后由业务模型生成回答或调用工具，命中则拦截。工具和 RAG 返回追加为 tool 消息后再次接受检测。" loading="lazy" decoding="async" />
               </a>
             </figure>
           </section>
@@ -287,9 +300,9 @@
                 <label class="field">
                   <span class="field-label">
                     <span>Temperature</span>
-                    <output id="temperatureValue">0.0</output>
+                    <output id="temperatureValue">1.0</output>
                   </span>
-                  <input id="temperatureInput" type="range" min="0" max="1" step="0.1" value="0" />
+                  <input id="temperatureInput" type="range" min="0" max="1" step="0.1" value="1" />
                 </label>
                 <label class="field">
                   <span class="field-label">
@@ -308,11 +321,16 @@
               </div>
             </section>
 
+            <section class="agent-config-section tools-config-section" data-agent-config-section="tools" hidden>
+              <p class="tools-config-hint">选择工具，查看调用参数与完整 Schema。</p>
+              <div class="connected-tools-list" id="connectedToolsList"></div>
+            </section>
+
             <section class="agent-config-section prompt-config-section" id="systemPromptConfigSection" aria-label="System Prompt" data-agent-config-section="system-prompt" hidden>
               <div class="agent-config-section-header">
                 <div>
                   <h3>System Prompt</h3>
-                  <p>直接编辑银行财富管理客服当前使用的完整 System Prompt</p>
+                  <p>直接编辑客服助手-小航当前使用的完整 System Prompt</p>
                 </div>
                 <span class="agent-runtime-badge" id="systemPromptSourceBadge">加载中</span>
               </div>
@@ -409,7 +427,7 @@
     <dialog class="developer-center-dialog" id="developerCenterDialog" aria-label="开发者中心">
       <header class="developer-center-header">
         <div class="developer-center-heading">
-          <span class="developer-center-brand">PROSPECTMONITOR</span>
+          <span class="developer-center-brand">Demo</span>
           <i aria-hidden="true"></i>
           <strong id="developerCenterTitle">开发者中心</strong>
         </div>
@@ -417,7 +435,7 @@
       </header>
       <iframe id="developerCenterFrame" title="开发者中心与 API Token" allow="clipboard-write 'self'"></iframe>
     </dialog>
-    <script type="module" src="./src/developer-navigation.js?v=admin-console-v6"></script>
-    <script type="module" src="./src/app.js?v=guard-risk-display-v2"></script>
+    <script type="module" src="./src/developer-navigation.js?v=aviation-20260919"></script>
+    <script type="module" src="./src/app.js?v=rag-retrieval-neutral-copy-20260921"></script>
   </body>
 </html>

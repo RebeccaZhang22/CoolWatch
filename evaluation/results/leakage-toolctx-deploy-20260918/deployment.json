@@ -1,0 +1,9 @@
+{
+  "status": "deployed",
+  "pid": 203336,
+  "server_log": "/share/workspace/zyt/agent-guard-open/.runtime/probe-bank-8b/run-deploy-0buq3b31/server.log",
+  "old_sha256": "8a4af4740b39a40694196aa22f3cdf514931da74f156ae578371c4c441eefbc8",
+  "new_sha256": "141414e1543807a26a343165903408046c438227a7b6e1503470c560964520c0",
+  "rollback_directory": "/share/workspace/zyt/agent-guard-open/probe/qwen3-8b/prompt_leakage/rollback_pre_tool_context_20260918",
+  "bank_version": "sha256:755d80995f007185218237bf861e3c9982fae197849ba2b614eccad209b9823e"
+}

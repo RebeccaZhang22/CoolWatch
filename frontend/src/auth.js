@@ -2,9 +2,22 @@ const base = window.AGENT_GUARD_API_BASE ?? window.location.origin;
 const tokenKey = "prospectmonitor.cli_token";
 
 async function request(path, options = {}) {
-  const response = await fetch(`${base}${path}`, { ...options, credentials: "include", headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
+  let response;
+  try {
+    response = await fetch(`${base}${path}`, { ...options, credentials: "include", headers: { "Content-Type": "application/json", ...(options.headers || {}) } });
+  } catch {
+    throw new Error("无法连接服务，请检查网络，稍后重试。");
+  }
   const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.detail || "请求失败");
+  if (!response.ok) {
+    const detail = typeof payload.detail === "string" ? payload.detail : "";
+    const fallback = response.status >= 500
+      ? `服务暂时不可用（${response.status}），请稍后重试。`
+      : response.status === 422
+        ? "请检查邮箱和密码是否填写正确，密码至少需要 8 位。"
+        : `请求失败（${response.status}），请刷新页面后重试。`;
+    throw new Error(detail || fallback);
+  }
   return payload;
 }
 

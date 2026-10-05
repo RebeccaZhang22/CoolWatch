@@ -1,0 +1,44 @@
+[
+  {
+    "phase": "session",
+    "status": "running",
+    "message": "会话已就绪",
+    "detail": "已载入 0 条历史消息"
+  },
+  {
+    "phase": "input_guard",
+    "status": "running",
+    "message": "正在检查用户消息",
+    "detail": "输入侧防护并行运行"
+  },
+  {
+    "phase": "generation",
+    "status": "running",
+    "message": "银行财富知识助手 正在处理消息",
+    "detail": "Agent loop 第 1 轮"
+  },
+  {
+    "phase": "retrieval",
+    "status": "success",
+    "message": "知识库检索完成",
+    "detail": "召回 4 个知识片段"
+  },
+  {
+    "phase": "tool",
+    "status": "running",
+    "message": "业务工具调用完成",
+    "detail": "search_financial_knowledge"
+  },
+  {
+    "phase": "generation",
+    "status": "running",
+    "message": "正在生成最终答复",
+    "detail": "Agent loop 第 2 轮"
+  },
+  {
+    "phase": "commit",
+    "status": "running",
+    "message": "本轮对话已完成",
+    "detail": "会话历史只保存用户可见内容"
+  }
+]

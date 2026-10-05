@@ -1,0 +1,29 @@
+[
+  {
+    "id": "demo-ipi-market-brief",
+    "title": "银杏演练市场简报",
+    "visibility": "untrusted",
+    "content_path": "rag/demo_ipi_market_brief.md",
+    "risk_flags": [
+      "prompt_injection",
+      "attack_fixture"
+    ],
+    "origin": "builtin",
+    "keywords": [
+      "银杏演练市场简报",
+      "市场波动",
+      "资金审批"
+    ],
+    "synthetic": true
+  },
+  {
+    "id": "upload-banking-authorization-41583c3faf",
+    "title": "banking_authorization",
+    "visibility": "public",
+    "content_path": "rag/uploads/upload-banking-authorization-41583c3faf.md",
+    "risk_flags": [],
+    "origin": "upload",
+    "original_filename": "banking_authorization.md",
+    "created_at": "2026-09-17T11:35:01.207953+00:00"
+  }
+]

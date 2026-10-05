@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>开发文档 · ProspectMonitor</title>
-    <link rel="stylesheet" href="./src/developer-help.css?v=1" />
+    <title>开发文档 · Demo</title>
+    <link rel="stylesheet" href="./src/developer-help.css?v=demo-20260917-final" />
   </head>
   <body class="help-page">
     <main class="help-card">
@@ -17,12 +17,13 @@
 
       <header class="help-hero">
         <h1>已有智能体接入防护</h1>
-        <p>无需迁移或重新搭建智能体。将智能体当前的完整消息列表发送到检测接口，根据返回的 <code>action</code> 决定继续执行还是立即拦截。</p>
+        <p>无需迁移或重新搭建智能体。将当前 Agent loop 的消息列表发送到检测接口，根据返回的 <code>action</code> 决定继续执行还是立即拦截。</p>
       </header>
 
       <div class="help-layout">
         <nav class="help-toc" aria-label="开发文档目录">
           <a href="#integration-overview">接入方式</a>
+          <a href="#python-sdk">Python SDK</a>
           <a href="#integration-timing">调用时机</a>
           <a href="#api-reference">接口说明</a>
           <a href="#request-parameters">请求参数</a>
@@ -33,7 +34,7 @@
         <article class="help-content">
           <section class="help-section" id="integration-overview">
             <h2>接入方式</h2>
-            <p>ProspectMonitor 作为已有智能体旁路的安全检测服务工作。你的业务模型、System Prompt、RAG 和工具调用方式都可以保持不变，只需在关键执行节点调用检测接口。</p>
+            <p>Demo 作为已有智能体旁路的安全检测服务工作。你的业务模型、System Prompt、RAG 和工具调用方式都可以保持不变，只需在关键执行节点调用检测接口。</p>
             <div class="integration-flow" aria-label="已有智能体接入流程">
               <div><strong>已有智能体</strong><small>保留原有配置</small></div>
               <div><strong>提交上下文</strong><small>messages + tools</small></div>
@@ -44,6 +45,21 @@
             <div class="help-note">检测接口不会替你调用业务模型，也不会改写原始消息。它只返回风险判断，你的智能体仍然掌握最终执行权。</div>
           </section>
 
+          <section class="help-section" id="python-sdk">
+            <h2>Python SDK</h2>
+            <p><code>siliconprospect-guard</code> 支持 Python 3.10 及以上版本，可安装到运行 Agent 的 Conda 或其他 Python 环境。SDK 通过公网 API 调用检测服务，无需在本地部署检测模型。</p>
+            <p>当前尚未发布到 PyPI，请使用源码或 .whl 安装包。<a href="./developer-examples.html#python-sdk">查看安装步骤和完整接入示例 →</a></p>
+            <pre class="help-code">from siliconprospect_guard import SiliconProspectGuard
+
+client = SiliconProspectGuard(
+    api_key="YOUR_TOKEN",
+    base_url="http://111.127.53.157:18088",
+)
+result = client.moderations.create(messages=messages, tools=tools)</pre>
+            <p><code>messages</code> 使用当前 loop 的 System Prompt、本轮用户输入及本 loop 已产生的 Assistant/Tool 消息；不要加入已结束的历史轮次。<code>tools</code> 使用当前工具定义，无工具时省略。读取 <code>result.action</code> 判断是否继续，通过 <code>result.per_risk</code> 查看风险详情。</p>
+            <div class="help-note"><code>create()</code> 返回检测结果，不会自动拦截 Agent。返回 <code>block</code> 时由你的流程停止执行；网络、超时或服务错误会抛出异常，也应暂停后续执行。</div>
+          </section>
+
           <section class="help-section" id="integration-timing">
             <h2>调用时机</h2>
             <ol>
@@ -51,12 +67,12 @@
               <li><strong>工具返回后：</strong>把工具或 RAG 结果以 <code>tool</code> 消息加入上下文，再检测一次，防止外部内容中的间接提示词注入进入后续模型调用。</li>
               <li><strong>继续生成前：</strong>只有检测结果为 <code>pass</code> 时，才让智能体继续调用模型或执行下一步工具。</li>
             </ol>
-            <div class="help-note">每次传入当前完整消息列表。你不需要预先判断风险属于哪一类，服务端会让所有已启用的 Probe 共同检查同一份上下文。</div>
+            <div class="help-note">每次传入当前 loop 截至检测点的消息列表；业务模型自己的完整历史无需删除。你不需要预先判断风险属于哪一类，服务端会让所有已启用的 Probe 共同检查同一份上下文。</div>
           </section>
 
           <section class="help-section" id="api-reference">
             <h2>接口说明</h2>
-            <div class="endpoint"><span>POST</span><code>/v1/moderations</code></div>
+            <div class="endpoint"><span>POST</span><code>http://111.127.53.157:18088/v1/moderations</code></div>
             <p>接口同步返回检测结果。请求头使用开发者中心生成的 API Token：</p>
             <pre class="help-code">Authorization: Bearer YOUR_TOKEN
 Content-Type: application/json</pre>
@@ -68,7 +84,7 @@ Content-Type: application/json</pre>
               <table class="help-table">
                 <thead><tr><th>字段</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
                 <tbody>
-                  <tr><td><code>messages</code></td><td>array</td><td>是</td><td>当前完整消息列表，按真实执行顺序传入，不要只截取最后一个 Query。</td></tr>
+                  <tr><td><code>messages</code></td><td>array</td><td>是</td><td>当前 Agent loop 的消息列表，按真实执行顺序传入：System、当前 User，以及本 loop 新增的 Assistant/Tool 消息；不累计已结束的历史轮次。</td></tr>
                   <tr><td><code>messages[].role</code></td><td>string</td><td>是</td><td>支持 <code>developer</code>、<code>system</code>、<code>user</code>、<code>assistant</code>、<code>tool</code>。</td></tr>
                   <tr><td><code>messages[].content</code></td><td>string</td><td>是</td><td>当前版本支持文本内容。</td></tr>
                   <tr><td><code>messages[].reasoning_content</code></td><td>string</td><td>否</td><td>需要参与检测的推理文本。</td></tr>
@@ -149,6 +165,6 @@ else:
         </article>
       </div>
     </main>
-    <script type="module" src="./src/developer-help.js?v=3"></script>
+    <script type="module" src="./src/developer-help.js?v=demo-20260917-final"></script>
   </body>
 </html>

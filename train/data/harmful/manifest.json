@@ -1,0 +1,28 @@
+{
+  "schema": "probe.training_split.v2",
+  "risk": "harmful",
+  "samples": 9718,
+  "splits": {
+    "train": 7766,
+    "val": 1952,
+    "test": 1860
+  },
+  "original_all_samples_sha256": "16f79259c75912ec618c58fde165f4c3482186c2dfec65eabedc4236f2a0a79a",
+  "checkpoint_sha256": "5055a2c8bc3f863644758954a3888e4a2d7426c06777f1f3fdbaf40bc2df7280",
+  "files": [
+    {
+      "path": "train/data/harmful/train.jsonl",
+      "sha256": "ddd6a1d0cb23bcf17e8356bda87d68a2abbbdc93d3ac54458351aa29f7ac250b",
+      "split": "train",
+      "samples": 7766
+    },
+    {
+      "path": "train/data/harmful/validation.jsonl",
+      "sha256": "1f3c162e09f323bea90611cdfc6d7484b9ec63b96a4f44c03576ab8f9204203f",
+      "split": "val",
+      "samples": 1952
+    }
+  ],
+  "test_dataset": "evaluation/dataset/benchmark/harmful/probe_holdout/test.jsonl",
+  "external_audits": null
+}

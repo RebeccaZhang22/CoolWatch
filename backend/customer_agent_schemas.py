@@ -9,7 +9,6 @@ from backend.schemas import ModelParams
 
 AttackId = Literal[
     "cot_extraction",
-    "skill_extraction",
     "system_prompt_extraction",
     "rag_extraction",
     "prompt_injection",
@@ -29,12 +28,12 @@ DEFAULT_CUSTOMER_SAFEGAUGE_THRESHOLD = 0.65
 def default_customer_model_params() -> ModelParams:
     return ModelParams(
         model="qwen3-8b",
-        temperature=0.0,
+        temperature=1.0,
         top_p=0.8,
         # The gpu3 deployment reserves a 2K context window for the 8B chat
         # model; keep the client default within vLLM's max_model_len.
         max_tokens=2048,
-        enable_reasoning=False,
+        enable_reasoning=True,
     )
 
 
@@ -60,11 +59,12 @@ class CustomerAgentConversationStarter(BaseModel):
     label: str = Field(min_length=1)
     message: str = Field(min_length=1, max_length=12000)
     attack_id: AttackId | None = None
+    replay_case_id: Literal["agentdyn-zh-balance-transfer"] | None = None
 
 
 class CustomerAgentAssetDescriptor(BaseModel):
     id: str
-    kind: Literal["reasoning", "skill", "system_prompt", "rag"]
+    kind: Literal["reasoning", "system_prompt", "rag"]
     label: str
     confidentiality: Literal["private", "restricted"]
     protected_by: list[DefenseId]
@@ -85,6 +85,9 @@ class CustomerAgentProfileResponse(BaseModel):
     reasoning_enabled: bool
     capabilities: list[str]
     tools: list[str]
+    tool_descriptions: dict[str, str] = Field(default_factory=dict)
+    tool_schemas: list[dict[str, Any]] = Field(default_factory=list)
+    mock_tool_model: str | None = None
     knowledge_sources: list[CustomerAgentKnowledgeSource]
     protected_assets: list[CustomerAgentAssetDescriptor]
     defense_pipeline: list[DefenseId]
@@ -169,6 +172,7 @@ class CustomerAgentHealthResponse(BaseModel):
 
 
 class CustomerAgentRunRequest(BaseModel):
+    replay_case_id: Literal["agentdyn-zh-balance-transfer"] | None = None
     session_id: str | None = Field(default=None, max_length=128)
     attack_id: AttackId | None = None
     message: str | None = Field(default=None, min_length=1, max_length=12000)
@@ -184,7 +188,7 @@ class CustomerAgentRunRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_prompt_source(self) -> "CustomerAgentRunRequest":
-        if self.attack_id is None and self.message is None:
+        if self.attack_id is None and self.message is None and self.replay_case_id is None:
             raise ValueError("one of 'attack_id' or 'message' is required")
         if self.message is not None and not self.message.strip():
             raise ValueError("message must not be blank")
@@ -194,6 +198,7 @@ class CustomerAgentRunRequest(BaseModel):
 
 
 class CustomerAgentCompareRequest(BaseModel):
+    replay_case_id: Literal["agentdyn-zh-balance-transfer"] | None = None
     attack_id: AttackId | None = None
     message: str | None = Field(default=None, min_length=1, max_length=12000)
     defenses: list[DefenseId] = Field(default_factory=default_customer_defenses)
@@ -207,7 +212,7 @@ class CustomerAgentCompareRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_defenses(self) -> "CustomerAgentCompareRequest":
-        if self.attack_id is None and self.message is None:
+        if self.attack_id is None and self.message is None and self.replay_case_id is None:
             raise ValueError("one of 'attack_id' or 'message' is required")
         if self.message is not None and not self.message.strip():
             raise ValueError("message must not be blank")
@@ -253,7 +258,7 @@ class CustomerAgentRagTraceItem(BaseModel):
 class CustomerAgentToolTraceItem(BaseModel):
     call_id: str
     name: str
-    status: Literal["success", "denied", "error"]
+    status: Literal["success", "denied", "error", "requested"]
     arguments: dict[str, Any]
     result_summary: str
     duration_ms: int
@@ -277,7 +282,7 @@ class CustomerAgentStageTraceItem(BaseModel):
 
 class CustomerAgentAssetExposure(BaseModel):
     asset_id: str
-    kind: Literal["reasoning", "skill", "system_prompt", "rag"]
+    kind: Literal["reasoning", "system_prompt", "rag"]
     label: str
     exposed_in_output: bool
     exposed_to_client: bool
@@ -308,6 +313,7 @@ class CustomerAgentAttackAssessment(BaseModel):
 
 
 class CustomerAgentRunResponse(BaseModel):
+    replay: dict[str, Any] | None = None
     schema_version: Literal["customer_agent.run.v1"] = "customer_agent.run.v1"
     run_id: str
     session_id: str
@@ -324,6 +330,7 @@ class CustomerAgentRunResponse(BaseModel):
     tool_trace: list[CustomerAgentToolTraceItem]
     stage_trace: list[CustomerAgentStageTraceItem]
     usage: dict[str, Any] = Field(default_factory=dict)
+    raw_trajectory: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class CustomerAgentDefenseEffect(BaseModel):

@@ -25,6 +25,8 @@ site-packages/
 .pytest_cache/
 .ipynb_checkpoints/
 .coverage
+.coverage.*
+coverage/
 htmlcov/
 build/
 dist/
@@ -53,67 +55,66 @@ data/customer_agent/rag/uploads/
 # Local model/download caches
 .cache/
 /models/
-*.safetensors
-*.gguf
-pytorch_model*.bin
-wandb/
-runs/
-mlruns/
-lightning_logs/
+/wandb/
+/runs/
+/mlruns/
+/lightning_logs/
 events.out.tfevents.*
 
-# Research and training workspaces excluded from the runnable release
-exp/
-scripts/
-tests/
+# Keep training/demo data, evaluation datasets and frozen results, probe weights,
+# training scripts, frontend/backend code, SDKs and integration examples versioned.
+# Do not ignore scripts/, train/, data/, evaluation/, results/ or probe/.
+# In particular, test.jsonl and *_test_predictions.jsonl are data, not test code.
 
-# Regenerable probe tensors and checkpoints. Runtime checkpoints below are
-# explicit exceptions because the demo loads them directly.
-results/**/*.pt
-!results/gauge_probe/**/probe/model.pt
-!results/activation_probe/finvault-qwen3-8b/best_probe.pt
-!results/activation_probe/finvault-qwen3-32b/best_probe.pt
-!results/activation_probe/prompt-extraction-qwen3-8b/probe/best_probe.pt
-!results/activation_probe/prompt-extraction-qwen3-32b/probe/best_probe.pt
-!results/activation_probe/theft-unified-qwen3-8b-v16-multilayer-mlp/probe/best_probe.pt
-!recipe/**/probe.pt
-results/system_prompt_leakage_banking_cn/
-results/guard_detection/
+# Automated tests and test-only mocks (never use a broad *test* or *mock* rule).
+/test/
+/tests/
+/mock/
+/mocks/
+/regression/
+/sdk/checks/
+__tests__/
+__mocks__/
+/backend/tests/
+/backend/mocks/
+/frontend/tests/
+/frontend/mocks/
+/siliconprospect_guard/tests/
+/siliconprospect_guard/mocks/
+/sdk/**/tests/
+/sdk/**/mocks/
+test_*.py
+*_test.py
+conftest.py
+*.test.js
+*.test.jsx
+*.test.ts
+*.test.tsx
+*.test.cjs
+*.test.mjs
+*.spec.js
+*.spec.jsx
+*.spec.ts
+*.spec.tsx
+*.spec.cjs
+*.spec.mjs
+/network-test-server.js
+/evaluation/src/retest_demo_cases.py
 
-# Training-only and intermediate artifacts are not part of the runnable release.
-results/**/features/
-results/**/generated/
-results/**/dataset/
-results/**/datasets/
-results/**/logs/
-results/**/checkpoints/
-results/**/cache/
-results/**/tmp/
-results/**/scratch/
-results/**/tensorboard/
-results/**/wandb/
-results/**/runs/
-results/**/*.npy
-results/**/*.npz
-results/**/*.pth
-results/**/*.ckpt
-results/**/*.memmap
-results/**/events.out.tfevents.*
-results/activation_probe/**/train.console.log
-results/activation_probe/**/case-turn-*/
-results/activation_probe/**/case-audit-*/
-results/gauge_probe/**/probe/*_predictions.jsonl
-results/audit_data/**/guarded_case_results.jsonl
+# These are SDK/demo implementation and data, despite their filenames.
+!/backend/financial_tool_mock.py
+!/frontend/src/mock-data.js
 
-# Local benchmark/evaluation scratch output
-results/evaluations/**/logs/
-results/evaluations/**/features/
+# Unneeded experimental demos and SDK scratch examples.
+/exp/
 
-regression
-aborted/
+# Local backups and archived workspaces.
+*.bak
+*.bak-*
+*.orig
+*.rej
+/aborted/
+/.other/
 
 # Private unified leakage checkpoint, deployed locally only.
 /best_probe.pt
-
-
-.other/

@@ -1,7 +1,7 @@
 [
   {
     "id": "psbc-faq-summary",
-    "title": "邮储银行财富管理常见问题汇总",
+    "title": "某银行财富管理常见问题汇总",
     "visibility": "public",
     "content_path": "rag/psbc/questions.md",
     "risk_flags": [],
@@ -10,14 +10,14 @@
     "document_type": "faq",
     "issuing_authority": "多来源汇总",
     "keywords": [
-      "邮储银行",
+      "某银行",
       "基金",
       "理财",
       "黄金",
       "利率",
       "保险",
       "货币基金",
-      "升金礼",
+      "财富活动",
       "私人银行",
       "人工客服"
     ]
@@ -35,7 +35,7 @@
     "keywords": [
       "q01",
       "q02",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2020-06-03"
   },
@@ -48,10 +48,10 @@
     "origin": "builtin",
     "original_filename": "doc2.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q01",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
@@ -63,10 +63,10 @@
     "origin": "builtin",
     "original_filename": "doc3.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q01",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
@@ -81,38 +81,38 @@
     "issuing_authority": "中共湖南省委金融委员会办公室（湖南省地方金融管理局）",
     "keywords": [
       "q02",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2026-05-25"
   },
   {
     "id": "doc005",
-    "title": "工银中证A500指数A（022442）基金产品详情",
+    "title": "某银行中证A500指数A（022442）基金产品详情",
     "visibility": "public",
     "content_path": "rag/psbc/doc5.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc5.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q02",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc006",
-    "title": "华泰柏瑞基金管理有限公司关于增加中国邮政储蓄银行股份有限公司为旗下部分基金的代销机构同时开通基金定投业务的通知",
+    "title": "某银行关于增加某银行为旗下部分基金的代销机构同时开通基金定投业务的通知",
     "visibility": "public",
     "content_path": "rag/psbc/doc6.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc6.md",
     "document_type": "announcement",
-    "issuing_authority": "华泰柏瑞基金管理有限公司（天天基金网披露）",
+    "issuing_authority": "某银行（天天基金网披露）",
     "keywords": [
       "q02",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2025-01-06"
   },
@@ -125,40 +125,40 @@
     "origin": "builtin",
     "original_filename": "doc7.md",
     "document_type": "webpage",
-    "issuing_authority": "晋商银行（内容署名“展恒基金君”）",
+    "issuing_authority": "某银行（内容署名“展恒基金君”）",
     "keywords": [
       "q02",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc008",
-    "title": "同业理财（中邮理财有限责任公司背景）",
+    "title": "同业理财（某银行背景）",
     "visibility": "public",
     "content_path": "rag/psbc/doc8.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc8.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q03",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc009",
-    "title": "理财超市（邮储银行理财产品风险提示）",
+    "title": "理财超市（某银行理财产品风险提示）",
     "visibility": "public",
     "content_path": "rag/psbc/doc9.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc9.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q03",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
@@ -170,10 +170,10 @@
     "origin": "builtin",
     "original_filename": "doc10.md",
     "document_type": "webpage",
-    "issuing_authority": "中国银行保险资产管理业协会（原中国银行业协会相关自律规范）",
+    "issuing_authority": "某银行保险资产管理业协会（原某银行业协会相关自律规范）",
     "keywords": [
       "q03",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2026-03-27"
   },
@@ -189,69 +189,69 @@
     "issuing_authority": "中国经济网（国家经济门户）",
     "keywords": [
       "q03",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2014-04-08"
   },
   {
     "id": "doc012",
-    "title": "净值型理财产品宣传（中国银行消费者教育）",
+    "title": "净值型理财产品宣传（某银行消费者教育）",
     "visibility": "public",
     "content_path": "rag/psbc/doc12.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc12.md",
     "document_type": "webpage",
-    "issuing_authority": "中国银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q03",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2019-04-17"
   },
   {
     "id": "doc013",
-    "title": "贵金属_中国邮政储蓄银行官网业务介绍",
+    "title": "贵金属_某银行官网业务介绍",
     "visibility": "public",
     "content_path": "rag/psbc/doc13.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc13.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q04",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc014",
-    "title": "贵金属产品信息（黄金积存风险等级）_中国邮政储蓄银行",
+    "title": "贵金属产品信息（黄金积存风险等级）_某银行",
     "visibility": "public",
     "content_path": "rag/psbc/doc14.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc14.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q04",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc015",
-    "title": "关于黄金积存业务上线及调整部分业务交易规则的通知_中国邮政储蓄银行",
+    "title": "关于黄金积存业务上线及调整部分业务交易规则的通知_某银行",
     "visibility": "public",
     "content_path": "rag/psbc/doc15.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc15.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q04",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2019-12-18"
   },
@@ -267,7 +267,7 @@
     "issuing_authority": "21世纪经济报道（21财经）",
     "keywords": [
       "q04",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
@@ -282,22 +282,22 @@
     "issuing_authority": "证券时报",
     "keywords": [
       "q04",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc018",
-    "title": "人民币利率查询_中国邮政储蓄银行",
+    "title": "人民币利率查询_某银行",
     "visibility": "public",
     "content_path": "rag/psbc/doc18.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc18.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行（中国邮政储蓄银行股份有限公司官网）",
+    "issuing_authority": "某银行（某银行官网）",
     "keywords": [
       "q05",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
@@ -312,7 +312,7 @@
     "issuing_authority": "全国银行间同业拆借中心（中国人民银行授权发布）",
     "keywords": [
       "q05",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2026-08-20"
   },
@@ -328,7 +328,7 @@
     "issuing_authority": "中华人民共和国国务院（中国政府网）",
     "keywords": [
       "q05",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
@@ -343,37 +343,37 @@
     "issuing_authority": "中国人民银行",
     "keywords": [
       "q05",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc022",
-    "title": "中邮人寿保险股份有限公司在售产品列表_中国邮政储蓄银行",
+    "title": "某银行在售产品列表_某银行",
     "visibility": "public",
     "content_path": "rag/psbc/doc22.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc22.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q06",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc023",
-    "title": "人身保险投保提示书（邮储银行代理保险专用）_中国邮政储蓄银行",
+    "title": "人身保险投保提示书（某银行代理保险专用）_某银行",
     "visibility": "public",
     "content_path": "rag/psbc/doc23.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc23.md",
     "document_type": "pdf",
-    "issuing_authority": "中国邮政储蓄银行（国家金融监督管理总局统一制式）",
+    "issuing_authority": "某银行（国家金融监督管理总局统一制式）",
     "keywords": [
       "q06",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2026-09-10"
   },
@@ -386,25 +386,25 @@
     "origin": "builtin",
     "original_filename": "doc24.md",
     "document_type": "webpage",
-    "issuing_authority": "中国太平洋保险（集团）股份有限公司",
+    "issuing_authority": "某银行",
     "keywords": [
       "q06",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc025",
-    "title": "中邮保险在售产品分类及风险等级_中邮保险官网",
+    "title": "某银行在售产品分类及风险等级_某银行官网",
     "visibility": "public",
     "content_path": "rag/psbc/doc25.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc25.md",
     "document_type": "webpage",
-    "issuing_authority": "中邮人寿保险股份有限公司",
+    "issuing_authority": "某银行",
     "keywords": [
       "q06",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
@@ -419,7 +419,7 @@
     "issuing_authority": "中国证券监督管理委员会 / 中国人民银行（经中国政府网公布）",
     "keywords": [
       "q07",
-      "邮储银行"
+      "某银行"
     ],
     "promulgated_at": "2026-09-10"
   },
@@ -435,7 +435,7 @@
     "issuing_authority": "中证网（中国证券报旗下）",
     "keywords": [
       "q07",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
@@ -447,30 +447,30 @@
     "origin": "builtin",
     "original_filename": "doc28.md",
     "document_type": "webpage",
-    "issuing_authority": "天弘基金管理有限公司",
+    "issuing_authority": "某银行",
     "keywords": [
       "q07",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc029",
-    "title": "天弘现金管家货币市场基金产品资料概要（邮储银行代销/托管公告）",
+    "title": "天弘现金管家货币市场基金产品资料概要（某银行代销/托管公告）",
     "visibility": "public",
     "content_path": "rag/psbc/doc29.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc29.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行（基金代销信息披露页）",
+    "issuing_authority": "某银行（基金代销信息披露页）",
     "keywords": [
       "q07",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc030",
-    "title": "5月升金礼，资金最佳安排，7家银行加码福利汇总（含邮储银行部分）",
+    "title": "5月财富活动，资金最佳安排，7家银行加码福利汇总（含某银行部分）",
     "visibility": "public",
     "content_path": "rag/psbc/doc30.md",
     "risk_flags": [],
@@ -480,12 +480,12 @@
     "issuing_authority": "什么值得买社区（第三方消费导购平台，作者\\\"老胡说卡\\\"）",
     "keywords": [
       "q08",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc031",
-    "title": "各家银行提前布局年终奖专属理财（\\\"升金礼\\\"为工行活动）",
+    "title": "各家银行提前布局年终奖专属理财（\\\"财富活动\\\"为工行活动）",
     "visibility": "public",
     "content_path": "rag/psbc/doc31.md",
     "risk_flags": [],
@@ -495,27 +495,27 @@
     "issuing_authority": "新浪财经",
     "keywords": [
       "q08",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc032",
-    "title": "龙腾升金，步步为「赢」，解锁您的专属礼遇！（邮储官网财富活动）",
+    "title": "龙腾升金，步步为「赢」，解锁您的专属礼遇！（某银行官网财富活动）",
     "visibility": "public",
     "content_path": "rag/psbc/doc32.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc32.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q08",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc033",
-    "title": "存款到期潮，银行、理财、基金如何接招？（行业\\\"升金礼\\\"活动综述）",
+    "title": "存款到期潮，银行、理财、基金如何接招？（行业\\\"财富活动\\\"活动综述）",
     "visibility": "public",
     "content_path": "rag/psbc/doc33.md",
     "risk_flags": [],
@@ -525,58 +525,58 @@
     "issuing_authority": "腾讯新闻（转载北京商报）",
     "keywords": [
       "q08",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc034",
-    "title": "邮储银行VIP客户评定标准",
+    "title": "某银行VIP客户评定标准",
     "visibility": "public",
     "content_path": "rag/psbc/doc34.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc34.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q09",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc035",
-    "title": "鼎福卡及鼎福客户专属服务",
+    "title": "贵宾卡及贵宾客户专属服务",
     "visibility": "public",
     "content_path": "rag/psbc/doc35.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc35.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q09",
       "q10",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc036",
-    "title": "鼎福客户增值服务",
+    "title": "贵宾客户增值服务",
     "visibility": "public",
     "content_path": "rag/psbc/doc36.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc36.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q09",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc037",
-    "title": "邮储银行全面升级客户分层服务体系",
+    "title": "某银行全面升级客户分层服务体系",
     "visibility": "public",
     "content_path": "rag/psbc/doc37.md",
     "risk_flags": [],
@@ -586,42 +586,42 @@
     "issuing_authority": "中证网（中国证券报）",
     "keywords": [
       "q09",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc038",
-    "title": "客户投诉指南（邮储银行官网）",
+    "title": "客户投诉指南（某银行官网）",
     "visibility": "public",
     "content_path": "rag/psbc/doc38.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc38.md",
     "document_type": "webpage",
-    "issuing_authority": "中国邮政储蓄银行",
+    "issuing_authority": "某银行",
     "keywords": [
       "q10",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc039",
-    "title": "邮储银行缩减在线客服人工服务时间（2025年12月起调整为7:00—23:00）",
+    "title": "某银行缩减在线客服人工服务时间（2025年12月起调整为7:00—23:00）",
     "visibility": "public",
     "content_path": "rag/psbc/doc39.md",
     "risk_flags": [],
     "origin": "builtin",
     "original_filename": "doc39.md",
     "document_type": "webpage",
-    "issuing_authority": "移动支付网（转引邮储银行公告）",
+    "issuing_authority": "移动支付网（转引某银行公告）",
     "keywords": [
       "q10",
-      "邮储银行"
+      "某银行"
     ]
   },
   {
     "id": "doc040",
-    "title": "邮储银行调整非信用卡在线人工客服时段（新浪财经转载北京商报）",
+    "title": "某银行调整非信用卡在线人工客服时段（新浪财经转载北京商报）",
     "visibility": "public",
     "content_path": "rag/psbc/doc40.md",
     "risk_flags": [],
@@ -631,8 +631,109 @@
     "issuing_authority": "新浪财经（转引北京商报）",
     "keywords": [
       "q10",
-      "邮储银行"
+      "某银行"
     ]
+  },
+  {
+    "id": "finance-customer-profile-001",
+    "title": "合成客户画像｜林知夏｜工资客群与基金定投",
+    "visibility": "public",
+    "content_path": "rag/internal/customer_profiles/customer_001.md",
+    "risk_flags": [
+      "personal_information",
+      "financial_information",
+      "customer_profile",
+      "synthetic_data"
+    ],
+    "origin": "builtin",
+    "original_filename": "customer_001.md",
+    "document_type": "synthetic_customer_profile",
+    "issuing_authority": "本项目合成场景数据（非银行发布）",
+    "created_at": "2026-09-14"
+  },
+  {
+    "id": "finance-customer-profile-002",
+    "title": "合成客户画像｜周予安｜家庭教育金与保险需求",
+    "visibility": "public",
+    "content_path": "rag/internal/customer_profiles/customer_002.md",
+    "risk_flags": [
+      "personal_information",
+      "financial_information",
+      "customer_profile",
+      "synthetic_data"
+    ],
+    "origin": "builtin",
+    "original_filename": "customer_002.md",
+    "document_type": "synthetic_customer_profile",
+    "issuing_authority": "本项目合成场景数据（非银行发布）",
+    "created_at": "2026-09-14"
+  },
+  {
+    "id": "finance-customer-profile-003",
+    "title": "合成客户画像｜陈静禾｜退休养老与存款到期",
+    "visibility": "public",
+    "content_path": "rag/internal/customer_profiles/customer_003.md",
+    "risk_flags": [
+      "personal_information",
+      "financial_information",
+      "customer_profile",
+      "synthetic_data"
+    ],
+    "origin": "builtin",
+    "original_filename": "customer_003.md",
+    "document_type": "synthetic_customer_profile",
+    "issuing_authority": "本项目合成场景数据（非银行发布）",
+    "created_at": "2026-09-14"
+  },
+  {
+    "id": "finance-customer-profile-004",
+    "title": "合成客户画像｜许景舟｜企业经营现金流与黄金积存",
+    "visibility": "public",
+    "content_path": "rag/internal/customer_profiles/customer_004.md",
+    "risk_flags": [
+      "personal_information",
+      "financial_information",
+      "customer_profile",
+      "synthetic_data"
+    ],
+    "origin": "builtin",
+    "original_filename": "customer_004.md",
+    "document_type": "synthetic_customer_profile",
+    "issuing_authority": "本项目合成场景数据（非银行发布）",
+    "created_at": "2026-09-14"
+  },
+  {
+    "id": "finance-customer-profile-005",
+    "title": "合成客户画像｜沈清岚｜高净值家庭与贵宾服务",
+    "visibility": "public",
+    "content_path": "rag/internal/customer_profiles/customer_005.md",
+    "risk_flags": [
+      "personal_information",
+      "financial_information",
+      "customer_profile",
+      "synthetic_data"
+    ],
+    "origin": "builtin",
+    "original_filename": "customer_005.md",
+    "document_type": "synthetic_customer_profile",
+    "issuing_authority": "本项目合成场景数据（非银行发布）",
+    "created_at": "2026-09-14"
+  },
+  {
+    "id": "finance-customer-profile-006",
+    "title": "合成客户画像｜顾文溪｜理财回撤与客户投诉跟进",
+    "visibility": "public",
+    "content_path": "rag/internal/customer_profiles/customer_006.md",
+    "risk_flags": [
+      "personal_information",
+      "financial_information",
+      "customer_profile",
+      "synthetic_data"
+    ],
+    "origin": "builtin",
+    "original_filename": "customer_006.md",
+    "document_type": "synthetic_customer_profile",
+    "issuing_authority": "本项目合成场景数据（非银行发布）",
+    "created_at": "2026-09-14"
   }
 ]
-

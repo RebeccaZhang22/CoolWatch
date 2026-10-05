@@ -1,0 +1,28 @@
+{
+  "schema": "probe.training_split.v2",
+  "risk": "prompt_leakage",
+  "samples": 17200,
+  "splits": {
+    "val": 3972,
+    "train": 13228,
+    "test": 5060
+  },
+  "original_all_samples_sha256": "55c951c3f995e7b516ae7bf993e7f21a4da16bc7ad1efdefc062aa77425e5400",
+  "checkpoint_sha256": "141414e1543807a26a343165903408046c438227a7b6e1503470c560964520c0",
+  "files": [
+    {
+      "path": "train/data/prompt_leakage/train.jsonl",
+      "sha256": "6dbf6c6bbc251a1e02c52d3d24f7f107c158c61761f38dfd809948656ee43f7d",
+      "split": "train",
+      "samples": 13228
+    },
+    {
+      "path": "train/data/prompt_leakage/validation.jsonl",
+      "sha256": "26bc684f3ab4c19350896dbbddfaf575d26e013941a9ce06c6a45a42321db2a6",
+      "split": "val",
+      "samples": 3972
+    }
+  ],
+  "test_dataset": "evaluation/dataset/benchmark/prompt_leakage/probe_holdout/test.jsonl",
+  "external_audits": "evaluation/dataset/benchmark/prompt_leakage/external_audits"
+}

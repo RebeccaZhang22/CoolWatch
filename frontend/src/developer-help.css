@@ -179,3 +179,8 @@
   .admin-hero { align-items: flex-start; flex-direction: column; }
   .admin-stats { grid-template-columns: 1fr; }
 }
+
+.example-heading { margin: 28px 0 10px; color: #25324a; font-size: 18px; }
+h3.example-heading { font-size: 15px; }
+.example-description { margin: 0 0 12px; color: #5d6978; font-size: 13px; line-height: 1.75; }
+.example-description code { color: #176b4d; }

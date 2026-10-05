@@ -1,80 +1,31 @@
 <!doctype html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>案例研究 · ProspectMonitor</title>
-    <script src="./src/section-shell.js?v=1"></script>
-    <link rel="stylesheet" href="./src/styles.css?v=case-research-20260804-v18" />
-    <link rel="stylesheet" href="./src/case-library.css?v=clean-case-cards-20260804-v22" />
-  </head>
-  <body class="case-library-body">
-    <div class="case-library-shell">
-      <header class="audit-topbar">
-        <a class="audit-brand" href="./index.html" aria-label="ProspectMonitor">
-          <span class="brand-mark" aria-hidden="true"><span></span></span>
-          <strong>ProspectMonitor</strong>
-        </a>
-        <nav class="audit-nav" aria-label="主导航">
-          <a href="./index.html">攻防演示台</a>
-          <a href="./audit.html">实验审计</a>
-          <a class="active" href="./cases.html" aria-current="page">案例研究</a>
-          <a href="./competitors.html">竞品分析</a>
-        </nav>
-        <div class="audit-runtime case-library-count">
-          <span>2 个真实案例</span>
-        </div>
-      </header>
-
-      <main class="case-library-main">
-        <section class="case-library-hero">
-          <p>CASE STUDIES</p>
-          <h1>案例研究</h1>
-          <span>从完整攻击轨迹出发，理解外部提示词注入和高风险金融任务如何在 Agent 决策链路中转化为真实业务风险。</span>
-        </section>
-
-        <section class="case-study-grid" aria-label="案例研究列表">
-          <a class="case-study-card indirect" href="./indirect-replay.html?case=study%3Apdf-white-text-car-loan-approval-injection">
-            <div class="case-card-topline">
-              <span>间接提示词注入</span>
-            </div>
-            <div class="case-card-visual indirect-visual" aria-hidden="true">
-              <div class="document-sheet"><i></i><i></i><i></i><b>PDF</b></div>
-              <span>外部文档</span><strong>→</strong><span class="risk-node">隐藏指令</span><strong>→</strong><span>Agent 决策</span>
-            </div>
-            <div class="case-card-copy">
-              <h2>白色字体，如何劫持一笔车贷审批？</h2>
-              <p>攻击指令以白色文字藏入贷款材料。人眼看到正常 PDF，文档工具却把隐藏内容完整交给了模型。</p>
-            </div>
-            <div class="case-card-facts">
-              <div><span>攻击入口</span><strong>PDF 工具返回</strong></div>
-              <div><span>关键风险</span><strong>越权批准贷款</strong></div>
-              <div><span>检测时点</span><strong>工具返回后</strong></div>
-            </div>
-            <div class="case-card-action"><span>进入案例回放</span><b>→</b></div>
-          </a>
-
-          <a class="case-study-card financial" href="./case-study.html">
-            <div class="case-card-topline">
-              <span>高风险金融任务</span>
-            </div>
-            <div class="case-card-visual financial-visual" aria-hidden="true">
-              <div class="license-mark"><i></i><b>执照暂停</b></div>
-              <span>资格核验</span><strong>→</strong><span class="risk-node">继续销售</span><strong>→</strong><span>记录篡改</span>
-            </div>
-            <div class="case-card-copy">
-              <h2>停牌代理人，为什么仍然完成了销售？</h2>
-              <p>Agent 已确认代理人执照暂停，却仍继续推荐产品、生成销售话术，并将业绩写回停牌代理人名下。</p>
-            </div>
-            <div class="case-card-facts">
-              <div><span>任务类型</span><strong>保险销售支持</strong></div>
-              <div><span>关键风险</span><strong>权限越界</strong></div>
-              <div><span>真实轨迹</span><strong>11 次工具调用</strong></div>
-            </div>
-            <div class="case-card-action"><span>进入案例回放</span><b>→</b></div>
-          </a>
-        </section>
-      </main>
-    </div>
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>案例演示 · 航旅 Agent</title>
+  <script src="./src/section-shell.js?v=aviation-20260919"></script>
+  <link rel="stylesheet" href="./src/styles.css?v=aviation-20260919" />
+  <link rel="stylesheet" href="./src/aviation-cases.css?v=aviation-20260919" />
+</head>
+<body>
+  <main class="aviation-page">
+    <header class="aviation-heading"><div><p class="eyebrow">AVIATION · AGENT SECURITY</p><h1>一次正常咨询，如何变成一次攻击？</h1><p>三个航旅案例，逐步查看外部指令进入上下文后，Agent 做了什么，以及防护在哪里阻断。</p></div><span class="replay-badge">实测记录回放</span></header>
+    <section id="caseCards" class="aviation-cards" aria-label="选择攻击案例"></section>
+    <div id="loadStatus" role="status">正在加载复现记录…</div>
+    <section id="caseDetail" hidden>
+      <div class="case-intro"><div><p class="eyebrow" id="caseNumber"></p><h2 id="caseTitle"></h2><p id="caseMechanism"></p></div><div class="query-box"><span>用户的正常 Query</span><p id="caseQuery"></p></div></div>
+      <div class="outcome-grid"><article class="outcome attack"><span>无防护 · 实际攻出了什么</span><h3 id="attackOutcome"></h3><p id="attackEvidence"></p></article><article class="outcome protected"><span>开启防护 · 实测判断</span><h3 id="guardOutcome"></h3><p id="guardEvidence"></p></article></div>
+      <section class="trace-panel" aria-label="逐轮检测与消息轨迹">
+        <header class="trace-toolbar"><div><h2>Agent Loop 执行轨迹</h2><p>每次 Assistant 生成回复或调用工具之前，检测当前 loop 的消息列表。</p></div><div class="mode-switch" role="group" aria-label="防护模式"><button type="button" data-mode="off" aria-pressed="true">无防护</button><button type="button" data-mode="on" aria-pressed="false">开启防护</button></div></header>
+        <div class="trace-legend"><span class="legend-check">检测点</span><span>System → User → 检测 → Assistant → Tool → 检测… → 最终回复</span></div>
+        <div class="playback"><button type="button" id="prevStep" aria-label="上一步">← 上一步</button><button type="button" id="playSteps">播放过程</button><button type="button" id="nextStep" aria-label="下一步">下一步 →</button><span id="stepStatus" role="status"></span><button type="button" id="expandAll">展开全部消息</button></div>
+        <ol id="messageTimeline" class="message-timeline"></ol>
+        <p id="traceEnd" class="trace-end" role="status"></p>
+      </section>
+      <footer class="evidence-note"><p>这是固定输入的复现实验：System、用户问题、首次检索调用及注入片段来自交接样本；之后的 Assistant 输出与各轮检测分数来自本次 API 实测。工具响应为本地模拟，账户、旅客资料均为演示数据，未执行真实退款或短信发送。</p><p>两条路径均有独立运行记录：防护路径在检测命中后停止调用模型；无防护路径的检测仅用于对照，不阻止执行。历史 2B 对照也有高分，不能据此宣称“竞品全漏检”。</p><details><summary>查看复现信息与本案例工具</summary><div id="reproductionInfo"></div><a id="downloadEvidence" download>下载本案例记录 JSON</a></details></footer>
+    </section>
+  </main>
+  <script type="module" src="./src/aviation-cases.js?v=aviation-20260919"></script>
+</body>
 </html>

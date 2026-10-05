@@ -13,11 +13,11 @@ from backend.jsonl_store import iter_jsonl, read_one_jsonl
 
 PERSPECTIVE_WATCH_ROOT = Path(__file__).resolve().parents[1]
 EXPERIMENT_ID = "qwen3-8b-held-out-strict-injected-round-100-zh"
-AUDIT_DATA_ROOT = PERSPECTIVE_WATCH_ROOT / "results" / "audit_data"
+AUDIT_DATA_ROOT = PERSPECTIVE_WATCH_ROOT / "evaluation" / "results" / "audit_data"
 INJECTION_AUDIT_ROOT = AUDIT_DATA_ROOT / "indirect_prompt_injection_qwen3_8b"
-EVALUATION_ROOT = PERSPECTIVE_WATCH_ROOT / "evaluations" / "qwen3_8b_held_out_strict_injected_round_100_samples_zh"
+EVALUATION_ROOT = PERSPECTIVE_WATCH_ROOT / "evaluation/dataset/benchmark/ipi/agentdojo_100_zh"
 RESULT_ROOT = INJECTION_AUDIT_ROOT
-PROMPT_EXTRACTION_RESULT_RELATIVE = Path("results") / "audit_data" / "system_prompt_extraction_qwen3_8b"
+PROMPT_EXTRACTION_RESULT_RELATIVE = Path("evaluation") / "results" / "audit_data" / "system_prompt_extraction_qwen3_8b"
 PROMPT_EXTRACTION_RESULT_DIR = PERSPECTIVE_WATCH_ROOT / PROMPT_EXTRACTION_RESULT_RELATIVE
 PROMPT_EXTRACTION_CASE_DIR = PROMPT_EXTRACTION_RESULT_DIR / "guard_results"
 PROMPT_EXTRACTION_PROBE_ROOT = PERSPECTIVE_WATCH_ROOT / "results" / "activation_probe"
@@ -31,7 +31,7 @@ PROMPT_EXTRACTION_MODELS = {
         "probe_root": PROMPT_EXTRACTION_PROBE_ROOT / "prompt-extraction-qwen3-32b",
     },
 }
-FINVAULT_DATA_ROOT = PERSPECTIVE_WATCH_ROOT / "data" / "finvault"
+FINVAULT_DATA_ROOT = PERSPECTIVE_WATCH_ROOT / "evaluation/dataset/benchmark/harmful/finvault"
 FINVAULT_CASES_PATH = FINVAULT_DATA_ROOT / "cases.jsonl"
 FINVAULT_RESULT_PATH = AUDIT_DATA_ROOT / "finvault_qwen3_8b" / "report.json"
 FINVAULT_SYNTHESIS_RESULT_ROOT = AUDIT_DATA_ROOT / "finvault_qwen3_8b" / "synthesis"
@@ -69,7 +69,7 @@ GUARD_NAMES = {
     "suffix_probe": "SafeGauge",
     "llama_prompt_guard": "Llama Prompt Guard 2",
     "qwen3_guard": "Qwen3Guard",
-    "netease_yidun": "网易易盾文本安全护栏",
+    "netease_yidun": "某某易盾文本安全护栏",
     "xguard": "YuFeng-XGuard-Reason-8B",
     "no_guard": "No Guard",
 }
@@ -874,7 +874,7 @@ def _load_finvault_overview_qwen3_8b() -> dict[str, Any]:
             "audit_type": "unsafe_tool_action",
             "benchmark_id": "FinVault",
             "agentic_model": "qwen3-8b",
-            "source_dataset": "data/finvault",
+            "source_dataset": "evaluation/dataset/benchmark/harmful/finvault",
             "sample_count": 107,
             "normal_sample_count": 107,
             "synthesized_sample_count": 856,
@@ -907,7 +907,7 @@ def _load_finvault_overview_qwen3_8b() -> dict[str, Any]:
             {"key": "compromised_vulnerabilities", "label": "被攻破漏洞", "value": f"{compromised} / {total_vulnerabilities}" if compromised is not None and total_vulnerabilities is not None else None, "placeholder": "xx / xx", "note": "按沙盒状态判定"},
             {"key": "qwen3_guard_defense_success_rate", "label": "Qwen3Guard 攻击检出率", "value": f"{qwen_detected / len(qwen_attack_rows) * 100:.1f}%" if qwen_attack_rows else None, "placeholder": "xx%", "note": "全部攻击 Case；逐轮命中 Unsafe（Controversial 不计入风险）"},
             {"key": "llama_prompt_guard_defense_success_rate", "label": "Llama Prompt Guard 2 攻击检出率", "value": f"{float(llama_guard_summary['attacks']['detection_rate']) * 100:.1f}%" if llama_guard_summary else None, "placeholder": "xx%", "note": "全部攻击 Case；当前检测范围内命中即计为检出"},
-            {"key": "netease_yidun_defense_success_rate", "label": "网易易盾攻击检出率", "value": f"{float(yidun_summary['attacks']['risk_rate']) * 100:.1f}%" if yidun_summary and yidun_summary.get("attacks", {}).get("risk_rate") is not None else None, "placeholder": "xx%", "note": "全部攻击 Case；嫌疑或不通过视为检出"},
+            {"key": "netease_yidun_defense_success_rate", "label": "某某易盾攻击检出率", "value": f"{float(yidun_summary['attacks']['risk_rate']) * 100:.1f}%" if yidun_summary and yidun_summary.get("attacks", {}).get("risk_rate") is not None else None, "placeholder": "xx%", "note": "全部攻击 Case；嫌疑或不通过视为检出"},
             {"key": "xguard_defense_success_rate", "label": "YuFeng-XGuard 攻击检出率", "value": f"{xguard_detected / len(xguard_attacks) * 100:.1f}%" if xguard_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
             {"key": "suffix_probe_defense_success_rate", "label": "SafeGauge（我们的产品）攻击检出率", "value": f"{suffix_detected / len(suffix_attacks) * 100:.1f}%" if suffix_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
             {"key": "activation_probe_defense_success_rate", "label": "基于隐藏层的可解释性技术（我们的产品）攻击检出率", "value": f"{probe_detected / len(probe_attacks) * 100:.1f}%" if probe_attacks else None, "placeholder": "xx%", "note": "全部攻击 Case；逐轮检测"},
@@ -1145,7 +1145,7 @@ def load_finvault_overview(agent_model: str = "qwen3-8b") -> dict[str, Any]:
         {"key": "compromised_vulnerabilities", "label": "被攻破漏洞", "value": f"{len(compromised)} / {len(completed)}" if completed else None, "placeholder": "xx / xx", "note": "按沙盒状态判定"},
         {"key": "qwen3_guard_defense_success_rate", "label": "Qwen3Guard 攻击检出率", "value": f"{qwen_detected / len(qwen_attacks) * 100:.1f}%" if qwen_attacks else None, "placeholder": "xx%", "note": "全部攻击 Case；逐轮命中 Unsafe（Controversial 不计入风险）"},
         {"key": "llama_prompt_guard_defense_success_rate", "label": "Llama Prompt Guard 2 攻击检出率", "value": f"{llama_detected / len(llama_attacks) * 100:.1f}%" if llama_attacks else None, "placeholder": "xx%", "note": "全部攻击 Case；当前检测范围内命中即计为检出"},
-        {"key": "netease_yidun_defense_success_rate", "label": "网易易盾攻击检出率", "value": f"{yidun_detected / len(yidun_attacks) * 100:.1f}%" if yidun_attacks else None, "placeholder": "xx%", "note": "全部攻击 Case；嫌疑或不通过视为检出"},
+        {"key": "netease_yidun_defense_success_rate", "label": "某某易盾攻击检出率", "value": f"{yidun_detected / len(yidun_attacks) * 100:.1f}%" if yidun_attacks else None, "placeholder": "xx%", "note": "全部攻击 Case；嫌疑或不通过视为检出"},
         {"key": "xguard_defense_success_rate", "label": "YuFeng-XGuard 攻击检出率", "value": f"{xguard_detected / len(xguard_attacks) * 100:.1f}%" if xguard_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
         {"key": "suffix_probe_defense_success_rate", "label": "SafeGauge（我们的产品）攻击检出率", "value": f"{suffix_detected / len(suffix_attacks) * 100:.1f}%" if suffix_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
         {"key": "activation_probe_defense_success_rate", "label": "基于隐藏层的可解释性技术（我们的产品）攻击检出率", "value": f"{activation_detected / len(activation_attacks) * 100:.1f}%" if activation_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
@@ -1416,7 +1416,7 @@ def load_finvault_case_detail(sample_index: int, agent_model: str = "qwen3-8b") 
         },
         "netease_yidun": {
             "status": "complete" if yidun_result and not yidun_result.get("error") else "error" if yidun_result else "pending",
-            "model": "网易易盾文本安全护栏",
+            "model": "某某易盾文本安全护栏",
             "input_stage": "Agent 执行前，仅 Attack Query",
             "input_scope": yidun_result.get("input_scope") or "attack_query_only",
             "suggestion": yidun_result.get("suggestion"),
@@ -1776,7 +1776,7 @@ def load_prompt_extraction_overview(agent_model: str = "qwen3-8b") -> dict[str, 
             "agentic_model_label": probe["model_label"],
             "behavior_baseline_model": "qwen3-8b",
             "available_models": available_models,
-            "source_dataset": "data/system_prompt_extraction/cn 中文银行业务提示词",
+            "source_dataset": "evaluation/dataset/benchmark/prompt_leakage/raccoon_zh/cn 中文银行业务提示词",
             "split": "full_chinese_attacks",
             "sample_count": len(no_guard_rows),
             "population_count": len(no_guard_rows),
@@ -1810,8 +1810,8 @@ def load_prompt_extraction_overview(agent_model: str = "qwen3-8b") -> dict[str, 
         "integrity": {
             "collection_audit": {"inline_request_fields_during_collection": 0},
             "frozen_sources": {
-                "systems": "data/system_prompt_extraction/cn/system_prompts",
-                "attacks": "data/system_prompt_extraction/cn/attacks",
+                "systems": "evaluation/dataset/benchmark/prompt_leakage/raccoon_zh/cn/system_prompts",
+                "attacks": "evaluation/dataset/benchmark/prompt_leakage/raccoon_zh/cn/attacks",
                 "results": PROMPT_EXTRACTION_RESULT_RELATIVE.as_posix(),
             },
             "replay_requests": len(no_guard_rows),

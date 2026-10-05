@@ -1,0 +1,22 @@
+{
+  "status": "training_samples_unavailable",
+  "samples": null,
+  "dataset_name": "broad_zero_val",
+  "source_run": "results/probe_traces/v2/agentdojo-20260430T015534Z-qwen3-8b-dp4",
+  "label": "risk_faced",
+  "checkpoint": "/share/workspace/zyt/agent-guard-open/probe/qwen3-8b/indirect_prompt_injection/best_layer_22.pt",
+  "checkpoint_sha256": "a1e6ca136a49b769409d4b9679ae704f1f30b7d8550c4988a7a83aa8431f5278",
+  "note": "The shipped package includes weights and provenance, not original training conversations, labels and activation features. No substitute or empty training dataset was created.",
+  "files": [
+    {
+      "path": "ipi/upstream_HANDOFF.md",
+      "sha256": "1a74c69485db1fa2ee18f11876de8fe59a9d3ac65ae9419d7b84a78e71fe67df",
+      "source": "/share/workspace/zyt/agent-guard-open/aborted/probe-unused-20260918-173445/probe/qwen3-8b/indirect_prompt_injection/HANDOFF.md"
+    },
+    {
+      "path": "ipi/upstream_run_manifest.json",
+      "sha256": "aece44943e98f144738897a5688439924e4917f9eed9bcd09cc66505cc492f5b",
+      "source": "/share/workspace/zyt/agent-guard-open/aborted/probe-unused-20260918-173445/probe/qwen3_8b_broad_probes_20260910/checkpoints/run_manifest.json"
+    }
+  ]
+}

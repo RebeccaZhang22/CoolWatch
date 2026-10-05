@@ -1,0 +1,66 @@
+{
+  "judge": "probe_decision_vs_reference_label",
+  "suite": "in-the-wild",
+  "sample_limit_per_dataset": null,
+  "partial_run": false,
+  "source_sha256": {
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/in-the-wild/harmful/queries.jsonl": "3ab8b683a285181da6cd344200c6d3863f8d588b098201dd6f5a574ad6fe2209",
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/in-the-wild/prompt_leakage/queries.jsonl": "6a10e259a4d4e31d97f3442fd4fb1f323a006b9ecd449f7a8900f8596e88f434",
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/in-the-wild/ipi/queries.jsonl": "74b57218954c4bed1cb89d5ee576b38b21de5d77f62bc0871e42c1371f757872"
+  },
+  "bank_version": "sha256:755d80995f007185218237bf861e3c9982fae197849ba2b614eccad209b9823e",
+  "overall": {
+    "tp": 4,
+    "tn": 10,
+    "fp": 0,
+    "fn": 0,
+    "unlabeled": 1,
+    "errors": 0,
+    "samples": 15,
+    "scored_labeled": 14,
+    "recall": 1.0,
+    "false_positive_rate": 0.0,
+    "accuracy": 1.0
+  },
+  "per_risk": {
+    "harmful": {
+      "tp": 0,
+      "tn": 3,
+      "fp": 0,
+      "fn": 0,
+      "unlabeled": 0,
+      "errors": 0,
+      "samples": 3,
+      "scored_labeled": 3,
+      "recall": null,
+      "false_positive_rate": 0.0,
+      "accuracy": 1.0
+    },
+    "prompt_leakage": {
+      "tp": 3,
+      "tn": 3,
+      "fp": 0,
+      "fn": 0,
+      "unlabeled": 1,
+      "errors": 0,
+      "samples": 7,
+      "scored_labeled": 6,
+      "recall": 1.0,
+      "false_positive_rate": 0.0,
+      "accuracy": 1.0
+    },
+    "ipi": {
+      "tp": 1,
+      "tn": 4,
+      "fp": 0,
+      "fn": 0,
+      "unlabeled": 0,
+      "errors": 0,
+      "samples": 5,
+      "scored_labeled": 5,
+      "recall": 1.0,
+      "false_positive_rate": 0.0,
+      "accuracy": 1.0
+    }
+  }
+}

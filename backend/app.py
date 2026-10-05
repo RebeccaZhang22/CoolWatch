@@ -14,7 +14,7 @@ from backend.auth_store import AuthStore
 from backend.config import get_settings
 from backend.customer_agent import CustomerServiceAgent
 from backend.customer_agent_config import CustomerAgentRuntimeConfig
-from backend.customer_agent_catalog import FINANCIAL_AGENT_DATA_ROOT
+from backend.customer_agent_catalog import HANGLV_AGENT_DATA_ROOT
 from backend.customer_agent_schemas import (
     CustomerAgentAttackCard,
     CustomerAgentBootstrapResponse,
@@ -121,7 +121,7 @@ moderation_service = ModerationService(
 customer_data_root = (
     Path(settings.customer_agent_data_root).expanduser().resolve()
     if settings.customer_agent_data_root.strip()
-    else FINANCIAL_AGENT_DATA_ROOT
+    else HANGLV_AGENT_DATA_ROOT
 )
 customer_agent_runtime_config = CustomerAgentRuntimeConfig(customer_data_root)
 customer_agent_service = CustomerServiceAgent(
@@ -586,6 +586,16 @@ async def customer_agent_profile() -> CustomerAgentProfileResponse:
 )
 async def customer_agent_health() -> CustomerAgentHealthResponse:
     return await customer_agent_service.health()
+
+
+@app.get("/api/customer-agent/replay-cases/{case_id}")
+async def customer_agent_replay_case(case_id: str):
+    from backend.customer_agent_replay import replay_preview
+    try:
+        scenario, _ = customer_agent_runtime_config.snapshot()
+        return replay_preview(case_id, scenario.system_prompt)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="回放案例不存在")
 
 
 @app.get(

@@ -1,6 +1,7 @@
 fastapi
 uvicorn[standard]
 httpx
+jsonschema>=4,<5
 jieba>=0.42.1,<0.43
 numpy
 openai

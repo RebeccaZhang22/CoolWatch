@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>API Token · ProspectMonitor</title>
+    <title>API Token · Demo</title>
     <style>
       :root { font-family: Inter, system-ui, sans-serif; color: #17202c; background: #f5f7fa; }
       * { box-sizing: border-box; }
@@ -73,7 +73,7 @@
         .usage-heading { align-items: flex-start; flex-direction: column; gap: 8px; }
       }
     </style>
-    <link rel="stylesheet" href="./src/developer-help.css?v=1" />
+    <link rel="stylesheet" href="./src/developer-help.css?v=demo-20260917-final" />
   </head>
   <body>
     <main class="card">
@@ -100,7 +100,7 @@
       <p class="token-warning">请像密码一样保管你的 Token，泄露后请立即重置。</p>
       <div id="message" role="status" aria-live="polite"></div>
       <h3>如何使用</h3>
-      <pre>curl http://localhost:18088/v1/moderations \
+      <pre>curl http://111.127.53.157:18088/v1/moderations \
   -H "Authorization: Bearer YOUR_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"messages":[{"role":"user","content":"hello world"}]}'</pre>
@@ -114,6 +114,6 @@
       </section>
     </main>
     <div class="copy-toast" id="copyToast" role="status" aria-live="polite" hidden><span>✓</span><strong>已复制到剪切板</strong></div>
-    <script type="module" src="./src/auth.js?v=admin-console-v2"></script>
+    <script type="module" src="./src/auth.js?v=demo-20260917-final"></script>
   </body>
 </html>

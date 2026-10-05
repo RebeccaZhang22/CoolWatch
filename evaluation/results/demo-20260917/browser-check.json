@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "url": "http://127.0.0.1:18088",
+  "checks": [
+    "brand",
+    "expanded/collapse",
+    "temperature initial=1",
+    "temperature reload=1 after setting 0.3",
+    "case labels",
+    "anonymized text"
+  ],
+  "errors": []
+}

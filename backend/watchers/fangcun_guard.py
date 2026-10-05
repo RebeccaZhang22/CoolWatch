@@ -1,4 +1,4 @@
-"""Client for 方寸跃迁安全护栏 remote input safety assessment."""
+"""Client for 某某跃迁安全护栏 remote input safety assessment."""
 
 from __future__ import annotations
 
@@ -112,7 +112,7 @@ class FangcunGuardClient:
             response.raise_for_status()
             body = response.json()
             if not isinstance(body, dict):
-                raise ValueError("方寸跃迁安全护栏返回格式不是 JSON 对象")
+                raise ValueError("某某跃迁安全护栏返回格式不是 JSON 对象")
         except httpx.HTTPStatusError as error:
             # Preserve the provider's short error body (for example, an
             # application/key mismatch) in the inspector while keeping the
@@ -120,7 +120,7 @@ class FangcunGuardClient:
             detail = error.response.text.strip()
             suffix = f": {detail[:500]}" if detail else ""
             return self._error_assessment(
-                f"方寸 Hook HTTP {error.response.status_code}{suffix}",
+                f"某某跃迁 Hook HTTP {error.response.status_code}{suffix}",
                 started,
             )
         except Exception as error:

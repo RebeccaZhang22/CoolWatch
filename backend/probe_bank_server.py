@@ -13,7 +13,7 @@ import sys
 import time
 
 
-EXPECTED_IPI_CHECKPOINT_SHA256 = "46a68d047148be0b6ccf485be3a55966937533adfb5b9c7c01e0984982a057b4"
+EXPECTED_IPI_CHECKPOINT_SHA256 = "ac200789fe952a10f934fdbcda576e76b34d936a750aad00023200047eb79c56"
 
 
 def main():
@@ -68,8 +68,8 @@ def main():
         raise ValueError('IPI checkpoint checksum mismatch')
     checkpoint = torch.load(ipi_checkpoint_path, map_location='cpu', weights_only=True)
     if (checkpoint['schema'] != 'fyh.probe_checkpoint.v2'
-            or checkpoint['selected_layer_index'] != 7
-            or checkpoint['selected_layer_indices'] != [7]
+            or checkpoint['selected_layer_index'] != 10
+            or checkpoint['selected_layer_indices'] != [10]
             or checkpoint['selected_positions'] != [-1]
             or checkpoint['input_dim'] != bank['hidden']
             or checkpoint['training_config']['feature_normalization'] != 'standard'):
@@ -80,8 +80,8 @@ def main():
     if any(not torch.isfinite(v).all() for v in state.values()) or not (state['input_std'] > 0).all():
         raise ValueError('Invalid IPI checkpoint parameters')
     leakage = LeakageCheckpoint(args.leakage_checkpoint, model_path)
-    bank['entries'].append(dict(id='ipi/broad-l7', risk='ipi', method='linear_probe',
-        layer_hf=8, rel_depth=8/24, val_auroc=None,
+    bank['entries'].append(dict(id='ipi/broad-l10', risk='ipi', method='linear_probe',
+        layer_hf=11, rel_depth=11/24, val_auroc=None,
         w=state['probe.weight'].tolist(), b=state['probe.bias'].item(),
         scaler_mu=state['input_mean'].tolist(), scaler_sd=state['input_std'].tolist(),
         cal_mu=0., cal_sd=1., position='T-3', calibration='sigmoid',
@@ -101,8 +101,8 @@ def main():
         bank['thresholds'].pop(retired, None)
     bank['calibration'] = {'harmful': bank['calibration'], 'ipi': 'checkpoint_standardization_then_sigmoid',
                            'prompt_leakage': 'checkpoint_standardization_layernorm_mlp_sigmoid'}
-    bank['protocol'] = 'Harmful HF24 T-1; IPI HF8 residual-sum T-3; prompt leakage HF15 residual-sum T-1'
-    bank['fusion'] = {'harmful': 'max', 'ipi': 'single_broad_l7', 'prompt_leakage': 'single_unified_v3'}
+    bank['protocol'] = 'Harmful HF24 T-1; IPI HF11 residual-sum T-3; prompt leakage HF15 residual-sum T-1'
+    bank['fusion'] = {'harmful': 'max', 'ipi': 'single_broad_l10', 'prompt_leakage': 'single_unified_v3'}
     version = 'sha256:' + hashlib.sha256(bank_bytes + checkpoint_bytes + leakage.sha256.encode() + bank['protocol'].encode()).hexdigest()
     # DetectorCore clears its spool at initialization: only give it a fresh,
     # deployment-specific directory, never the source project's shared spool.

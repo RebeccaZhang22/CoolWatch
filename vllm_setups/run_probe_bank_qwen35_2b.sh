@@ -13,7 +13,7 @@ exec "$PROBE_PYTHON" -m backend.probe_bank_server \
   --source-root "$PROBE_SOURCE_ROOT" --model qwen35-2b \
   --spool "$PROBE_RUN_DIR/spool" --port "${PROBE_BANK_PORT:-8302}" \
   --content-safety-checkpoint "${CONTENT_SAFETY_PROBE:-$PROBE_DIR/content_safety/best_probe.pt}" \
-  --ipi-checkpoint "${IPI_PROBE_CHECKPOINT:-$PROBE_DIR/indirect_prompt_injection/best_layer_07.pt}" \
+  --ipi-checkpoint "${IPI_PROBE_CHECKPOINT:-$PROBE_DIR/indirect_prompt_injection/best_layer_10_adapted.pt}" \
   --leakage-checkpoint "${LEAKAGE_PROBE_CHECKPOINT:-$PROBE_DIR/prompt_leakage/best_probe.pt}" \
   --max-batch "${PROBE_MAX_BATCH:-64}" --batch-tokens "${PROBE_BATCH_TOKENS:-65536}" \
   --max-inflight "${PROBE_MAX_INFLIGHT:-1024}" --batch-wait-ms "${PROBE_BATCH_WAIT_MS:-10}" \

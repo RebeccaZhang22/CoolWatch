@@ -1,0 +1,41 @@
+{
+  "schema_version": "customer_agent.scenario.v3",
+  "id": "hanglvzongheng-agent",
+  "synthetic": true,
+  "profile": {
+    "name": "客服助手-小航",
+    "description": "检索航旅知识，并模拟退票、改签和通知。",
+    "default_model": "qwen3-8b",
+    "capabilities": [
+      "检索航班、行李和退改签规则",
+      "模拟退票与改签处理",
+      "模拟服务通知与网页读取"
+    ],
+    "defense_pipeline": [
+      "activation_probe",
+      "safegauge",
+      "qwen_guard",
+      "llama_prompt_guard",
+      "netease_yidun",
+      "fangcun_guard"
+    ]
+  },
+  "agent": {
+    "system_prompt_path": "system_prompt.md"
+  },
+  "rag": {
+    "documents_path": "rag/documents.json",
+    "retriever": "bm25_okapi",
+    "tokenizer": "jieba_search",
+    "chunking_strategy": "markdown_sections",
+    "top_k": 4,
+    "min_score": 0.15,
+    "k1": 1.5,
+    "b": 0.75,
+    "max_chunk_chars": 1000,
+    "chunk_overlap_chars": 100,
+    "corpus_updated_at": "2026-09-18"
+  },
+  "conversation_starters_path": "conversation_starters.json",
+  "tools_path": "tools/definitions.json"
+}

@@ -1,0 +1,55 @@
+{
+  "checked_at": "2026-09-17T09:51:47.618659+00:00",
+  "web": {
+    "status": 200,
+    "response": {
+      "status": "ok",
+      "vllm_base_url": "http://127.0.0.1:8104/v1",
+      "vllm_model": "qwen3-32b",
+      "vllm_reachable": true,
+      "models": [
+        "qwen3-8b"
+      ],
+      "error": null
+    }
+  },
+  "guard": {
+    "status": 200,
+    "response": null
+  },
+  "guard_models": {
+    "status": 200,
+    "response": {
+      "object": "list",
+      "data": [
+        {
+          "id": "qwen3guard-8b",
+          "object": "model",
+          "created": 1789638707,
+          "owned_by": "vllm",
+          "root": "/share/workspace/zyt/agent-guard-open/.runtime/models/qwen3guard-demo",
+          "parent": null,
+          "max_model_len": 16384,
+          "permission": [
+            {
+              "id": "modelperm-a0862e47573fde4f",
+              "object": "model_permission",
+              "created": 1789638707,
+              "allow_create_engine": false,
+              "allow_sampling": true,
+              "allow_logprobs": true,
+              "allow_search_indices": false,
+              "allow_view": true,
+              "allow_fine_tuning": false,
+              "organization": "*",
+              "group": null,
+              "is_blocking": false
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "tmux": "agent-frontend: 1 windows (created Sat Sep 12 19:51:46 2026)\nagent-guard-gpu7: 2 windows (created Mon Sep 14 13:17:55 2026)\nprospectmonitor-demo: 1 windows (created Thu Sep 17 17:50:57 2026)\nqwen3guard-demo: 1 windows (created Thu Sep 17 17:48:28 2026)\nserver: 1 windows (created Thu Sep 10 12:22:09 2026)\nserver_27b: 1 windows (created Thu Sep 10 15:09:39 2026)\n",
+  "gpus": "0, 38334 MiB\n1, 61937 MiB\n2, 67019 MiB\n3, 34883 MiB\n4, 0 MiB\n5, 66649 MiB\n6, 65077 MiB\n7, 31011 MiB\n"
+}

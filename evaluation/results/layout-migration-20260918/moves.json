@@ -1,0 +1,450 @@
+[
+  {
+    "from": "data/leakage",
+    "to": "evaluation/dataset/benchmark/prompt_leakage/leakgauge_demo",
+    "files": 10,
+    "content_verified": true
+  },
+  {
+    "from": "data/system_prompt_extraction",
+    "to": "evaluation/dataset/benchmark/prompt_leakage/raccoon_zh",
+    "files": 73,
+    "content_verified": true
+  },
+  {
+    "from": "data/activation_probe/audits/theft_large_v1",
+    "to": "evaluation/dataset/benchmark/prompt_leakage/theft_large_v1",
+    "files": 3,
+    "content_verified": true
+  },
+  {
+    "from": "data/TRAINING_DATA.md",
+    "to": "train/DATA_PREPARATION_LEGACY.md",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/qwen3_8b_held_out_strict_injected_round_100_samples_zh",
+    "to": "evaluation/dataset/benchmark/ipi/agentdojo_100_zh",
+    "files": 4,
+    "content_verified": true
+  },
+  {
+    "from": "train/data/prompt_leakage/external_audits",
+    "to": "evaluation/dataset/benchmark/prompt_leakage/external_audits",
+    "files": 4,
+    "content_verified": true
+  },
+  {
+    "operation": "split_by_existing_split",
+    "from": "train/data/harmful/all_samples.jsonl",
+    "sha256": "16f79259c75912ec618c58fde165f4c3482186c2dfec65eabedc4236f2a0a79a",
+    "to": [
+      "train/data/harmful/train.jsonl",
+      "train/data/harmful/validation.jsonl",
+      "evaluation/dataset/benchmark/harmful/probe_holdout/test.jsonl"
+    ],
+    "counts": {
+      "train": 7766,
+      "val": 1952,
+      "test": 1860
+    },
+    "records_preserved": true
+  },
+  {
+    "operation": "split_by_existing_split",
+    "from": "train/data/prompt_leakage/all_samples.jsonl",
+    "sha256": "55c951c3f995e7b516ae7bf993e7f21a4da16bc7ad1efdefc062aa77425e5400",
+    "to": [
+      "train/data/prompt_leakage/train.jsonl",
+      "train/data/prompt_leakage/validation.jsonl",
+      "evaluation/dataset/benchmark/prompt_leakage/probe_holdout/test.jsonl"
+    ],
+    "counts": {
+      "val": 3972,
+      "train": 13228,
+      "test": 5060
+    },
+    "records_preserved": true
+  },
+  {
+    "from": "data/activation_probe/tool_context_v1/manifest.json",
+    "to": "train/data/prompt_leakage/tool_context_v1_manifest.json",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "data/activation_probe/tool_context_v1/README.md",
+    "to": "train/data/prompt_leakage/tool_context_v1_README.md",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "operation": "deduplicate_exact_records",
+    "from": "data/activation_probe/tool_context_v1",
+    "to": "train/data/prompt_leakage + evaluation/dataset/benchmark/prompt_leakage",
+    "records_verified": 2680
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/descriptive_accuracy_frontier.jsonl",
+    "to": "evaluation/results/activation_probe_theft_large_v1/descriptive_accuracy_frontier.jsonl",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/report.html.tmp-799396-ffa78f44-891f-4aed-bfe4-d75aa7003159.verification-failure.png",
+    "to": "evaluation/results/activation_probe_theft_large_v1/report.html.tmp-799396-ffa78f44-891f-4aed-bfe4-d75aa7003159.verification-failure.png",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/metrics.json",
+    "to": "evaluation/results/activation_probe_theft_large_v1/metrics.json",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/predictions.jsonl",
+    "to": "evaluation/results/activation_probe_theft_large_v1/predictions.jsonl",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/build_report.py",
+    "to": "evaluation/src/activation_probe_theft_large_v1/build_report.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/threshold_sweep.jsonl",
+    "to": "evaluation/results/activation_probe_theft_large_v1/threshold_sweep.jsonl",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/report.html.tmp-801875-99042e84-71b7-4061-b072-1cbff1055daf.verification-failure.png",
+    "to": "evaluation/results/activation_probe_theft_large_v1/report.html.tmp-801875-99042e84-71b7-4061-b072-1cbff1055daf.verification-failure.png",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/errors_at_trained_threshold.jsonl",
+    "to": "evaluation/results/activation_probe_theft_large_v1/errors_at_trained_threshold.jsonl",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/data_profile.json",
+    "to": "evaluation/results/activation_probe_theft_large_v1/data_profile.json",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/audit_report_sources.sql",
+    "to": "evaluation/results/activation_probe_theft_large_v1/audit_report_sources.sql",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/run_audit.py",
+    "to": "evaluation/src/activation_probe_theft_large_v1/run_audit.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/threshold_policy.jsonl",
+    "to": "evaluation/results/activation_probe_theft_large_v1/threshold_policy.jsonl",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/activation_probe_theft_large_v1/artifact.json",
+    "to": "evaluation/results/activation_probe_theft_large_v1/artifact.json",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/extract_sequences.py",
+    "to": "evaluation/src/singprobe_20260916/extract_sequences.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/attention_core.py",
+    "to": "evaluation/src/singprobe_20260916/attention_core.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/REPORT.md",
+    "to": "evaluation/results/singprobe_20260916/REPORT.md",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/audit_ipi_overlap.py",
+    "to": "evaluation/src/singprobe_20260916/audit_ipi_overlap.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/run.sh",
+    "to": "evaluation/src/singprobe_20260916/run.sh",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/metrics.json",
+    "to": "evaluation/results/singprobe_20260916/metrics.json",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/score_audits.py",
+    "to": "evaluation/src/singprobe_20260916/score_audits.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/run_mlp.py",
+    "to": "evaluation/src/singprobe_20260916/run_mlp.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/build_report.py",
+    "to": "evaluation/src/singprobe_20260916/build_report.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/train_attention.py",
+    "to": "evaluation/src/singprobe_20260916/train_attention.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/comparison.csv",
+    "to": "evaluation/results/singprobe_20260916/comparison.csv",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/measure_latency.py",
+    "to": "evaluation/src/singprobe_20260916/measure_latency.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/score_attention.py",
+    "to": "evaluation/src/singprobe_20260916/score_attention.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "evaluations/singprobe_20260916/run_ipi.py",
+    "to": "evaluation/src/singprobe_20260916/run_ipi.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/probe_classifiers.py",
+    "to": "train/src/probe_classifiers.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/merge_tool_context_features.py",
+    "to": "train/src/merge_tool_context_features.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/validate_tool_context_candidate.py",
+    "to": "evaluation/src/validate_tool_context_candidate.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/train_qwen3_probe.py",
+    "to": "train/src/train_qwen3_probe.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/merge_harmful_features.py",
+    "to": "train/src/merge_harmful_features.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/probe_features.py",
+    "to": "train/src/probe_features.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/prepare_harmful_contexts.py",
+    "to": "train/src/prepare_harmful_contexts.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/extract_qwen3_activations.py",
+    "to": "train/src/extract_qwen3_activations.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/evaluate_tool_context_probe.py",
+    "to": "evaluation/src/evaluate_tool_context_probe.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/prepare_qwen3_data.py",
+    "to": "train/src/prepare_qwen3_data.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/prepare_tool_context_leakage.py",
+    "to": "train/src/prepare_tool_context_leakage.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/validate_qwen3_server.py",
+    "to": "evaluation/src/validate_qwen3_server.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/run_qwen3_retrain.sh",
+    "to": "train/src/run_qwen3_retrain.sh",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/run_tool_context_retrain.sh",
+    "to": "train/src/run_tool_context_retrain.sh",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "scripts/activation_probe/qwen3_probe_reference.py",
+    "to": "evaluation/src/qwen3_probe_reference.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "regression/retest_demo_cases.py",
+    "to": "evaluation/src/retest_demo_cases.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "from": "regression/diagnose_rag_leakage.py",
+    "to": "evaluation/src/diagnose_rag_leakage.py",
+    "files": 1,
+    "content_verified": true
+  },
+  {
+    "operation": "copy_historical_audit",
+    "from": "aborted/probe-unused-20260918-173445/probe/qwen3-8b/prompt_leakage/tool_context_v1/comparison.json",
+    "to": "evaluation/results/leakage-toolctx-20260918/comparison.json",
+    "sha256": "239cab1db3db7ad78a6bb971bcf3afbdfd01af5e1df8f9f8444d7c45baabaf7e"
+  },
+  {
+    "operation": "copy_historical_audit",
+    "from": "aborted/probe-unused-20260918-173445/probe/qwen3-8b/prompt_leakage/tool_context_v1/http-comparison.json",
+    "to": "evaluation/results/leakage-toolctx-20260918/http-comparison.json",
+    "sha256": "5214a6390b6ef8a47ae199512e5bc1c8b91a9daff0166a73b30b6088c4234a72"
+  },
+  {
+    "operation": "copy_historical_audit",
+    "from": "aborted/probe-unused-20260918-173445/probe/qwen3-8b/prompt_leakage/tool_context_v1/tool_test_errors.json",
+    "to": "evaluation/results/leakage-toolctx-20260918/tool_test_errors.json",
+    "sha256": "e48c135011aace957bef5ca845089c1712044005b151be91a7939cd5502f02a2"
+  },
+  {
+    "from": "diagnostics/demo-20260917",
+    "to": "evaluation/results/demo-20260917",
+    "files": 26,
+    "content_verified": true
+  },
+  {
+    "from": "diagnostics/ipi-authorization-20260917",
+    "to": "evaluation/results/ipi-authorization-20260917",
+    "files": 648,
+    "content_verified": true
+  },
+  {
+    "from": "diagnostics/ipi-bank-adapted-20260917",
+    "to": "evaluation/results/ipi-bank-adapted-20260917",
+    "files": 17,
+    "content_verified": true
+  },
+  {
+    "from": "diagnostics/ipi-psbc-lpr-20260914",
+    "to": "evaluation/results/ipi-psbc-lpr-20260914",
+    "files": 23,
+    "content_verified": true
+  },
+  {
+    "from": "diagnostics/ipi-psbc-lpr-query-rerun-20260914",
+    "to": "evaluation/results/ipi-psbc-lpr-query-rerun-20260914",
+    "files": 45,
+    "content_verified": true
+  },
+  {
+    "from": "diagnostics/ipi-trace-replay-20260917",
+    "to": "evaluation/results/ipi-trace-replay-20260917",
+    "files": 10,
+    "content_verified": true
+  },
+  {
+    "from": "diagnostics/ipi-zh-scenario-20260917",
+    "to": "evaluation/results/ipi-zh-scenario-20260917",
+    "files": 8,
+    "content_verified": true
+  },
+  {
+    "from": "diagnostics/leakage-toolctx-deploy-20260918",
+    "to": "evaluation/results/leakage-toolctx-deploy-20260918",
+    "files": 7,
+    "content_verified": true
+  },
+  {
+    "from": "diagnostics/rag-miss-20260917",
+    "to": "evaluation/results/rag-miss-20260917",
+    "files": 11,
+    "content_verified": true
+  },
+  {
+    "from": "diagnostics/rag-miss-20260918",
+    "to": "evaluation/results/rag-miss-20260918",
+    "files": 16,
+    "content_verified": true
+  },
+  {
+    "from": "evaluation/results/rag-miss-20260918/post_rag_check.py",
+    "to": "evaluation/src/diagnostics/rag-miss-20260918/post_rag_check.py",
+    "path_references_updated": true
+  },
+  {
+    "from": "evaluation/results/ipi-authorization-20260917/run.py",
+    "to": "evaluation/src/diagnostics/ipi-authorization-20260917/run.py",
+    "path_references_updated": true
+  },
+  {
+    "from": "evaluation/results/ipi-authorization-20260917/diagnose_score.py",
+    "to": "evaluation/src/diagnostics/ipi-authorization-20260917/diagnose_score.py",
+    "path_references_updated": true
+  },
+  {
+    "from": "evaluation/results/leakage-toolctx-deploy-20260918/agent_smoke.py",
+    "to": "evaluation/src/diagnostics/leakage-toolctx-deploy-20260918/agent_smoke.py",
+    "path_references_updated": true
+  }
+]

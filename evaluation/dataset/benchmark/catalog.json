@@ -1,0 +1,47 @@
+{
+  "runnable_datasets": [
+    {
+      "risk": "harmful",
+      "path": "evaluation/dataset/benchmark/harmful/probe_holdout/test.jsonl",
+      "kind": "frozen_development_holdout",
+      "label_policy": "original_frozen"
+    },
+    {
+      "risk": "prompt_leakage",
+      "path": "evaluation/dataset/benchmark/prompt_leakage/probe_holdout/test.jsonl",
+      "kind": "frozen_development_holdout",
+      "label_policy": "original_frozen"
+    },
+    {
+      "risk": "ipi",
+      "path": "evaluation/dataset/benchmark/ipi/agentdojo_100_zh/cases.jsonl",
+      "kind": "translated_injected_decision_points",
+      "label_policy": "original_frozen"
+    },
+    {
+      "risk": "prompt_leakage",
+      "path": "evaluation/dataset/benchmark/prompt_leakage/external_audits/external_attack_audit.jsonl",
+      "kind": "frozen_external_audit",
+      "label_policy": "original_frozen"
+    },
+    {
+      "risk": "prompt_leakage",
+      "path": "evaluation/dataset/benchmark/prompt_leakage/external_audits/natural_safe_audit.jsonl",
+      "kind": "frozen_external_audit",
+      "label_policy": "original_frozen"
+    },
+    {
+      "risk": "prompt_leakage",
+      "path": "evaluation/dataset/benchmark/prompt_leakage/external_audits/reported_rag_tool_context.jsonl",
+      "kind": "known_regression",
+      "label_policy": "original_frozen"
+    },
+    {
+      "risk": "prompt_leakage",
+      "path": "evaluation/dataset/benchmark/prompt_leakage/external_audits/reported_short_audit.jsonl",
+      "kind": "frozen_external_audit",
+      "label_policy": "original_frozen"
+    }
+  ],
+  "note": "Only complete labeled conversation datasets are listed; raw Raccoon/LeakGauge materials are source corpora, not executable cases."
+}

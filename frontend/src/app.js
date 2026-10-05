@@ -1,12 +1,13 @@
-import { createCustomerAgentApiClient } from "./api.js?v=customer-agent-rag-theft-v14";
+import { renderToolBrowser } from "./tool-browser.js";
+import { createCustomerAgentApiClient } from "./api.js?v=clear-generation-loop-20260920";
 
 const DEFENSES = [
-  { id: "activation_probe", name: "基于隐藏层的可解释性技术", stage: "输入", phase: "input", defaultEnabled: true, description: "基于目标模型隐藏状态中的可解释性信号，统一识别 Prompt、RAG、CoT 与 Skill 窃取意图" },
+  { id: "activation_probe", name: "基于隐藏层的可解释性技术", stage: "输入", phase: "input", defaultEnabled: false, description: "基于目标模型隐藏状态中的可解释性信号，统一识别 Prompt、RAG 与 CoT 窃取意图" },
   { id: "safegauge", name: "后缀概率探针", stage: "输入", phase: "input", defaultEnabled: false, hidden: true, description: "分析生成后缀的概率变化，评估隐藏信息窃取风险" },
-  { id: "qwen_guard", name: "Qwen3Guard 文本检测", stage: "输入", phase: "input", origin: "baseline", description: "使用 Qwen3Guard 模型进行生成前输入文本检测" },
-  { id: "llama_prompt_guard", name: "Llama Prompt Guard 文本检测", stage: "输入", phase: "input", origin: "baseline", hidden: true, description: "识别 Prompt Injection 与越权指令" },
-  { id: "netease_yidun", name: "网易易盾文本检测", stage: "输入", phase: "input", origin: "baseline", description: "调用网易易盾文本检测服务进行输入检测" },
-  { id: "fangcun_guard", name: "方寸跃迁文本检测", stage: "输入", phase: "input", origin: "baseline", description: "调用方寸跃迁文本检测服务对用户消息进行输入检测" },
+  { id: "qwen_guard", name: "Qwen3Guard 文本检测", stage: "输入", phase: "input", origin: "baseline", description: "使用 Qwen3Guard 模型进行生成前输入文本检测", showInlineDescription: false },
+  { id: "llama_prompt_guard", name: "护栏 C 文本检测", stage: "输入", phase: "input", origin: "baseline", hidden: true, description: "识别 Prompt Injection 与越权指令" },
+  { id: "netease_yidun", name: "某某易盾文本检测", stage: "输入", phase: "input", origin: "baseline", description: "调用某某易盾文本检测服务进行输入检测", showInlineDescription: false },
+  { id: "fangcun_guard", name: "某某跃迁文本检测", stage: "输入", phase: "input", origin: "baseline", description: "调用某某跃迁文本检测服务对用户消息进行输入检测", showInlineDescription: false },
 ];
 const GUARDRAIL_GROUP_ID = "guardrails";
 const GUARDRAIL_MEMBER_IDS = Object.freeze([
@@ -15,6 +16,7 @@ const GUARDRAIL_MEMBER_IDS = Object.freeze([
   "fangcun_guard",
 ]);
 const DEFAULT_SAFEGAUGE_THRESHOLD = 0.65;
+const AGENT_DISPLAY_NAME = "客服助手-小航";
 
 const DEFENSE_SOURCES = {
   activation_probe: {
@@ -28,32 +30,32 @@ const DEFENSE_SOURCES = {
     linkLabel: "源码仓库",
   },
   qwen_guard: {
-    label: "阿里云 Qwen 团队 · 已开源（Apache-2.0）",
+    label: "Qwen3Guard 团队 · 已开源（Apache-2.0）",
     href: "https://github.com/QwenLM/Qwen3Guard",
     linkLabel: "官方仓库",
   },
   llama_prompt_guard: {
-    label: "Meta · 开放权重（Llama 4 Community License，需授权访问）",
-    href: "https://huggingface.co/meta-llama/Llama-Prompt-Guard-2-86M",
+    label: "厂商 C · 开放权重（开放权重许可，需授权访问）",
+    href: "#",
     linkLabel: "官方模型页",
   },
   netease_yidun: {
-    label: "网易易盾文本检测 · 商业闭源服务",
-    href: "https://dun.163.com/",
+    label: "某某易盾文本检测 · 商业闭源服务",
+    href: "#",
     linkLabel: "官方网站",
   },
   fangcun_guard: {
-    label: "方寸 Leap · 文本安全 API",
-    href: "https://www.fangcunleap.com/#runtime-security",
+    label: "某某跃迁 · 文本安全 API",
+    href: "#",
     linkLabel: "产品介绍",
   },
 };
 
 const VERDICTS = {
   normal: "正常完成",
-  resisted: "风险已检出",
+  resisted: "未观察到攻击成功",
   blocked: "已安全阻断",
-  compromised: "风险已发生",
+  compromised: "攻击成功！",
 };
 
 const HIGH_VALUE_EXPOSURE_KINDS = new Set(["system_prompt", "rag"]);
@@ -72,7 +74,7 @@ const SIGNAL_STATUS = {
 const PROBE_RISK_LABELS = [
   ["harmful", "有害行为"],
   ["prompt_leakage", "提示信息泄露"],
-  ["ipi", "间接提示注入"],
+  ["ipi", "提示词注入"],
 ];
 
 const elements = {
@@ -83,6 +85,9 @@ const elements = {
   runtimeStatusLabel: document.querySelector("#runtimeStatusLabel"),
   runtimeStatusDetail: document.querySelector("#runtimeStatusDetail"),
   agentTitle: document.querySelector("#agentTitle"),
+  viewConnectedToolsButton: document.querySelector("#viewConnectedToolsButton"),
+  connectedToolsCount: document.querySelector("#connectedToolsCount"),
+  connectedToolsList: document.querySelector("#connectedToolsList"),
   editAgentConfigButton: document.querySelector("#editAgentConfigButton"),
   editSystemPromptButton: document.querySelector("#editSystemPromptButton"),
   editRagConfigButton: document.querySelector("#editRagConfigButton"),
@@ -154,10 +159,9 @@ const elements = {
   promptCompareLegend: document.querySelector("#promptCompareLegend"),
   promptCompareTranslateButton: document.querySelector("#promptCompareTranslateButton"),
   ragRetrievalCount: document.querySelector("#ragRetrievalCount"),
-  ragRetrievalSummary: document.querySelector("#ragRetrievalSummary"),
-  ragRetrievalHit: document.querySelector("#ragRetrievalHit"),
-  ragRetrievalStatus: document.querySelector("#ragRetrievalStatus"),
   ragRetrievalList: document.querySelector("#ragRetrievalList"),
+  trajectoryCount: document.querySelector("#trajectoryCount"),
+  trajectoryList: document.querySelector("#trajectoryList"),
   signalCount: document.querySelector("#signalCount"),
   signalList: document.querySelector("#signalList"),
   drawerBackdrop: document.querySelector("#drawerBackdrop"),
@@ -185,14 +189,14 @@ const state = {
   modelParams: {
     model: "qwen3-8b",
     vllm_port: 8104,
-    temperature: 0,
+    temperature: 1,
     top_p: 0.8,
     max_tokens: 8192,
-    enable_reasoning: false,
+    enable_reasoning: true,
   },
   safegaugeThreshold: DEFAULT_SAFEGAUGE_THRESHOLD,
   safegaugeThresholdExpanded: false,
-  guardrailsExpanded: false,
+  guardrailsExpanded: true,
   agentModalOpen: false,
   agentModalTrigger: null,
   systemPrompt: "",
@@ -205,11 +209,13 @@ const state = {
   configSaving: false,
   activeAgentConfigPanel: "model",
   draftAttackId: null,
+  draftReplayCaseId: null,
   busy: false,
   lastMessage: "",
   lastResult: null,
   livePhase: null,
   liveSignals: [],
+  pendingDefenseIds: new Set(),
   comparing: false,
   promptCompareResult: null,
   promptCompareTranslatedOutput: "",
@@ -282,6 +288,8 @@ function bindEvents() {
   });
   elements.messageInput.addEventListener("input", () => {
     state.draftAttackId = null;
+    state.draftReplayCaseId = null;
+    elements.messageList.querySelector("[data-replay-history]")?.remove();
     resizeComposer();
   });
   elements.messageInput.addEventListener("keydown", (event) => {
@@ -304,6 +312,7 @@ function bindEvents() {
     if (state.agentModalOpen) closeAgentModal();
     else if (elements.detailDrawer.classList.contains("open")) closeDetailDrawer();
   });
+  elements.viewConnectedToolsButton.addEventListener("click", () => openAgentModal(elements.viewConnectedToolsButton, "tools"));
   elements.editAgentConfigButton.addEventListener("click", (event) => openAgentModal(event.currentTarget, "model"));
   elements.editSystemPromptButton.addEventListener("click", (event) => openAgentModal(event.currentTarget, "system-prompt"));
   elements.editRagConfigButton.addEventListener("click", (event) => openAgentModal(event.currentTarget, "rag"));
@@ -333,7 +342,8 @@ function bindEvents() {
 
 function renderWorkspace(workspace) {
   const profile = workspace.profile;
-  elements.agentTitle.textContent = profile.name;
+  elements.agentTitle.textContent = AGENT_DISPLAY_NAME;
+  renderConnectedTools(profile);
   state.catalogDefenseIds = normalizeDefenseIds(profile.defense_pipeline);
   if (!state.defensesInitialized) {
     const defaults = new Set(
@@ -353,6 +363,11 @@ function renderWorkspace(workspace) {
   renderSecurityFlow(state.lastResult?.defense_signals ?? [], null, Boolean(state.lastResult));
 }
 
+function renderConnectedTools(profile) {
+  elements.connectedToolsCount.textContent = `${(profile.tools || []).length} 个工具 · 查看接口与参数`;
+  renderToolBrowser(elements.connectedToolsList, profile);
+}
+
 function renderStarters(starters) {
   elements.starterList.replaceChildren();
   starters.forEach((starter) => {
@@ -361,8 +376,41 @@ function renderStarters(starters) {
     button.type = "button";
     button.textContent = starter.label;
     button.title = starter.message;
-    button.addEventListener("click", () => {
+    button.addEventListener("click", async () => {
       if (state.busy) return;
+      state.draftReplayCaseId = null;
+      if (starter.replay_case_id) {
+        state.busy = true;
+        setBusy(true);
+        try {
+          const replay = await api.getReplayCase(starter.replay_case_id);
+          state.sessionId = createSessionId();
+          state.lastResult = null;
+          renderTrajectory(null);
+          state.lastMessage = "";
+          state.liveSignals = [];
+          state.livePhase = null;
+          state.pendingDefenseIds.clear();
+          closeDetailDrawer();
+          resetTurnInspector(false);
+          elements.messageList.replaceChildren();
+          appendReplayHistory(replay);
+          state.draftReplayCaseId = replay.id;
+          elements.messageInput.value = "";
+          resizeComposer();
+          elements.turnStatus.textContent = `已加载 ${replay.messages.length} 条历史消息，等待继续运行`;
+        } catch (error) {
+          elements.turnStatus.textContent = error.message;
+          return;
+        } finally {
+          state.busy = false;
+          setBusy(false);
+        }
+        state.draftAttackId = starter.attack_id ?? null;
+        return;
+      } else {
+        elements.messageList.querySelector("[data-replay-history]")?.remove();
+      }
       state.draftAttackId = starter.attack_id ?? null;
       elements.messageInput.value = starter.message;
       resizeComposer();
@@ -370,6 +418,54 @@ function renderStarters(starters) {
     });
     elements.starterList.append(button);
   });
+
+}
+
+function appendReplayHistory(replay) {
+  const history = document.createElement("div");
+  history.className = "replay-history";
+  history.dataset.replayHistory = replay.id;
+  const labels = { user: "用户请求", assistant: "助手工具调用", tool: "工具返回" };
+  replay.messages.filter(message => !["system", "developer"].includes(message.role)).forEach(message => {
+    const article = document.createElement("article");
+    article.className = `message replay-message replay-${message.role}`;
+    article.append(messageMeta(labels[message.role] || message.role, message.name || ""));
+    const bubble = document.createElement("div");
+    bubble.className = "message-bubble";
+    if (message.content) {
+      const content = document.createElement("div");
+      content.className = "replay-content";
+      content.textContent = message.content;
+      bubble.append(content);
+    }
+    for (const call of message.tool_calls || []) {
+      const name = document.createElement("strong");
+      name.className = "replay-tool-name";
+      name.textContent = call.function.name;
+      const args = document.createElement("pre");
+      try {
+        args.textContent = JSON.stringify(JSON.parse(call.function.arguments), null, 2);
+      } catch {
+        args.textContent = call.function.arguments;
+      }
+      bubble.append(name, args);
+    }
+    article.append(bubble);
+    history.append(article);
+  });
+  const continueButton = document.createElement("button");
+  continueButton.type = "button";
+  continueButton.className = "starter-button";
+  continueButton.textContent = "继续运行";
+  continueButton.addEventListener("click", async () => {
+    if (state.busy || state.draftReplayCaseId !== replay.id) return;
+    continueButton.disabled = true;
+    const userMessage = replay.messages.find(message => message.role === "user")?.content || "";
+    await sendMessage(userMessage);
+  });
+  history.append(continueButton);
+  elements.messageList.append(history);
+  scrollConversation();
 }
 
 function renderGuardList() {
@@ -386,7 +482,7 @@ function renderGuardList() {
       stage: "输入",
       phase: "input",
       origin: "baseline",
-      description: "统一启用三种市面已有的文本安全检测：Qwen3Guard、网易易盾和方寸跃迁。",
+      description: "统一启用 Qwen3Guard、某某易盾和某某跃迁，仅检测当前用户输入。",
       members: guardrailDefenses,
     });
   }
@@ -481,6 +577,7 @@ function renderGuardList() {
         state.selectedDefenseIds = Array.from(selected);
       }
       state.lastResult = null;
+      renderTrajectory(null);
       renderGuardList();
       setFlowBadge("等待请求", "idle");
       renderSecurityFlow();
@@ -572,7 +669,7 @@ function renderGuardrailMemberOption(defense) {
         />
         <span>
           <strong>${escapeHtml(defense.name)}</strong>
-          <small>${escapeHtml(defense.description)}</small>
+          ${defense.showInlineDescription === false ? "" : `<small>${escapeHtml(defense.description)}</small>`}
         </span>
       </label>
       <span class="guard-state">${available ? (active ? "已启用" : "未启用") : "不可用"}</span>
@@ -637,13 +734,13 @@ function openGuardMethodDialog(defenseId) {
   elements.guardMethodDialogFacts.innerHTML = `
     <div><dt>执行阶段</dt><dd>${escapeHtml(defense.stage)}</dd></div>
     <div><dt>当前状态</dt><dd>${available ? (enabled ? "已启用" : "未启用") : "当前运行时未连接"}</dd></div>
-    <div><dt>来源</dt><dd>${escapeHtml(source.label)} <a href="${source.href}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.linkLabel)} ↗</a></dd></div>
+    <div><dt>来源</dt><dd>${escapeHtml(source.label)} ${source.href !== "#" ? `<a href="${source.href}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.linkLabel)} ↗</a>` : ""}</dd></div>
     <div><dt>运行模型</dt><dd>${escapeHtml(state.modelParams.model)}</dd></div>
     ${defense.id === "safegauge" ? `<div><dt>当前风险阈值</dt><dd>${formatThreshold(state.safegaugeThreshold)}</dd></div>` : ""}
   `;
   elements.guardMethodDialogSteps.innerHTML = [
     `在${defense.stage}阶段接收本轮 Agent 的安全信号。`,
-    "只对当前银行财富管理客服请求生效，不改变业务工具和知识库。",
+    "只对当前客服助手-小航请求生效，不改变业务工具和知识库。",
     "风险命中时仅记录和提示，原始 Query 仍会进入业务模型和工具。",
   ].map((step) => `<li>${escapeHtml(step)}</li>`).join("");
   elements.guardMethodDialog.showModal();
@@ -712,7 +809,7 @@ async function openAgentModal(trigger, panel = "model") {
   elements.agentModalBackdrop.classList.add("open");
   elements.agentModalBackdrop.setAttribute("aria-hidden", "false");
 
-  if (state.activeAgentConfigPanel === "model") {
+  if (["model", "tools"].includes(state.activeAgentConfigPanel)) {
     requestAnimationFrame(focusActiveAgentConfigPanel);
     return;
   }
@@ -738,7 +835,7 @@ async function openAgentModal(trigger, panel = "model") {
 }
 
 function setAgentConfigPanel(panel, { focus = true } = {}) {
-  const normalized = ["system-prompt", "rag", "model"].includes(panel)
+  const normalized = ["system-prompt", "rag", "model", "tools"].includes(panel)
     ? panel
     : "model";
   state.activeAgentConfigPanel = normalized;
@@ -750,6 +847,10 @@ function setAgentConfigPanel(panel, { focus = true } = {}) {
 
 function renderAgentModalPresentation() {
   const presentation = {
+    tools: {
+      eyebrow: "工具配置", title: "已接入工具",
+      footer: "参数定义与 Agent 当前注册的工具保持一致", cancel: "关闭", save: "",
+    },
     model: {
       eyebrow: "运行配置",
       title: "Agent 配置",
@@ -777,7 +878,7 @@ function renderAgentModalPresentation() {
   elements.agentConfigFooterStatus.textContent = presentation.footer;
   elements.cancelAgentModalButton.textContent = presentation.cancel;
   elements.saveAgentConfigButton.textContent = presentation.save;
-  elements.saveAgentConfigButton.hidden = state.activeAgentConfigPanel === "rag";
+  elements.saveAgentConfigButton.hidden = ["rag", "tools"].includes(state.activeAgentConfigPanel);
 }
 
 function focusActiveAgentConfigPanel() {
@@ -785,6 +886,7 @@ function focusActiveAgentConfigPanel() {
   const target = {
     "system-prompt": elements.systemPromptInput,
     rag: elements.ragFileInput,
+    tools: elements.connectedToolsList.querySelector("button") || elements.cancelAgentModalButton,
     model: elements.modelSelect,
   }[state.activeAgentConfigPanel];
   if (target && !target.disabled) target.focus({ preventScroll: true });
@@ -836,6 +938,7 @@ async function saveAgentConfiguration() {
     } else {
       state.modelParams = readModelParamsFromInputs();
       state.lastResult = null;
+      renderTrajectory(null);
       renderAgentConfigSummary();
       setFlowBadge("等待请求", "idle");
       renderSecurityFlow();
@@ -1114,10 +1217,10 @@ function readModelParamsFromInputs() {
   return {
     model: elements.modelSelect.value,
     vllm_port: Math.max(1, Math.min(65535, port)),
-    temperature: readNumberInput(elements.temperatureInput, 0),
+    temperature: readNumberInput(elements.temperatureInput, 1),
     top_p: readNumberInput(elements.topPInput, 0.8),
     max_tokens: Math.round(readNumberInput(elements.maxTokensInput, 8192)),
-    enable_reasoning: false,
+    enable_reasoning: state.modelParams.enable_reasoning,
   };
 }
 
@@ -1188,14 +1291,18 @@ function setFlowBadge(text, stateClass = "idle") {
 async function sendMessage(message) {
   if (state.busy) return;
   const attackId = state.draftAttackId;
+  const replayCaseId = state.draftReplayCaseId;
+  state.draftReplayCaseId = null;
   state.draftAttackId = null;
   state.busy = true;
   state.lastMessage = message;
   state.lastResult = null;
+  renderTrajectory(null);
   state.livePhase = null;
   state.liveSignals = [];
+  state.pendingDefenseIds = new Set(activeDefenseIds());
   setBusy(true);
-  appendUserMessage(message);
+  if (!replayCaseId) appendUserMessage(message);
   const pending = appendPendingMessage();
   elements.messageInput.value = "";
   resizeComposer();
@@ -1205,8 +1312,9 @@ async function sendMessage(message) {
     const result = await api.streamTurn(
       {
         session_id: state.sessionId,
-        message,
+        message: replayCaseId ? undefined : message,
         attack_id: attackId,
+        replay_case_id: replayCaseId,
         defense_mode: selectedDefenseIds().length ? "defended" : "baseline",
         defenses: activeDefenseIds(),
         safegauge_threshold: state.safegaugeThreshold,
@@ -1221,6 +1329,7 @@ async function sendMessage(message) {
     replacePendingWithResult(pending, result);
     renderTurn(result);
   } catch (error) {
+    state.pendingDefenseIds.clear();
     replacePendingWithError(pending, error);
     elements.turnStatus.textContent = "本轮运行失败";
     setFlowBadge("运行异常", "error");
@@ -1232,16 +1341,95 @@ async function sendMessage(message) {
 }
 
 function handleLiveStatus(status, pending) {
-  if (Array.isArray(status.defense_signals)) {
-    state.liveSignals = status.defense_signals;
-    renderSignals(state.liveSignals);
+  const byId = new Map(state.liveSignals.map((signal) => [signal.defense_id, signal]));
+  for (const signal of status.defense_signals ?? []) {
+    if (signal.status === "not_run") continue;
+    byId.set(signal.defense_id, signal);
+    state.pendingDefenseIds.delete(signal.defense_id);
   }
+  state.liveSignals = [...byId.values()];
+  renderSignals(state.liveSignals);
   state.livePhase = status.status === "running" ? status.phase : null;
   elements.turnStatus.textContent = status.message || "Agent 正在运行";
   const text = pending.querySelector("[data-pending-text]");
   if (text) text.textContent = status.message || "Agent 正在运行";
+  if (typeof appendLiveLoopStep === "function") appendLiveLoopStep(pending, status);
   setFlowBadge("运行中", "running");
   renderSecurityFlow(state.liveSignals, state.livePhase, false);
+}
+
+function appendLiveLoopStep(article, status) {
+  const timeline = article.querySelector("[data-live-loop-steps]");
+  const trace = article.querySelector("[data-live-loop]");
+  if (!timeline || !trace || !status?.message || !shouldShowLiveLoopStatus(status)) return;
+  trace.hidden = false;
+  const now = performance.now();
+  const previous = timeline.querySelector("li.current");
+  const key = `${status.phase || "step"}:${status.message}:${status.detail || ""}`;
+  if (previous?.dataset.stepKey === key) return;
+  if (previous) finishLiveLoopRow(previous, now);
+  const row = document.createElement("li");
+  row.dataset.stepKey = key;
+  row.dataset.startedAt = String(now);
+  const line = document.createElement("span");
+  line.textContent = status.message;
+  if (status.detail) {
+    const detail = document.createElement("small");
+    detail.textContent = ` · ${status.detail}`;
+    line.append(detail);
+  }
+  row.append(line);
+  timeline.append(row);
+  const measuredDuration = Number(status.duration_ms);
+  if (Number.isFinite(measuredDuration)) {
+    const time = document.createElement("time");
+    time.textContent = `${Math.max(0, Math.round(measuredDuration))} ms`;
+    row.append(time);
+  } else {
+    row.classList.add("current");
+  }
+}
+
+function shouldShowLiveLoopStatus(status) {
+  if (status.phase === "message_load") return true;
+  if (status.phase === "input_guard") return status.message === "Probe 检测完成";
+  if (status.phase === "final_response") {
+    return status.message !== "正在交付最终答复";
+  }
+  if (status.phase === "tool") {
+    const ragTools = new Set([
+      "search_knowledge",
+      "search_knowledge_base",
+      "search_financial_knowledge",
+      "search_legal_corpus",
+    ]);
+    const completedTools = String(status.detail || "")
+      .split("·")
+      .map((name) => name.trim())
+      .filter(Boolean);
+    if (completedTools.length && completedTools.every((name) => ragTools.has(name))) return false;
+  }
+  return ["generation", "retrieval", "tool", "final_response"].includes(status.phase);
+}
+
+function finishLiveLoopRow(row, endedAt = performance.now()) {
+  if (!row) return;
+  row.classList.remove("current");
+  if (row.querySelector("time")) return;
+  const startedAt = Number(row.dataset.startedAt);
+  const duration = Number.isFinite(startedAt) ? Math.max(0, Math.round(endedAt - startedAt)) : 0;
+  const time = document.createElement("time");
+  time.textContent = `${duration} ms`;
+  row.append(time);
+}
+
+function finishLiveLoopTrace(trace) {
+  if (!trace) return null;
+  finishLiveLoopRow(trace.querySelector("li.current"));
+  const title = trace.querySelector(":scope > p");
+  title?.remove();
+  trace.hidden = !trace.querySelector("li");
+  return trace.hidden ? null : trace;
 }
 
 function appendUserMessage(message) {
@@ -1267,9 +1455,14 @@ function appendPendingMessage() {
   dots.innerHTML = "<i></i><i></i><i></i>";
   const text = document.createElement("span");
   text.dataset.pendingText = "";
-  text.textContent = "正在启动 Agent loop";
+  text.textContent = "正在处理";
   bubble.append(dots, text);
-  article.append(bubble);
+  const liveTrace = document.createElement("div");
+  liveTrace.className = "agent-loop-live";
+  liveTrace.dataset.liveLoop = "";
+  liveTrace.hidden = true;
+  liveTrace.innerHTML = '<ol data-live-loop-steps></ol>';
+  article.append(liveTrace, bubble);
   elements.messageList.append(article);
   scrollConversation();
   return article;
@@ -1298,51 +1491,62 @@ function appendPendingDelta(article, delta) {
 }
 
 function replacePendingWithResult(article, result) {
+  const liveTrace = finishLiveLoopTrace(article.querySelector("[data-live-loop]"));
   article.className = `message assistant${result.output_blocked ? " blocked" : ""}`;
   article.replaceChildren();
+  const calls = result.replay ? (result.tool_trace || []).filter(item => !item.metadata?.recorded) : [];
   article.append(messageMeta(agentDisplayName(), VERDICTS[result.verdict] ?? result.verdict));
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
   const deliveredHighValue = highValueExposures(result).filter((item) => item.exposed_to_client);
   if (deliveredHighValue.length) {
     bubble.classList.add("contains-high-value-leak");
-    const notice = document.createElement("div");
-    notice.className = "high-value-leak-notice";
-    const noticeFlag = document.createElement("span");
-    noticeFlag.textContent = "关键内容";
-    const noticeCopy = document.createElement("span");
-    noticeCopy.textContent = `检测到 ${deliveredHighValue.map((item) => highValueExposureKindLabel(item.kind)).join(" / ")} 已到达客户端`;
-    notice.append(noticeFlag, noticeCopy);
     const leakedText = document.createElement("div");
     leakedText.className = "high-value-leak-text markdown-body";
     renderMarkdown(leakedText, result.assistant_message ?? "");
-    bubble.append(notice, leakedText);
+    bubble.append(leakedText);
   } else {
     bubble.classList.add("markdown-body");
     renderMarkdown(bubble, result.assistant_message ?? "");
+  }
+  if (result.defense_mode === "baseline") {
+    highlightBankAccount(bubble);
+  }
+  if (calls.length) {
+    const toolBlock = document.createElement("div");
+    toolBlock.className = "trace-history replay-generated-call";
+    const label = document.createElement("strong");
+    label.textContent = "工具调用";
+    const text = document.createElement("pre");
+    text.textContent = JSON.stringify(calls.map(({ call_id, name, arguments: args }) => ({
+      call_id, name, arguments: args,
+    })), null, 2);
+    toolBlock.append(label, text);
+    bubble.prepend(toolBlock);
   }
   const actions = document.createElement("div");
   actions.className = "message-actions";
   const inspectButton = document.createElement("button");
   inspectButton.type = "button";
-  inspectButton.textContent = "查看本轮轨迹";
+  inspectButton.textContent = "打开运行详情";
   inspectButton.addEventListener("click", () => {
     renderTurn(result);
     openDetailDrawer();
   });
   actions.append(inspectButton);
-  article.append(bubble, actions);
+  article.append(...(liveTrace ? [liveTrace] : []), bubble, actions);
   scrollConversation();
 }
 
 function replacePendingWithError(article, error) {
+  const liveTrace = finishLiveLoopTrace(article.querySelector("[data-live-loop]"));
   article.className = "message assistant blocked";
   article.replaceChildren();
   article.append(messageMeta("系统", "运行失败"));
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
   bubble.textContent = error?.message || "Agent 运行失败，请检查后端服务。";
-  article.append(bubble);
+  article.append(...(liveTrace ? [liveTrace] : []), bubble);
 }
 
 function renderMarkdown(container, markdown) {
@@ -1500,7 +1704,7 @@ function splitMarkdownTableRow(line) {
 
 function appendMarkdownInline(parent, value) {
   const text = String(value ?? "");
-  const tokenPattern = /(`+[^`\n]+`+|\*\*[^*\n]+\*\*|__[^_\n]+__|\[[^\]]+\]\([^\s)]+(?:\s+[^)]*)?\)|~~[^~\n]+~~|\*[^*\n]+\*|_[^_\n]+_)/g;
+  const tokenPattern = /(`+[^`\n]+`+|\*\*[^*\n]+\*\*|(?<!\w)__[^_\n]+__(?!\w)|\[[^\]]+\]\([^\s)]+(?:\s+[^)]*)?\)|~~[^~\n]+~~|\*[^*\n]+\*|(?<!\w)_[^_\n]+_(?!\w))/g;
   let cursor = 0;
   let match;
   while ((match = tokenPattern.exec(text))) {
@@ -1560,6 +1764,7 @@ function messageMeta(author, detail) {
   authorNode.textContent = author;
   const detailNode = document.createElement("span");
   detailNode.textContent = detail;
+  if (detail === VERDICTS.compromised) detailNode.classList.add("attack-success-label");
   meta.append(authorNode, detailNode);
   return meta;
 }
@@ -1572,11 +1777,199 @@ function renderTurn(result) {
   elements.turnStatus.textContent = result.output_blocked ? "输入风险已在模型生成前阻断" : "";
   state.liveSignals = result.defense_signals ?? [];
   state.livePhase = null;
+  state.pendingDefenseIds.clear();
   renderSecurityFlow(state.liveSignals, null, true);
   renderHighValueExposures(result);
   renderPromptComparison(result);
   renderRagRetrievalDetails(result);
+  renderTrajectory(result);
   renderSignals(result.defense_signals ?? []);
+}
+
+function getTrajectorySteps(result) {
+  return result?.raw_trajectory?.length ? result.raw_trajectory : result?.replay
+    ? [...(result.replay.loaded_messages || []), ...(result.replay.continuation || [])].map((message, index) => ({
+      step: index + 1, kind: "message", message,
+      source: index < (result.replay.loaded_messages?.length || 0) ? "录制历史" : "本轮续跑",
+    })) : [];
+}
+
+function nextModelResponse(steps, startIndex) {
+  return steps.slice(startIndex + 1).find((step) => step.kind === "model_response")?.message ?? null;
+}
+
+function lastModelResponseIndex(steps) {
+  for (let index = steps.length - 1; index >= 0; index -= 1) {
+    if (steps[index].kind === "model_response") return index;
+  }
+  return -1;
+}
+
+function formatTrajectoryContent(content) {
+  if (typeof content !== "string") return JSON.stringify(content, null, 2);
+  try {
+    return JSON.stringify(JSON.parse(content), null, 2);
+  } catch {
+    return content;
+  }
+}
+
+const IPI_BANK_ACCOUNT_PATTERN = /6222(?:\s+)?0019(?:\s+)?8877(?:\s+)?4455/g;
+
+function highlightBankAccount(root) {
+  if (!root) return;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const matches = [];
+  while (walker.nextNode()) {
+    const textNode = walker.currentNode;
+    IPI_BANK_ACCOUNT_PATTERN.lastIndex = 0;
+    if (IPI_BANK_ACCOUNT_PATTERN.test(textNode.data)) matches.push(textNode);
+  }
+  for (const textNode of matches) {
+    const fragment = document.createDocumentFragment();
+    let cursor = 0;
+    IPI_BANK_ACCOUNT_PATTERN.lastIndex = 0;
+    for (const match of textNode.data.matchAll(IPI_BANK_ACCOUNT_PATTERN)) {
+      fragment.append(textNode.data.slice(cursor, match.index));
+      const mark = document.createElement("mark");
+      mark.className = "ipi-danger-highlight";
+      mark.textContent = match[0];
+      fragment.append(mark);
+      cursor = match.index + match[0].length;
+    }
+    fragment.append(textNode.data.slice(cursor));
+    textNode.replaceWith(fragment);
+  }
+}
+
+function highlightRagInjection(value) {
+  const escaped = escapeHtml(value);
+  return escaped.replace(
+    /(&lt;!--[\s\S]*?--&gt;)/g,
+    (comment) => /财务归集账户|6222(?:\s+)?0019(?:\s+)?8877(?:\s+)?4455|air-refund-verify/.test(comment)
+      ? `<mark class="ipi-danger-highlight ipi-prompt-highlight">${comment}</mark>`
+      : comment,
+  );
+}
+
+function highlightBankAccountHtml(value) {
+  return escapeHtml(value).replace(
+    IPI_BANK_ACCOUNT_PATTERN,
+    '<mark class="ipi-danger-highlight">$&</mark>',
+  );
+}
+
+function probeStatusLabel(status) {
+  return status === "safe" ? "安全"
+    : status === "risk" ? "风险"
+    : status === "error" ? "检测失败"
+    : "未运行";
+}
+
+function trajectoryStepView(step, index, steps, { highlightSensitive = false } = {}) {
+  const message = step.message || {};
+  const calls = message.tool_calls || [];
+  const role = message.role;
+  const finalResponseIndex = lastModelResponseIndex(steps);
+  let kind = role || step.kind || "step";
+  let title = "Agent 步骤";
+  let detail = step.source || "";
+  let status = "";
+  let statusClass = "";
+  let body = "";
+
+  if (step.kind === "probe_check") {
+    const signal = step.signal || {};
+    const following = nextModelResponse(steps, index);
+    const followingCalls = following?.tool_calls || [];
+    kind = "probe";
+    title = signal.blocked
+      ? "Probe · 阻断前检测"
+      : followingCalls.length
+        ? "Probe · Tool Call 前检测"
+        : "Probe · Final Response 前检测";
+    detail = `${step.message_count ?? signal.metadata?.message_count ?? 0} 条上下文${signal.latency_ms ? ` · ${signal.latency_ms} ms` : ""}`;
+    status = probeStatusLabel(signal.status);
+    statusClass = signal.status || "not_run";
+    const scoreRows = [
+      signal.score != null ? `<span><small>风险分数</small><b>${escapeHtml(signal.score)}</b></span>` : "",
+      signal.threshold != null ? `<span><small>阈值</small><b>${escapeHtml(signal.threshold)}</b></span>` : "",
+      `<span><small>检测范围</small><b>${escapeHtml(signal.stage === "context" ? "完整工具上下文" : "输入上下文")}</b></span>`,
+    ].filter(Boolean).join("");
+    body = `<div class="agent-loop-probe-facts">${scoreRows}</div>`
+      + `<p>${escapeHtml(signal.detail || "本检查点没有返回说明。")}</p>`
+      + (signal.raw_output ? `<details class="agent-loop-raw"><summary>查看 Probe 原始输出</summary><pre>${escapeHtml(signal.raw_output)}</pre></details>` : "");
+  } else if (role === "system") {
+    kind = "system";
+    title = "System Prompt";
+    detail = step.source === "运行时指令" ? "运行时指令" : step.source === "历史消息" ? "历史上下文" : "系统上下文";
+  } else if (role === "user") {
+    kind = "user";
+    title = "User Query";
+    detail = step.source === "历史消息" || step.source === "录制历史" ? step.source : "本轮输入";
+  } else if (role === "tool") {
+    const isRag = ["search_knowledge", "search_knowledge_base", "search_financial_knowledge", "search_legal_corpus"].includes(message.name);
+    kind = isRag ? "rag" : "tool";
+    title = isRag ? "Tool Response · RAG 检索结果" : "Tool Response";
+    detail = message.name || "业务工具";
+    status = step.status === "success" ? "成功" : step.status || "";
+    statusClass = step.status || "";
+    if (message.tool_call_id) {
+      body += `<p class="trajectory-call-id">调用 ID：${escapeHtml(message.tool_call_id)}</p>`;
+    }
+  } else if (calls.length) {
+    kind = "assistant-call";
+    title = "Assistant Tool Call";
+    detail = calls.map((call) => call.function?.name || "工具").join("、");
+  } else if (role === "assistant") {
+    const isFinal = index === finalResponseIndex;
+    kind = isFinal ? "response" : "assistant";
+    title = isFinal ? "Final Response" : "Assistant Response";
+    detail = step.source || (isFinal ? "最终交付内容" : "中间模型输出");
+  }
+
+  if (step.kind !== "probe_check" && message.content != null && message.content !== "") {
+    const content = formatTrajectoryContent(message.content);
+    const renderedContent = role === "tool" && kind === "rag"
+      ? highlightRagInjection(content)
+      : highlightSensitive
+        ? highlightBankAccountHtml(content)
+        : escapeHtml(content);
+    body += `<pre>${renderedContent}</pre>`;
+  }
+  for (const call of calls) {
+    let args = call.function?.arguments ?? {};
+    if (typeof args === "string") {
+      try { args = JSON.parse(args); } catch { /* Preserve malformed arguments for inspection. */ }
+    }
+    const renderedArgs = highlightSensitive
+      ? highlightBankAccountHtml(JSON.stringify(args, null, 2))
+      : escapeHtml(JSON.stringify(args, null, 2));
+    body += `<div class="agent-loop-call"><span>${escapeHtml(call.function?.name || "工具")}</span><pre>${renderedArgs}</pre></div>`;
+  }
+  if (!body) body = '<p class="agent-loop-empty">本步没有文本内容。</p>';
+
+  return `<li class="agent-loop-event ${escapeHtml(kind)}">
+    <details class="agent-loop-step">
+      <summary>
+        <span class="agent-loop-step-copy"><strong>${escapeHtml(title)}</strong>${detail ? `<small> · ${escapeHtml(detail)}</small>` : ""}${status ? `<em class="${escapeHtml(statusClass)}"> · ${escapeHtml(status)}</em>` : ""}</span>
+        <span class="agent-loop-chevron" aria-hidden="true"></span>
+      </summary>
+      <div class="agent-loop-step-body">${body}</div>
+    </details>
+  </li>`;
+}
+
+function renderTrajectory(result) {
+  const steps = getTrajectorySteps(result);
+  elements.trajectoryCount.textContent = `${steps.length} 步`;
+  if (!steps.length) {
+    elements.trajectoryList.innerHTML = `<p class="empty-state">${result?.output_blocked
+      ? "本轮已被防护阻断，未记录模型执行轨迹。" : "暂无逐步轨迹，请运行一条新消息后查看。"}</p>`;
+    return;
+  }
+  const highlightSensitive = result?.defense_mode === "baseline";
+  elements.trajectoryList.innerHTML = `<ol class="agent-loop-timeline drawer-agent-loop">${steps.map((step, index) => trajectoryStepView(step, index, steps, { highlightSensitive })).join("")}</ol>`;
 }
 
 function openDetailDrawer() {
@@ -1602,7 +1995,7 @@ function renderSecurityFlow(signals = [], livePhase = null, turnComplete = false
     (defense) => defense.phase !== "input" || state.selectedDefenseIds.includes(defense.id),
   );
   const stages = [
-    { phase: "input", eyebrow: "生成前", title: "输入安全检测" },
+    { phase: "input", eyebrow: "用户提交后", title: "安全检测" },
     { phase: "generation", eyebrow: "模型生成后", title: "生成侧检测" },
     { phase: "output", eyebrow: "交付前", title: "输出安全检查" },
   ].filter((stage) => flowDefenses.some((defense) => defense.phase === stage.phase));
@@ -1616,7 +2009,7 @@ function renderSecurityFlow(signals = [], livePhase = null, turnComplete = false
     markup += renderFlowStage(stage, methods, signalById, livePhase, index);
     index += 1;
   });
-  const generationState = livePhase === "generation" || livePhase === "tool" || livePhase === "reasoning" || livePhase === "retrieval"
+  const generationState = livePhase === "final_response"
     ? "running"
     : turnComplete ? "complete" : "idle";
   markup += renderFlowConnector(
@@ -1664,7 +2057,8 @@ function renderFlowStage(stage, methods, signalById, livePhase, index) {
 
 function renderFlowMethod(defense, signal, livePhase) {
   const enabled = state.selectedDefenseIds.includes(defense.id);
-  const running = enabled && livePhase && phaseMatchesDefense(livePhase, defense.id);
+  const awaitingFinal = enabled && state.pendingDefenseIds.has(defense.id);
+  const running = awaitingFinal || (enabled && !signal && livePhase && phaseMatchesDefense(livePhase, defense.id));
   const stateClass = running ? "running" : signal?.blocked ? "risk" : signal?.status === "error" ? "error" : signal?.status === "risk" ? "risk" : signal?.status === "safe" ? "passed" : enabled ? "enabled" : "disabled";
   const status = running ? "检测中" : signal?.blocked ? "已阻断" : SIGNAL_STATUS[signal?.status] ?? (enabled ? "待运行" : "未启用");
   return `
@@ -1694,7 +2088,8 @@ function renderAgentNode(stateClass) {
 
 function getFlowStageState(methods, signalById, livePhase) {
   const enabled = methods.filter((method) => state.selectedDefenseIds.includes(method.id));
-  if (livePhase && enabled.some((method) => phaseMatchesDefense(livePhase, method.id))) return "running";
+  if (enabled.some((method) => state.pendingDefenseIds.has(method.id))) return "running";
+  if (livePhase && enabled.some((method) => !signalById.has(method.id) && phaseMatchesDefense(livePhase, method.id))) return "running";
   const signals = enabled.map((method) => signalById.get(method.id)).filter(Boolean);
   if (signals.some((signal) => signal.status === "error")) return "error";
   if (signals.some((signal) => signal.blocked || signal.status === "risk")) return "risk";
@@ -1799,7 +2194,7 @@ function highValueExposureCard(item, ragTerms = []) {
   const coverage = Number.isFinite(Number(item.coverage)) ? `${Number(item.coverage)}%` : "—";
   const contiguous = Number.isFinite(Number(item.max_contiguous_chars)) ? `${Number(item.max_contiguous_chars)} 字符` : "—";
   const marker = item.exact_marker_match ? "精确标记命中" : "片段/语义命中";
-  const ragEvidence = item.kind === "rag" && ragTerms.length ? ` · 检索命中词 ${ragTerms.slice(0, 5).join("、")}` : "";
+  const ragEvidence = item.kind === "rag" && ragTerms.length ? ` · 检索匹配词 ${ragTerms.slice(0, 5).join("、")}` : "";
   evidence.textContent = `覆盖 ${coverage} · 连续命中 ${contiguous} · ${marker}${ragEvidence}`;
 
   const status = document.createElement("em");
@@ -1953,6 +2348,7 @@ async function translatePromptCompareOutput() {
 }
 
 const RAG_SEARCH_TOOL_NAMES = new Set([
+  "search_knowledge",
   "search_knowledge_base",
   "search_financial_knowledge",
   "search_legal_corpus",
@@ -1964,21 +2360,13 @@ function renderRagRetrievalDetails(result = {}) {
   const retrievalExecuted = ragItems.length > 0 || (result.tool_trace ?? []).some(
     (tool) => RAG_SEARCH_TOOL_NAMES.has(tool.name),
   );
-  const hit = ragItems.length > 0;
+  const hasItems = ragItems.length > 0;
 
   elements.ragRetrievalCount.textContent = `${ragItems.length} 条`;
-  elements.ragRetrievalSummary.dataset.status = hit ? "hit" : "miss";
-  elements.ragRetrievalHit.textContent = hit ? "是" : "否";
-  elements.ragRetrievalStatus.textContent = hit
-    ? `命中 ${ragItems.length} 条知识片段`
-    : retrievalExecuted
-      ? "没有片段达到检索阈值"
-      : "本轮未执行 BM25 检索";
-
-  if (!hit) {
+  if (!hasItems) {
     renderEmpty(
       elements.ragRetrievalList,
-      retrievalExecuted ? "本轮 BM25 检索未命中。" : "本轮 Agent 没有调用 RAG 检索。",
+      retrievalExecuted ? "本轮 BM25 检索未返回知识片段。" : "本轮 Agent 没有调用 RAG 检索。",
     );
     return;
   }
@@ -1998,7 +2386,7 @@ function renderRagRetrievalDetails(result = {}) {
     const meta = document.createElement("small");
     const matchedTerms = (item.matched_terms ?? []).length
       ? `匹配词：${item.matched_terms.join("、")}`
-      : "无直接词项命中";
+      : "无直接匹配词";
     const decision = item.decision ? ` · ${item.decision}` : "";
     meta.textContent = `Top-${item.rank ?? "?"} · ${item.chunk_id ?? item.id} · ${matchedTerms}${decision}`;
 
@@ -2013,10 +2401,10 @@ function renderRagProtection(result) {
   const ragItems = result.rag_trace ?? [];
   const privateItems = ragItems.filter((item) => item.visibility === "private");
   const includedPrivate = privateItems.filter((item) => item.included).length;
-  const ragExposure = (result.asset_exposures ?? []).find((item) => item.kind === "rag");
-  const leaked = Boolean(ragExposure?.exposed_to_client);
+  const ragExposures = (result.asset_exposures ?? []).filter((item) => item.kind === "rag");
+  const leaked = ragExposures.some((item) => item.exposed_to_client);
   const blocked = Boolean(result.output_blocked || result.attack?.blocked_stage);
-  const status = leaked ? "已暴露" : blocked && includedPrivate === 0 ? "已保护" : includedPrivate ? "已检索" : "未命中";
+  const status = leaked ? "已暴露" : blocked && includedPrivate === 0 ? "已保护" : includedPrivate ? "已检索" : "未召回";
   const retrieval = includedPrivate ? `${includedPrivate} 个` : blocked ? "未执行" : "0 个";
   const leakage = leaked ? "已发现" : "无";
   const blockedStage = result.attack?.blocked_stage
@@ -2027,8 +2415,8 @@ function renderRagProtection(result) {
   elements.ragProtectionStatus.dataset.status = leaked ? "risk" : status === "已保护" ? "safe" : "";
   elements.ragProtectionGrid.replaceChildren(
     metricCard("私有片段", retrieval, leaked ? "risk" : status === "已保护" ? "safe" : ""),
-    metricCard("关键规则泄漏", leakage, leaked ? "risk" : "safe"),
-    metricCard("检索状态", includedPrivate ? "已进入上下文" : blocked ? "未执行" : "未命中", leaked ? "risk" : status === "已保护" ? "safe" : ""),
+    metricCard("私有画像泄漏", leakage, leaked ? "risk" : "safe"),
+    metricCard("检索状态", includedPrivate ? "已进入上下文" : blocked ? "未执行" : "未召回", leaked ? "risk" : status === "已保护" ? "safe" : ""),
     metricCard("检测动作", blocked ? blockedStage : inputRisk ? "风险标记" : "旁路观察", inputRisk ? "risk" : ""),
   );
   renderRagProtectionStory({
@@ -2062,7 +2450,7 @@ function renderRagProtectionStory({ status = "等待运行", leaked = false, blo
     ? {
       message: "私有知识穿过交付边界，攻击者可反复调用并重建知识库。",
       title: "RAG 资产已泄露",
-      detail: "泄露的不只是一段回答，而是可批量复制的业务规则、内部政策与专有知识。",
+      detail: "最终答复已经包含客户或旅客画像等私有 RAG 信息。",
     }
     : blocked
       ? {
@@ -2079,7 +2467,7 @@ function renderRagProtectionStory({ status = "等待运行", leaked = false, blo
         : {
           message: "RAG 不只是检索，检索结果也需要被保护。",
           title: "知识库也是核心资产",
-          detail: "一次批量抽取就可能复制业务规则、内部政策和专有知识。",
+          detail: "公开规则可以正常回答；客户或旅客画像等私有文档不得交付给未授权用户。",
         };
   elements.ragProtectionMessage.textContent = copy.message;
   elements.ragImpactTitle.textContent = copy.title;
@@ -2087,7 +2475,7 @@ function renderRagProtectionStory({ status = "等待运行", leaked = false, blo
 }
 
 function ragReplayData(result = {}) {
-  const searchToolNames = new Set(["search_knowledge_base", "search_financial_knowledge", "search_legal_corpus"]);
+  const searchToolNames = new Set(["search_knowledge", "search_knowledge_base", "search_financial_knowledge", "search_legal_corpus"]);
   const tool = (result.tool_trace ?? []).find(
     (item) => searchToolNames.has(item.name) && item.metadata?.replay_schema === "bm25.retrieval.v1",
   ) ?? (result.tool_trace ?? []).find((item) => searchToolNames.has(item.name));
@@ -2167,7 +2555,7 @@ function ragRankingItem(item, maxScore) {
   const title = document.createElement("strong");
   title.textContent = item.heading ? `${item.title} · ${item.heading}` : item.title;
   const details = document.createElement("small");
-  const matched = (item.matched_terms ?? []).length ? `命中：${item.matched_terms.join(" / ")}` : "无直接词项命中";
+  const matched = (item.matched_terms ?? []).length ? `匹配：${item.matched_terms.join(" / ")}` : "无直接匹配词";
   details.textContent = `${item.chunk_id ?? item.id} · ${matched}`;
   const bar = document.createElement("span");
   bar.className = "rag-rank-score-bar";
@@ -2186,9 +2574,10 @@ function ragRankingItem(item, maxScore) {
 function renderProtectedRagContent(result = {}) {
   if (!elements.ragProtectedPanel) return;
   const privateItems = (result.rag_trace ?? []).filter((item) => item.visibility === "private" && item.included);
-  const ragExposure = (result.asset_exposures ?? []).find((item) => item.kind === "rag");
+  const ragExposures = (result.asset_exposures ?? []).filter((item) => item.kind === "rag");
+  const ragExposure = ragExposures.find((item) => item.exposed_to_client) ?? ragExposures[0];
   const ragAttackBlocked = result.attack?.attack_id === "rag_extraction" && Boolean(result.attack?.blocked_stage);
-  const leaked = Boolean(ragExposure?.exposed_to_client);
+  const leaked = ragExposures.some((item) => item.exposed_to_client);
   const protectedItems = privateItems.length
     ? privateItems
     : ragAttackBlocked && ragExposure
@@ -2372,10 +2761,10 @@ function renderEmpty(container, message) {
   container.replaceChildren(empty);
 }
 
-function resetTurnInspector() {
+function resetTurnInspector(running = true) {
   elements.runId.textContent = "—";
-  setFlowBadge("运行中", "running");
-  renderSecurityFlow([], "input_guard");
+  setFlowBadge(running ? "运行中" : "待运行", running ? "running" : "idle");
+  renderSecurityFlow([], running ? "input_guard" : null);
   renderHighValueExposures();
   state.promptCompareResult = null;
   state.promptCompareTranslatedOutput = "";
@@ -2383,12 +2772,9 @@ function resetTurnInspector() {
   state.promptCompareTranslationError = "";
   renderPromptComparison();
   elements.ragRetrievalCount.textContent = "0 条";
-  elements.ragRetrievalSummary.dataset.status = "idle";
-  elements.ragRetrievalHit.textContent = "—";
-  elements.ragRetrievalStatus.textContent = "等待本轮检索";
-  renderEmpty(elements.ragRetrievalList, "正在等待本轮 RAG 检索结果。");
+  renderEmpty(elements.ragRetrievalList, running ? "正在等待本轮 RAG 检索结果。" : "尚未运行。");
   elements.signalCount.textContent = "0";
-  renderEmpty(elements.signalList, "防护方法正在等待本轮结果。");
+  renderEmpty(elements.signalList, running ? "防护方法正在等待本轮结果。" : "尚未运行检测。");
 }
 
 async function openComparison(message, attackId = null) {
@@ -2409,6 +2795,7 @@ async function openComparison(message, attackId = null) {
     const comparison = await api.compareTurn({
       message,
       attack_id: attackId,
+      replay_case_id: state.draftReplayCaseId || state.lastResult?.replay?.case_id || null,
       defenses: activeDefenseIds(),
       safegauge_threshold: state.safegaugeThreshold,
       model_params: { ...state.modelParams },
@@ -2438,6 +2825,7 @@ async function openComparison(message, attackId = null) {
 
 function renderComparisonSide(result, verdictNode, outputNode, factsNode) {
   verdictNode.textContent = VERDICTS[result.verdict] ?? result.verdict;
+  verdictNode.classList.toggle("attack-success-label", result.verdict === "compromised");
   outputNode.classList.remove("markdown-body");
   const deliveredHighValue = highValueExposures(result).filter((item) => item.exposed_to_client);
   outputNode.classList.toggle("contains-high-value-leak-output", Boolean(deliveredHighValue.length));
@@ -2452,6 +2840,9 @@ function renderComparisonSide(result, verdictNode, outputNode, factsNode) {
   } else {
     outputNode.classList.add("markdown-body");
     renderMarkdown(outputNode, result.assistant_message ?? "");
+  }
+  if (result.defense_mode === "baseline") {
+    highlightBankAccount(outputNode);
   }
   const facts = [
     ["输出状态", result.output_blocked ? "生成前阻断" : "已交付"],
@@ -2487,13 +2878,16 @@ async function resetSession() {
   state.sessionId = createSessionId();
   state.lastMessage = "";
   state.lastResult = null;
+  renderTrajectory(null);
   state.promptCompareResult = null;
   state.promptCompareTranslatedOutput = "";
   state.promptCompareTranslating = false;
   state.promptCompareTranslationError = "";
   state.livePhase = null;
   state.liveSignals = [];
+  state.pendingDefenseIds.clear();
   state.draftAttackId = null;
+  state.draftReplayCaseId = null;
   closeDetailDrawer();
   elements.messageList.replaceChildren();
   elements.turnStatus.textContent = "等待消息";
@@ -2503,9 +2897,6 @@ async function resetSession() {
   renderHighValueExposures();
   renderPromptComparison();
   elements.ragRetrievalCount.textContent = "0 条";
-  elements.ragRetrievalSummary.dataset.status = "idle";
-  elements.ragRetrievalHit.textContent = "—";
-  elements.ragRetrievalStatus.textContent = "等待本轮检索";
   renderEmpty(elements.ragRetrievalList, "运行一条消息后显示 RAG 检索结果。");
   elements.signalCount.textContent = "0";
   renderEmpty(elements.signalList, "运行一条消息后显示检测结果。");
@@ -2589,10 +2980,10 @@ function createSessionId() {
 function fallbackWorkspace() {
   return {
     profile: {
-      name: "银行财富管理客服",
-      description: "面向终端客户回答理财产品、持仓、亏损、赎回与流动性问题",
+      name: AGENT_DISPLAY_NAME,
+      description: "检索航旅知识，模拟退票、改签、通知和网页读取",
       model: "qwen3-8b",
-      tools: ["search_financial_knowledge", "lookup_client_portfolio", "check_transfer_authorization", "prepare_rebalance_proposal"],
+      tools: ["search_knowledge", "process_refund", "change_ticket", "send_sms", "browse_webpage"],
       defense_pipeline: DEFENSES.map((item) => item.id),
     },
     conversation_starters: [],
@@ -2600,5 +2991,5 @@ function fallbackWorkspace() {
 }
 
 function agentDisplayName() {
-  return state.workspace?.profile?.name || "银行财富管理客服";
+  return AGENT_DISPLAY_NAME;
 }

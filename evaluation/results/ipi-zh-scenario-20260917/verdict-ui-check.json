@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "checks": [
+    "idle before execution",
+    "resisted does not claim detection",
+    "actual blocked response stays blocked",
+    "new replay clears previous risk"
+  ],
+  "method": "browser with saved real SSE results",
+  "errors": []
+}

@@ -1,0 +1,61 @@
+{
+  "status": "available",
+  "samples": 22260,
+  "splits": {
+    "val": 3972,
+    "train": 13228,
+    "test": 5060
+  },
+  "split_label_counts": {
+    "val:0": 2231,
+    "val:1": 1741,
+    "train:0": 8473,
+    "train:1": 4755,
+    "test:0": 2495,
+    "test:1": 2565
+  },
+  "label_definition": {
+    "0": "benign",
+    "1": "prompt_leakage"
+  },
+  "checkpoint": "/share/workspace/zyt/agent-guard-open/probe/qwen3-8b/prompt_leakage/best_probe.pt",
+  "checkpoint_sha256": "141414e1543807a26a343165903408046c438227a7b6e1503470c560964520c0",
+  "external_audits": {
+    "external_attack_audit.jsonl": 512,
+    "natural_safe_audit.jsonl": 395,
+    "reported_rag_tool_context.jsonl": 5,
+    "reported_short_audit.jsonl": 232
+  },
+  "files": [
+    {
+      "path": "prompt_leakage/all_samples.jsonl",
+      "sha256": "55c951c3f995e7b516ae7bf993e7f21a4da16bc7ad1efdefc062aa77425e5400",
+      "source": "/share/workspace/zyt/agent-guard-open/.runtime/leakage-toolctx-20260918/combined_data/all_samples.jsonl"
+    },
+    {
+      "path": "prompt_leakage/source_manifest.json",
+      "sha256": "c34f1af9c7af65909d98c02fc10ce06c2ef816ecd97ca13bc1a740d3a9f73656",
+      "source": "/share/workspace/zyt/agent-guard-open/.runtime/leakage-toolctx-20260918/combined_data/manifest.json"
+    },
+    {
+      "path": "prompt_leakage/external_audits/external_attack_audit.jsonl",
+      "sha256": "ad98110e68772e1da727bb2be582d8278ca8dd61bcc8b7265105d4e9103cf7a7",
+      "source": "/share/workspace/zyt/agent-guard/analysis/protected_asset_theft_v3_qwen35_2b/data/v3/external_audits/external_attack_audit.jsonl"
+    },
+    {
+      "path": "prompt_leakage/external_audits/natural_safe_audit.jsonl",
+      "sha256": "32118cd3d6f584484769787c61733b958e80f03aa4e6c15c49b3fd70f25d8e13",
+      "source": "/share/workspace/zyt/agent-guard/analysis/protected_asset_theft_v3_qwen35_2b/data/v3/external_audits/natural_safe_audit.jsonl"
+    },
+    {
+      "path": "prompt_leakage/external_audits/reported_rag_tool_context.jsonl",
+      "sha256": "104921cd8906cc636feae18210a21f23bc30b5103965cd3bea36cb808b65bf73",
+      "source": "/share/workspace/zyt/agent-guard-open/.runtime/leakage-toolctx-20260918/additions_data/external_audits/reported_rag_tool_context.jsonl"
+    },
+    {
+      "path": "prompt_leakage/external_audits/reported_short_audit.jsonl",
+      "sha256": "db2538b9b200fc472a11fd09dd1fb8873efee634bc1dfcd55696977b80e59719",
+      "source": "/share/workspace/zyt/agent-guard/analysis/protected_asset_theft_v3_qwen35_2b/data/v3/external_audits/reported_short_audit.jsonl"
+    }
+  ]
+}

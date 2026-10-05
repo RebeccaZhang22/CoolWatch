@@ -1,7 +1,7 @@
 const GUARDS = [
   ["inline_probing", "Inline Probe"],
   ["qwen3_guard", "Qwen3Guard"],
-  ["netease_yidun", "网易易盾文本安全护栏"],
+  ["netease_yidun", "某某易盾文本安全护栏"],
   ["no_guard", "No Guard"],
 ];
 
@@ -460,7 +460,7 @@ function guardOutputRows(result, key) {
   if (result.effective_position != null) rows.push(["Token 位置", `${result.effective_position}（捕获 index ${result.captured_token_index ?? "未知"}）`]);
   if (result.prompt_token_count != null) rows.push(["Prompt tokens", String(result.prompt_token_count)]);
   if (result.safety_label) rows.push(["安全标签", result.safety_label]);
-  if (result.suggestion != null) rows.push(["易盾建议码", String(result.suggestion)]);
+  if (result.suggestion != null) rows.push(["某某易盾建议码", String(result.suggestion)]);
   if (Array.isArray(result.categories) && result.categories.length) rows.push(["风险类别", result.categories.join("、")]);
   if (result.input_sha256) rows.push(["输入指纹", result.input_sha256]);
   if (result.error) rows.push(["错误信息", result.error]);

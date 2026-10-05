@@ -1,0 +1,87 @@
+{
+  "model": "qwen35-2b",
+  "hidden": 2048,
+  "n_layers": 24,
+  "layer_union": [
+    8,
+    15,
+    24
+  ],
+  "thresholds": {
+    "harmful": {
+      "strict": 0.9710211245774026,
+      "balanced": 0.9280345751631867,
+      "lenient": 0.8543850729894564
+    },
+    "ipi": {
+      "balanced": 0.5
+    },
+    "prompt_leakage": {
+      "balanced": 0.8209837546905241
+    }
+  },
+  "fusion": {
+    "harmful": "max",
+    "ipi": "single_broad_l7",
+    "prompt_leakage": "single_unified_v3"
+  },
+  "calibration": {
+    "harmful": "gaussian_cdf_on_cross_risk_neg_pool",
+    "ipi": "checkpoint_standardization_then_sigmoid",
+    "prompt_leakage": "checkpoint_standardization_layernorm_mlp_sigmoid"
+  },
+  "protocol": "Harmful HF24 T-1; IPI HF8 residual-sum T-3; prompt leakage HF15 residual-sum T-1",
+  "bank_version": "sha256:aa3be5d62f94bb355e1de89078c827e6d93deb64f16b09fed05e8e733fc1ed00",
+  "max_len": 16384,
+  "batching": {
+    "ready": true,
+    "active": 0,
+    "queued": 0,
+    "max_batch": 64,
+    "token_budget": 65536,
+    "max_inflight": 1024,
+    "wait_ms": 10.0,
+    "timeout_seconds": 60.0,
+    "batches": 27,
+    "completed": 27,
+    "rejected": 0,
+    "expired": 0,
+    "largest_batch": 1,
+    "largest_batch_tokens": 2888,
+    "last_batch_size": 1
+  },
+  "entries": [
+    {
+      "id": "harmful/m1",
+      "risk": "harmful",
+      "method": "linear_probe",
+      "layer_hf": 24,
+      "val_auroc": 0.9986111111111111
+    },
+    {
+      "id": "harmful/m2",
+      "risk": "harmful",
+      "method": "diff_in_means",
+      "layer_hf": 24,
+      "val_auroc": 0.9965277777777778
+    },
+    {
+      "id": "ipi/broad-l7",
+      "risk": "ipi",
+      "method": "linear_probe",
+      "layer_hf": 8,
+      "val_auroc": null,
+      "position": "T-3",
+      "checkpoint_id": "sha256:46a68d047148be0b6ccf485be3a55966937533adfb5b9c7c01e0984982a057b4"
+    },
+    {
+      "id": "prompt_leakage/unified-v3",
+      "risk": "prompt_leakage",
+      "method": "multilayer_mlp",
+      "layer_hf": 15,
+      "val_auroc": null,
+      "position": "T-1",
+      "checkpoint_id": "sha256:f49b1ce1ee2e1d743276484a3e99a52b01d157c2f75c39244f4e4d445eaf39dd"
+    }
+  ]
+}

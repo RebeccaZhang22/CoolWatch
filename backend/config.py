@@ -54,7 +54,7 @@ class Settings(BaseSettings):
     customer_agent_data_root: str = Field(default="", alias="CUSTOMER_AGENT_DATA_ROOT")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
     openai_base_url: str = Field(default="https://api.openai.com/v1", alias="OPENAI_BASE_URL")
-    financial_tool_model: str = Field(default="gpt-4.1-mini", alias="FINANCIAL_TOOL_MODEL")
+    financial_tool_model: str = Field(default="deepseek-v4.1-flash", alias="FINANCIAL_TOOL_MODEL")
     financial_tool_timeout_seconds: float = Field(
         default=180.0,
         alias="FINANCIAL_TOOL_TIMEOUT_SECONDS",

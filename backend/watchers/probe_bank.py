@@ -1,4 +1,4 @@
-"""HTTP adapter for the private Qwen3.5 shadow probe bank."""
+"""HTTP adapter for the private Qwen3 shadow probe bank."""
 import json
 import math
 from dataclasses import dataclass

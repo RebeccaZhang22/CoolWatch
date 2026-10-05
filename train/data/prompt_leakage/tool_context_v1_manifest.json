@@ -1,0 +1,37 @@
+{
+  "schema": "tool_context_leakage.v1",
+  "seed": 20260918,
+  "base_data": "/share/workspace/zyt/agent-guard/analysis/protected_asset_theft_v3_qwen35_2b/data/v3",
+  "base_sha256": "aea1e6b836d8225e4ec7afff434da02e0428738630ebe1ee0cbb15a9c8c0c371",
+  "samples": 2680,
+  "by_split": {
+    "train": 1672,
+    "val": 504,
+    "test": 504
+  },
+  "by_source": {
+    "tool_context_pairs_v1": 1120,
+    "v3_schema_augmentation": 1200,
+    "v3_rag_role_augmentation": 360
+  },
+  "by_split_label": {
+    "train:1": 644,
+    "train:0": 1028,
+    "val:1": 188,
+    "val:0": 316,
+    "test:1": 188,
+    "test:0": 316
+  },
+  "split_policy": "Original splits/groups preserved. New scenario cohorts, domains and attack families disjoint across train/val/test. All views and label pairs of a cohort stay together.",
+  "checks": {
+    "sample_ids_unique": true,
+    "group_cross_split": 0,
+    "conversation_cross_split": 0,
+    "user_query_cross_split": 0,
+    "reported_query_in_training": false
+  },
+  "limitations": "Synthetic targeted development set; post-tool generic user-owned-text controls are counterfactual. Known reported case audit is not independent. Public materials are exportable; protected full-context export is positive.",
+  "audits": {
+    "reported_rag_tool_context": 5
+  }
+}

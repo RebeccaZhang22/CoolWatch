@@ -1,0 +1,47 @@
+{
+  "payload": {
+    "overall": true,
+    "profile": "balanced",
+    "per_risk": {
+      "harmful": {
+        "score": 0.024652481104557346,
+        "threshold": 0.5213050763679168,
+        "flagged": false
+      },
+      "prompt_leakage": {
+        "score": 0.00042672476660742214,
+        "threshold": 0.9584907839148967,
+        "flagged": false
+      },
+      "ipi": {
+        "score": 0.9463668465614319,
+        "threshold": 0.91,
+        "flagged": true
+      }
+    },
+    "per_entry": {
+      "harmful/qwen3-8b": 0.024652481104557346,
+      "prompt_leakage/qwen3-8b": 0.00042672476660742214,
+      "ipi/broad-l22": 0.9463668465614319
+    },
+    "triggered_entries": [
+      "ipi/broad-l22"
+    ],
+    "detector_model": "qwen3-8b",
+    "bank_version": "sha256:755d80995f007185218237bf861e3c9982fae197849ba2b614eccad209b9823e",
+    "input_tokens": 4633,
+    "prefill_batch_sizes": [
+      1
+    ],
+    "latency_ms": {
+      "queue": 16.410935670137405,
+      "detect": 385.6449592858553,
+      "total": 402.0558949559927
+    },
+    "batch_size": 1,
+    "batch_tokens": 4633
+  },
+  "latency_ms": 404,
+  "error": null,
+  "status_code": 503
+}

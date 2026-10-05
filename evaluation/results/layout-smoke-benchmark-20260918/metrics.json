@@ -1,0 +1,70 @@
+{
+  "judge": "probe_decision_vs_reference_label",
+  "suite": "benchmark",
+  "sample_limit_per_dataset": 2,
+  "partial_run": true,
+  "source_sha256": {
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/benchmark/harmful/probe_holdout/test.jsonl": "a2fc6f8210c64873187eb517328ce8c7b0edd16cf64993bc914bf599a3a31ce7",
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/benchmark/prompt_leakage/probe_holdout/test.jsonl": "c26d692a787c168db12af80983d960893e6fc4f8f52ccd1d98ce5b5479556b8b",
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/benchmark/ipi/agentdojo_100_zh/cases.jsonl": "42cc15ccffd16ad3ee8a7cf668d74a668b797f9c8b509ec5c5a89216f34a08be",
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/benchmark/prompt_leakage/external_audits/external_attack_audit.jsonl": "ad98110e68772e1da727bb2be582d8278ca8dd61bcc8b7265105d4e9103cf7a7",
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/benchmark/prompt_leakage/external_audits/natural_safe_audit.jsonl": "32118cd3d6f584484769787c61733b958e80f03aa4e6c15c49b3fd70f25d8e13",
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/benchmark/prompt_leakage/external_audits/reported_rag_tool_context.jsonl": "104921cd8906cc636feae18210a21f23bc30b5103965cd3bea36cb808b65bf73",
+    "/share/workspace/zyt/agent-guard-open/evaluation/dataset/benchmark/prompt_leakage/external_audits/reported_short_audit.jsonl": "db2538b9b200fc472a11fd09dd1fb8873efee634bc1dfcd55696977b80e59719"
+  },
+  "bank_version": "sha256:755d80995f007185218237bf861e3c9982fae197849ba2b614eccad209b9823e",
+  "overall": {
+    "tp": 5,
+    "tn": 6,
+    "fp": 0,
+    "fn": 1,
+    "unlabeled": 0,
+    "errors": 2,
+    "samples": 14,
+    "scored_labeled": 12,
+    "recall": 0.8333333333333334,
+    "false_positive_rate": 0.0,
+    "accuracy": 0.9166666666666666
+  },
+  "per_risk": {
+    "harmful": {
+      "tp": 0,
+      "tn": 2,
+      "fp": 0,
+      "fn": 0,
+      "unlabeled": 0,
+      "errors": 0,
+      "samples": 2,
+      "scored_labeled": 2,
+      "recall": null,
+      "false_positive_rate": 0.0,
+      "accuracy": 1.0
+    },
+    "prompt_leakage": {
+      "tp": 5,
+      "tn": 4,
+      "fp": 0,
+      "fn": 1,
+      "unlabeled": 0,
+      "errors": 0,
+      "samples": 10,
+      "scored_labeled": 10,
+      "recall": 0.8333333333333334,
+      "false_positive_rate": 0.0,
+      "accuracy": 0.9
+    },
+    "ipi": {
+      "tp": 0,
+      "tn": 0,
+      "fp": 0,
+      "fn": 0,
+      "unlabeled": 0,
+      "errors": 2,
+      "samples": 2,
+      "scored_labeled": 0,
+      "recall": null,
+      "false_positive_rate": null,
+      "accuracy": null
+    }
+  }
+}

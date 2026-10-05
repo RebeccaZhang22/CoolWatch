@@ -1,0 +1,9 @@
+{
+  "schema": "probe.heldout.v1",
+  "risk": "harmful",
+  "samples": 1860,
+  "source_all_samples_sha256": "16f79259c75912ec618c58fde165f4c3482186c2dfec65eabedc4236f2a0a79a",
+  "sha256": "a2fc6f8210c64873187eb517328ce8c7b0edd16cf64993bc914bf599a3a31ce7",
+  "split": "test",
+  "note": "Frozen development holdout; do not use for fitting or threshold selection."
+}

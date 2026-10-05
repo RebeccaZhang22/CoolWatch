@@ -1,0 +1,277 @@
+{
+  "schema": "protected_asset_theft.tool_context.v1",
+  "samples": 22260,
+  "base_manifest": {
+    "schema": "protected_asset_theft.dataset.v3",
+    "dataset_id": "protected_asset_theft",
+    "version": "v3",
+    "seed": 42,
+    "label_definition": {
+      "0": "benign",
+      "1": "protected_asset_theft_intent"
+    },
+    "scope": [
+      "system_prompt",
+      "rag",
+      "cot",
+      "skill"
+    ],
+    "base_samples": 16298,
+    "upstream_candidates": 4300,
+    "upstream_accepted": 3282,
+    "excluded_reasons": {
+      "query_reused_across_upstream_clusters_keep_holdout": 981,
+      "duplicate_messages": 37
+    },
+    "splits": {
+      "train": {
+        "samples": 11556,
+        "split": {
+          "train": 11556
+        },
+        "label": {
+          "0": 7445,
+          "1": 4111
+        },
+        "category": {
+          "system_prompt": 2293,
+          "rag": 2453,
+          "cot": 1482,
+          "skill": 1370,
+          "natural_safe": 3958
+        },
+        "language": {
+          "zh": 4811,
+          "en": 6745
+        },
+        "source": {
+          "topic_matched_minimal_pair_v2": 3744,
+          "agent_guard_localized_raccoon": 600,
+          "probing_leak_intents_ra_singular": 600,
+          "raccoonbench_original_supplement": 24,
+          "natural_safe_training_v1": 3104,
+          "protected_natural_calibration_v1": 640,
+          "finvault_official_normal_training": 214,
+          "short_conversational_theft_pairs_v1": 712,
+          "zhuanli_leakgauge_sys_leak": 835,
+          "zhuanli_leakgauge_rag_leak": 1083
+        }
+      },
+      "val": {
+        "samples": 3468,
+        "split": {
+          "val": 3468
+        },
+        "label": {
+          "0": 1915,
+          "1": 1553
+        },
+        "category": {
+          "system_prompt": 942,
+          "rag": 898,
+          "cot": 572,
+          "skill": 572,
+          "natural_safe": 484
+        },
+        "language": {
+          "zh": 1386,
+          "en": 2082
+        },
+        "source": {
+          "topic_matched_minimal_pair_v2": 1728,
+          "agent_guard_localized_raccoon": 216,
+          "probing_leak_intents_ra_singular": 216,
+          "natural_safe_training_v1": 416,
+          "protected_natural_calibration_v1": 68,
+          "short_conversational_theft_pairs_v1": 128,
+          "zhuanli_leakgauge_sys_leak": 370,
+          "zhuanli_leakgauge_rag_leak": 326
+        }
+      },
+      "test": {
+        "samples": 4556,
+        "split": {
+          "test": 4556
+        },
+        "label": {
+          "0": 2179,
+          "1": 2377
+        },
+        "category": {
+          "system_prompt": 1365,
+          "rag": 1247,
+          "cot": 972,
+          "skill": 972
+        },
+        "language": {
+          "zh": 1944,
+          "en": 2612
+        },
+        "source": {
+          "topic_matched_minimal_pair_v2": 2880,
+          "agent_guard_localized_raccoon": 504,
+          "probing_leak_intents_ra_singular": 240,
+          "raccoonbench_original_supplement": 264,
+          "zhuanli_leakgauge_sys_leak": 393,
+          "zhuanli_leakgauge_rag_leak": 275
+        }
+      }
+    },
+    "upstream_accepted_counts": {
+      "samples": 3282,
+      "split": {
+        "train": 1918,
+        "test": 668,
+        "val": 696
+      },
+      "label": {
+        "0": 1169,
+        "1": 2113
+      },
+      "category": {
+        "system_prompt": 1598,
+        "rag": 1684
+      },
+      "language": {
+        "en": 3282
+      },
+      "source": {
+        "zhuanli_leakgauge_sys_leak": 1598,
+        "zhuanli_leakgauge_rag_leak": 1684
+      }
+    },
+    "external_audits": {
+      "external_attack_audit.jsonl": {
+        "samples": 512,
+        "split": {
+          "test": 512
+        },
+        "label": {
+          "1": 256,
+          "0": 256
+        },
+        "category": {
+          "system_prompt": 128,
+          "rag": 128,
+          "cot": 128,
+          "skill": 128
+        },
+        "language": {
+          "zh": 328,
+          "en": 184
+        },
+        "source": {
+          "manual_external_audit_v2": 512
+        }
+      },
+      "natural_safe_audit.jsonl": {
+        "samples": 395,
+        "split": {
+          "test": 395
+        },
+        "label": {
+          "0": 395
+        },
+        "category": {
+          "natural_safe": 395
+        },
+        "language": {
+          "zh": 120,
+          "en": 275
+        },
+        "source": {
+          "frozen_natural_safe_audit_v1": 240,
+          "finvault_external_normal_v1": 155
+        }
+      },
+      "reported_short_audit.jsonl": {
+        "samples": 232,
+        "split": {
+          "test": 232
+        },
+        "label": {
+          "1": 104,
+          "0": 128
+        },
+        "category": {
+          "system_prompt": 80,
+          "rag": 48,
+          "cot": 48,
+          "skill": 56
+        },
+        "language": {
+          "zh": 128,
+          "en": 104
+        },
+        "source": {
+          "frozen_user_reported_theft_audit_v1": 232
+        }
+      }
+    },
+    "split_policy": "v2 splits frozen; upstream category-cluster split via build_splits(seed=42); filter query conflicts, prefer held-out split for upstream query reuse; external audits excluded from training and selection",
+    "checks": {
+      "sample_ids_unique": true,
+      "query_cross_split_count": 0,
+      "group_cross_split_count": 0,
+      "exact_pair_cross_split_count": 0
+    },
+    "source_sha256": {
+      "/share/workspace/zyt/agent-guard/data/activation_probe/protected_asset_theft/v2/all_samples.jsonl": "1eb9de11507fa3b8c1c87fc0470936b1bed17e62dbd414ecccb402e4b5d8ef8d",
+      "/ssd/workspace/djs/zhuanli/framework/safety_probe/common.py": "6c5870b0e9d4a2de35d915de3cde92c78bbac973aa92503fc7516e20201f8dc4",
+      "/ssd/workspace/djs/zhuanli/framework/safety_probe/build_datasets.py": "799d575147d2ed620144fe4d1d87a39356318ab26c495f8655e8a6fa14695dfc",
+      "/share/workspace/zyt/agent-guard/data/activation_probe/protected_asset_theft/v2/external_audits/external_attack_audit.jsonl": "ad98110e68772e1da727bb2be582d8278ca8dd61bcc8b7265105d4e9103cf7a7",
+      "/share/workspace/zyt/agent-guard/data/activation_probe/protected_asset_theft/v2/external_audits/natural_safe_audit.jsonl": "32118cd3d6f584484769787c61733b958e80f03aa4e6c15c49b3fd70f25d8e13",
+      "/share/workspace/zyt/agent-guard/data/activation_probe/protected_asset_theft/v2/external_audits/reported_short_audit.jsonl": "db2538b9b200fc472a11fd09dd1fb8873efee634bc1dfcd55696977b80e59719",
+      "/ssd/workspace/djs/zhuanli/data/sys_leak/samples.jsonl": "d019437f75b3b33c20a4fb252ff94c61f5becee01042b6ca1b2fc598c1c4c604",
+      "/ssd/workspace/djs/zhuanli/data/rag_leak/samples.jsonl": "c194503a9145a6cea0e10ce0aae9c2ddf5ad1b357315217b160dd78587e82197"
+    }
+  },
+  "additions_manifest": {
+    "schema": "tool_context_leakage.v1",
+    "seed": 20260918,
+    "base_data": "/share/workspace/zyt/agent-guard/analysis/protected_asset_theft_v3_qwen35_2b/data/v3",
+    "base_sha256": "aea1e6b836d8225e4ec7afff434da02e0428738630ebe1ee0cbb15a9c8c0c371",
+    "samples": 2680,
+    "by_split": {
+      "train": 1672,
+      "val": 504,
+      "test": 504
+    },
+    "by_source": {
+      "tool_context_pairs_v1": 1120,
+      "v3_schema_augmentation": 1200,
+      "v3_rag_role_augmentation": 360
+    },
+    "by_split_label": {
+      "train:1": 644,
+      "train:0": 1028,
+      "val:1": 188,
+      "val:0": 316,
+      "test:1": 188,
+      "test:0": 316
+    },
+    "split_policy": "Original splits/groups preserved. New scenario cohorts, domains and attack families disjoint across train/val/test. All views and label pairs of a cohort stay together.",
+    "checks": {
+      "sample_ids_unique": true,
+      "group_cross_split": 0,
+      "conversation_cross_split": 0,
+      "user_query_cross_split": 0,
+      "reported_query_in_training": false
+    },
+    "limitations": "Synthetic targeted development set; post-tool generic user-owned-text controls are counterfactual. Known reported case audit is not independent. Public materials are exportable; protected full-context export is positive.",
+    "audits": {
+      "reported_rag_tool_context": 5
+    }
+  },
+  "by_split": {
+    "val": 3972,
+    "train": 13228,
+    "test": 5060
+  },
+  "by_label": {
+    "0": 13199,
+    "1": 9061
+  },
+  "reuse_check": "Every legacy rendered prompt is byte-identical; model, layer, dtype, config hash and library versions match.",
+  "selection": "Validation only, FPR <= 2% overall and separately by stage. Original test/audits and known regression excluded from selection."
+}

@@ -1,0 +1,37 @@
+{
+  "schema": "scenario.audit_dataset.v1",
+  "meaning": "User-constructed scenario tests, not claims of naturally occurring attacks.",
+  "label_policy": "rag_export_is_leakage_v1; public/synthetic status is not an exemption",
+  "source_sha256": {
+    "data/financial_agent/agent/system_prompt.md": "79f4d9a1141cb100d8b2008267ce1e1aa711144e93145c2f7b4cf268eeb9cd78",
+    "data/financial_agent/tools/definitions.json": "312e150bc6752bd14a9e13ff4e270f13ddc968503d2a6e9d1c1b72b4cb450e42",
+    "data/financial_agent/conversation_starters.json": "138dafbc632a38bb0b3caeb00f206cf99412e6f2ee82796ad3ef4a12b188bc4d",
+    "data/financial_agent/attacks/catalog.json": "a9aa1e7b2bd355fac990c9684c203751f315cd2b49074d0fb26eb00cfc0e411a",
+    "data/ipi_replay/agentdyn-zh-balance-transfer.json": "a2c8d64353f54f37bb15bc68c9872bbbc42da6d67f5b03995437aa1517734ca8"
+  },
+  "risks": {
+    "harmful": {
+      "samples": 3,
+      "labels": {
+        "0": 3
+      },
+      "sha256": "3ab8b683a285181da6cd344200c6d3863f8d588b098201dd6f5a574ad6fe2209"
+    },
+    "prompt_leakage": {
+      "samples": 7,
+      "labels": {
+        "0": 3,
+        "1": 4
+      },
+      "sha256": "d804763c32b2c5eb6d5dd86e065a8bae372ddd1d28382c5e1e766fe2dc492901"
+    },
+    "ipi": {
+      "samples": 5,
+      "labels": {
+        "0": 4,
+        "1": 1
+      },
+      "sha256": "74b57218954c4bed1cb89d5ee576b38b21de5d77f62bc0871e42c1371f757872"
+    }
+  }
+}

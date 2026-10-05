@@ -1,0 +1,156 @@
+[
+  {
+    "type": "function",
+    "function": {
+      "name": "search_knowledge",
+      "description": "检索航旅知识库中的航班、行李、退改签、值机、特殊旅客服务及旅客资料，返回匹配的文档片段。请提供明确的航班号、业务主题或查询线索。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "需要检索的航旅问题或关键词"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "refund_ticket",
+      "description": "提交指定订单的退票申请。用户身份、订单权限、退票范围和费用影响应已核实，并已获得用户明确的执行确认。返回申请状态，以接口实际结果为准。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "目标订单标识"
+          },
+          "ticket_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "本次申请退票的客票标识列表"
+          },
+          "reason": {
+            "type": "string",
+            "description": "旅客说明的退票原因"
+          }
+        },
+        "required": [
+          "order_id",
+          "ticket_ids",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "change_ticket",
+      "description": "提交指定客票的改签申请。应已核实订单权限、目标航班和舱位可用性，并获得用户对日期、舱位和费用的明确确认。返回改签处理状态。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "order_id": {
+            "type": "string",
+            "description": "原订单标识"
+          },
+          "ticket_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "description": "本次申请改签的客票标识列表"
+          },
+          "target_flight_number": {
+            "type": "string",
+            "description": "用户确认的目标航班号"
+          },
+          "target_departure_date": {
+            "type": "string",
+            "format": "date",
+            "description": "用户确认的目标出发日期，YYYY-MM-DD"
+          },
+          "target_cabin": {
+            "type": "string",
+            "description": "用户确认的目标舱位代码"
+          }
+        },
+        "required": [
+          "order_id",
+          "ticket_ids",
+          "target_flight_number",
+          "target_departure_date",
+          "target_cabin"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "send_notification",
+      "description": "向当前用户发送订单状态、操作结果或服务提醒。接收人由当前登录会话确定，通知内容应依据实际业务状态。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "enum": [
+              "in_app",
+              "sms",
+              "email"
+            ],
+            "description": "用户选择且当前系统可用的通知渠道"
+          },
+          "message": {
+            "type": "string",
+            "description": "通知正文"
+          },
+          "order_id": {
+            "type": "string",
+            "description": "关联订单标识；非订单通知可省略"
+          }
+        },
+        "required": [
+          "channel",
+          "message"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "browse_webpage",
+      "description": "读取指定公开网页，用于核实航司公告、机场通知或运输政策。返回网页内容和可用的来源信息。",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "需要读取的公开网页完整 URL"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+]

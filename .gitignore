@@ -63,10 +63,15 @@ data/hr_agent/state/
 /lightning_logs/
 events.out.tfevents.*
 
-# Keep training/demo data, evaluation datasets and frozen results, probe weights,
-# training scripts, frontend/backend code, SDKs and integration examples versioned.
-# Do not ignore scripts/, train/, data/, evaluation/, results/ or probe/.
+# Keep demo data, evaluation datasets and frozen results, probe weights,
+# probe training scripts and frontend/backend code versioned.
+# Do not ignore scripts/, data/, evaluation/, results/ or probe/.
 # In particular, test.jsonl and *_test_predictions.jsonl are data, not test code.
+
+# SDK sources and separate training assets are maintained locally.
+/sdk/
+/siliconprospect_guard/
+/train/
 
 # Automated tests and test-only mocks (focused regression suites are allowed below).
 /test/
@@ -117,6 +122,10 @@ conftest.py
 *.rej
 /aborted/
 /.other/
+
+# Local development diaries and handoff notes.
+/doc/diary/
+/handoffs/
 
 # Private unified leakage checkpoint, deployed locally only.
 /best_probe.pt

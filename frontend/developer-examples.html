@@ -33,13 +33,13 @@
 
       <h2 class="example-heading" id="python-sdk">2. 安装并使用 Python SDK</h2>
       <p class="example-description">SDK 支持 Python 3.10 及以上版本，可安装到你的 Conda 或其他 Python 环境中。安装完成后，你的 Agent 可以在自己的服务器上调用远程检测服务，无需安装模型或 Probe 权重。</p>
-      <p class="help-note">当前版本尚未发布到 PyPI，请使用源码或已获取的 .whl 安装包安装。安装名为 <code>siliconprospect-guard</code>，Python 导入名为 <code>siliconprospect_guard</code>。</p>
+      <p class="help-note">当前版本尚未发布到 PyPI，SDK 源码需单独获取，也可使用已获取的 .whl 安装包。安装名为 <code>siliconprospect-guard</code>，Python 导入名为 <code>siliconprospect_guard</code>。</p>
       <h3 class="example-heading">从源码安装</h3>
-      <p class="example-description">先激活运行 Agent 的环境。将 <code>your-env</code> 替换为环境名，将源码路径替换为你机器上实际的项目路径；在任意目录都可以执行。未使用 Conda 时，省略第一行。</p>
+      <p class="example-description">先获取完整 SDK 源码并激活运行 Agent 的环境。将 <code>your-env</code> 替换为环境名，将源码路径替换为 SDK 源码包的实际路径；在任意目录都可以执行。未使用 Conda 时，省略第一行。</p>
       <article class="code-sample">
         <header><span>Shell</span><button type="button" data-copy-code="installExample">复制代码</button></header>
         <pre><code id="installExample">conda activate your-env
-python -m pip install /path/to/agent-guard-open</code></pre>
+python -m pip install /path/to/sdk-source</code></pre>
       </article>
       <details>
         <summary class="example-heading">使用 .whl 安装包安装</summary>

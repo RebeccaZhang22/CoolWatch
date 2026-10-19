@@ -2,7 +2,7 @@
 
 独立实现，基于 **官方 SGLang 0.5.19 wheel**，通过校验过的源码补丁加入采集通路。不调用原项目的 `sglang_fe` / `sglang_det`，不使用 forward hooks 或落盘中转，不修改原来的 SGLang 安装。服务可以混合处理不同层、不同位置及不采集的并发请求。
 
-改动原理、并发处理和 probe 接入过程见 [实现说明](../doc/diary/2026-10-12-sglang-activation-capture.md)。
+改动原理与并发处理见下文“并发与性能设计”，probe 接入见[部署说明](deploy/README.md)。
 
 ## 启动
 

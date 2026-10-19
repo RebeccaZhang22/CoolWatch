@@ -99,7 +99,7 @@ class RetrievedDocument:
     decision: str
     matched_terms: tuple[str, ...] = ()
     token_count: int = 0
-    retriever: Literal["bm25_okapi"] = "bm25_okapi"
+    retriever: Literal["bm25_okapi", "bm25_positive_idf"] = "bm25_okapi"
 
 
 class Bm25KnowledgeRetriever:

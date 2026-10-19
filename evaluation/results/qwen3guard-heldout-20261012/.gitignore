@@ -1,0 +1,7 @@
+dataset/
+predictions.jsonl
+pilot_ids.json
+*.pid
+*.pgid
+run.lock
+*.tmp

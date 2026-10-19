@@ -1,0 +1,516 @@
+--- a/sglang/srt/entrypoints/engine.py
++++ b/sglang/srt/entrypoints/engine.py
+@@ -421,6 +421,7 @@
+         session_id: Optional[str] = None,
+         *,
+         cache_salt: Optional[Union[List[str], str]] = None,
++        activation_capture: Optional[Union[Dict, List[Optional[Dict]]]] = None,
+     ) -> Union[Dict, Iterator[Dict]]:
+         """
+         The arguments of this function is the same as `sglang/srt/managers/io_struct.py::GenerateReqInput`.
+@@ -448,6 +449,7 @@
+             custom_logit_processor=custom_logit_processor,
+             require_reasoning=require_reasoning,
+             return_hidden_states=return_hidden_states,
++            activation_capture=activation_capture,
+             return_routed_experts=return_routed_experts,
+             routed_experts_start_len=routed_experts_start_len,
+             stream=stream,
+@@ -534,6 +536,7 @@
+         session_id: Optional[str] = None,
+         *,
+         cache_salt: Optional[Union[List[str], str]] = None,
++        activation_capture: Optional[Union[Dict, List[Optional[Dict]]]] = None,
+     ) -> Union[Dict, AsyncIterator[Dict]]:
+         """
+         The arguments of this function is the same as `sglang/srt/managers/io_struct.py::GenerateReqInput`.
+@@ -560,6 +563,7 @@
+             lora_path=lora_path,
+             require_reasoning=require_reasoning,
+             return_hidden_states=return_hidden_states,
++            activation_capture=activation_capture,
+             return_routed_experts=return_routed_experts,
+             routed_experts_start_len=routed_experts_start_len,
+             stream=stream,
+--- a/sglang/srt/entrypoints/openai/protocol.py
++++ b/sglang/srt/entrypoints/openai/protocol.py
+@@ -350,6 +350,7 @@
+     top_p: float = 1.0
+     user: Optional[str] = None
+     return_hidden_states: Union[bool, Literal["last"]] = False
++    activation_capture: Optional[Dict[str, Any]] = None
+     return_routed_experts: bool = False
+     routed_experts_start_len: int = 0
+     return_cached_tokens_details: bool = False
+@@ -456,12 +457,15 @@
+     finish_reason: Optional[Literal["stop", "length", "content_filter", "abort"]] = None
+     matched_stop: Union[None, int, str] = None
+     hidden_states: Optional[object] = None
++    activations: Optional[Dict[str, Any]] = None
+     token_ids: Optional[List[int]] = None
+     prompt_token_ids: Optional[List[int]] = None
+ 
+     @model_serializer(mode="wrap")
+     def _serialize(self, handler):
+         data = handler(self)
++        if self.activations is None:
++            data.pop("activations", None)
+         if self.hidden_states is None:
+             data.pop("hidden_states", None)
+         if self.token_ids is None:
+@@ -496,12 +500,15 @@
+     finish_reason: Optional[Literal["stop", "length", "content_filter", "abort"]] = None
+     matched_stop: Union[None, int, str] = None
+     hidden_states: Optional[object] = None
++    activations: Optional[Dict[str, Any]] = None
+     token_ids: Optional[List[int]] = None
+     prompt_token_ids: Optional[List[int]] = None
+ 
+     @model_serializer(mode="wrap")
+     def _serialize(self, handler):
+         data = handler(self)
++        if self.activations is None:
++            data.pop("activations", None)
+         if self.hidden_states is None:
+             data.pop("hidden_states", None)
+         if self.token_ids is None:
+@@ -858,6 +865,7 @@
+     )  # noqa
+     parallel_tool_calls: bool = True
+     return_hidden_states: Union[bool, Literal["last"]] = False
++    activation_capture: Optional[Dict[str, Any]] = None
+     return_routed_experts: bool = False
+     routed_experts_start_len: int = 0
+     return_cached_tokens_details: bool = False
+@@ -1191,6 +1199,7 @@
+     ] = None
+     matched_stop: Union[None, int, str] = None
+     hidden_states: Optional[object] = None
++    activations: Optional[Dict[str, Any]] = None
+     prompt_token_ids: Optional[List[int]] = None
+     response_token_ids: Optional[List[int]] = None
+     meta_info: Optional[Dict[str, Any]] = None
+@@ -1198,6 +1207,8 @@
+     @model_serializer(mode="wrap")
+     def _serialize(self, handler):
+         data = handler(self)
++        if self.activations is None:
++            data.pop("activations", None)
+         if self.hidden_states is None:
+             data.pop("hidden_states", None)
+         if self.prompt_token_ids is None:
+@@ -1233,10 +1244,13 @@
+     reasoning_content: Optional[str] = None
+     tool_calls: Optional[List[ToolCall]] = Field(default=None, examples=[None])
+     hidden_states: Optional[object] = None
++    activations: Optional[Dict[str, Any]] = None
+ 
+     @model_serializer(mode="wrap")
+     def _serialize(self, handler):
+         data = handler(self)
++        if self.activations is None:
++            data.pop("activations", None)
+         if self.hidden_states is None:
+             data.pop("hidden_states", None)
+         return data
+--- a/sglang/srt/entrypoints/openai/serving_chat.py
++++ b/sglang/srt/entrypoints/openai/serving_chat.py
+@@ -1069,6 +1069,7 @@
+             routed_dp_rank=effective_routed_dp_rank,
+             disagg_prefill_dp_rank=request.disagg_prefill_dp_rank,
+             return_hidden_states=request.return_hidden_states,
++            activation_capture=request.activation_capture,
+             return_routed_experts=request.return_routed_experts,
+             routed_experts_start_len=request.routed_experts_start_len,
+             rid=request.rid,
+@@ -1594,6 +1595,13 @@
+                 )
+                 cached_tokens[index] = content["meta_info"].get("cached_tokens", 0)
+                 hidden_states[index] = content["meta_info"].get("hidden_states", None)
++                activation_delta = content["meta_info"].get("activations")
++                if activation_delta and activation_delta["chunks"]:
++                    activation_chunk = ChatCompletionStreamResponse(
++                        id=content["meta_info"]["id"], created=int(time.time()),
++                        model=request.model, choices=[ChatCompletionResponseStreamChoice(
++                            index=index, delta=DeltaMessage(activations=activation_delta))])
++                    yield f"data: {activation_chunk.model_dump_json()}\n\n"
+                 routed_experts[index] = content["meta_info"].get("routed_experts", None)
+                 cached_tokens_details[index] = content["meta_info"].get(
+                     "cached_tokens_details", None
+@@ -1971,6 +1979,7 @@
+                     else None
+                 ),
+                 hidden_states=hidden_states,
++                activations=ret_item["meta_info"].get("activations"),
+                 prompt_token_ids=choice_prompt_token_ids,
+                 response_token_ids=choice_token_ids,
+                 meta_info=choice_meta_info,
+--- a/sglang/srt/entrypoints/openai/serving_completions.py
++++ b/sglang/srt/entrypoints/openai/serving_completions.py
+@@ -126,6 +126,7 @@
+             routed_dp_rank=effective_routed_dp_rank,
+             disagg_prefill_dp_rank=request.disagg_prefill_dp_rank,
+             return_hidden_states=request.return_hidden_states,
++            activation_capture=request.activation_capture,
+             return_routed_experts=request.return_routed_experts,
+             routed_experts_start_len=request.routed_experts_start_len,
+             return_prompt_token_ids=request.return_token_ids,
+@@ -370,6 +371,7 @@
+                 choice_data = CompletionResponseStreamChoice(
+                     index=index,
+                     text=delta,
++                    activations=content["meta_info"].get("activations"),
+                     logprobs=logprobs,
+                     finish_reason=finish_reason_type,
+                     matched_stop=(
+@@ -612,6 +614,7 @@
+                     else None
+                 ),
+                 hidden_states=hidden_states,
++                activations=ret_item["meta_info"].get("activations"),
+                 token_ids=(
+                     ret_item["output_ids"] if request.return_token_ids else None
+                 ),
+--- a/sglang/srt/layers/communicator.py
++++ b/sglang/srt/layers/communicator.py
+@@ -886,6 +886,9 @@
+     def should_fuse_mlp_allreduce_with_next_layer(
+         self, forward_batch: ForwardBatch
+     ) -> bool:
++        from sglang.srt.activation_capture.spec import enabled as activation_enabled
++        if activation_enabled():
++            return False
+         # When MOE_FULL is active (moe_cp allgather), fusion must be disabled because
+         # the fusion path skips postprocess_layer which contains the moe_cp scatter.
+         # Without scatter, hidden_states remain at MOE_FULL size while residual is at
+--- a/sglang/srt/layers/logits_processor.py
++++ b/sglang/srt/layers/logits_processor.py
+@@ -232,6 +232,7 @@
+ 
+     # Scheduler-local output copied alongside the ordinary generation result.
+     auxiliary_device_output: Optional[DeviceAuxiliaryOutput] = None
++    activation_device_output: Optional[object] = None
+ 
+ 
+ @dataclasses.dataclass
+--- a/sglang/srt/managers/detokenizer_manager.py
++++ b/sglang/srt/managers/detokenizer_manager.py
+@@ -495,6 +495,7 @@
+             output_token_sampling_mask=recv_obj.output_token_sampling_mask,
+             output_token_sampling_logprobs=recv_obj.output_token_sampling_logprobs,
+             output_hidden_states=recv_obj.output_hidden_states,
++            activation_outputs=recv_obj.activation_outputs,
+             routed_experts=routed_experts,
+             indexer_topk=indexer_topk,
+             customized_info=recv_obj.customized_info,
+--- a/sglang/srt/managers/io_struct.py
++++ b/sglang/srt/managers/io_struct.py
+@@ -244,6 +244,7 @@
+     stream: bool = False
+     # Whether to log metrics for this request (e.g. health_generate calls do not log metrics)
+     log_metrics: bool = True
++    activation_capture: Optional[Union[Dict, List[Optional[Dict]]]] = None
+     # Whether to return hidden states
+     return_hidden_states: Union[
+         List[ReturnHiddenStatesMode], ReturnHiddenStatesMode
+@@ -557,6 +558,12 @@
+         self._normalize_sampling_params(num)
+         self._normalize_logprob_params(num)
+         self._normalize_return_hidden_states(num)
++        if isinstance(self.activation_capture, list):
++            if len(self.activation_capture) != self.batch_size:
++                raise ValueError("activation_capture list must match batch size")
++            self.activation_capture = self.activation_capture * self.parallel_sample_num
++        else:
++            self.activation_capture = [self.activation_capture] * num
+         self._normalize_custom_logit_processor(num)
+         self._normalize_extra_key(num)
+         self._normalize_cache_salt(num)
+@@ -907,6 +914,7 @@
+             return_flat_raw_top_logprobs_b64=self.return_flat_raw_top_logprobs_b64,
+             stream=self.stream,
+             log_metrics=self.log_metrics,
++            activation_capture=(self.activation_capture[i] if isinstance(self.activation_capture, list) else self.activation_capture),
+             return_hidden_states=(
+                 self.return_hidden_states[i]
+                 if isinstance(self.return_hidden_states, list)
+@@ -997,6 +1005,7 @@
+     # tokenizer-manager-side: the scheduler ships arrays either way.
+     return_flat_raw_top_logprobs: bool = False
+ 
++    activation_capture: Optional[Union[Dict, List[Optional[Dict]]]] = None
+     # Whether to return hidden states
+     return_hidden_states: ReturnHiddenStatesMode = False
+ 
+@@ -1465,6 +1474,7 @@
+ 
+     # Hidden states
+     output_hidden_states: OutputHiddenStates
++    activation_outputs: Optional[List] = None
+ 
+     # Per-request routed experts (input + output tokens), shape
+     # (token, layer, top_k). DetokenizerManager encodes to base64 into
+@@ -1563,6 +1573,7 @@
+ 
+     # Hidden states
+     output_hidden_states: OutputHiddenStates
++    activation_outputs: Optional[List] = None
+ 
+     # Per-request routed experts, base64-encoded by DetokenizerManager off the
+     # tokenizer hot path. Underlying tensor shape is (token, layer, top_k);
+--- a/sglang/srt/managers/schedule_batch.py
++++ b/sglang/srt/managers/schedule_batch.py
+@@ -926,6 +926,7 @@
+         custom_logit_processor: Optional[str] = None,
+         require_reasoning: bool = False,
+         return_hidden_states: ReturnHiddenStatesMode = False,
++        activation_capture: Optional[Dict] = None,
+         return_routed_experts: bool = False,
+         routed_experts_start_len: int = 0,
+         return_indexer_topk: bool = False,
+@@ -1010,6 +1011,7 @@
+         self.sampling_params = sampling_params
+         self.custom_logit_processor = custom_logit_processor
+         self.return_hidden_states = return_hidden_states
++        self.activation_capture = activation_capture
+         self.return_hidden_states_mode = get_return_hidden_states_mode(
+             return_hidden_states
+         )
+@@ -1420,6 +1422,9 @@
+         # avoiding an O(context) copy per prefill-batch build.
+         token_ids_to_match = self.full_untruncated_fill_ids
+         key_limit: Optional[int] = self._compute_max_prefix_len(input_len)
++        if self.activation_capture is not None:
++            from sglang.srt.activation_capture.spec import prefix_limit
++            key_limit = prefix_limit(self, key_limit)
+ 
+         # SWA lives in a per-request ring that's not content-stable and is never
+         # stored in the radix tree, so a reused prefix carries stale SWA. Cap the
+--- a/sglang/srt/managers/scheduler.py
++++ b/sglang/srt/managers/scheduler.py
+@@ -2629,6 +2629,7 @@
+                 custom_logit_processor=recv_req.custom_logit_processor,
+                 require_reasoning=recv_req.require_reasoning,
+                 return_hidden_states=recv_req.return_hidden_states,
++                activation_capture=recv_req.activation_capture,
+                 return_routed_experts=recv_req.return_routed_experts,
+                 routed_experts_start_len=recv_req.routed_experts_start_len,
+                 return_indexer_topk=recv_req.return_indexer_topk,
+@@ -4298,7 +4299,7 @@
+         logits_output = result.logits_output
+         if (
+             logits_output is None
+-            or logits_output.auxiliary_device_output is None
++            or (logits_output.auxiliary_device_output is None and logits_output.activation_device_output is None)
+             or result.auxiliary_host_output is not None
+         ):
+             return
+--- a/sglang/srt/managers/scheduler_components/output_streamer.py
++++ b/sglang/srt/managers/scheduler_components/output_streamer.py
+@@ -14,6 +14,7 @@
+ import torch
+ import zmq
+ 
++from sglang.srt.activation_capture.runtime import drain as drain_activations
+ from sglang.srt.beam_search.output import (
+     beam_completion_tokens,
+     pack_beam_search_output,
+@@ -752,6 +753,7 @@
+             output_token_sampling_mask=self.output_token_sampling_mask,
+             output_token_sampling_logprobs=self.output_token_sampling_logprobs,
+             output_hidden_states=self.output_hidden_states,
++            activation_outputs=[drain_activations(req) for req in self.output_reqs],
+             routed_experts=self.routed_experts,
+             indexer_topk=self.indexer_topk,
+             customized_info=(
+--- a/sglang/srt/managers/tokenizer_manager.py
++++ b/sglang/srt/managers/tokenizer_manager.py
+@@ -1225,6 +1225,18 @@
+         # Validate generation-specific fields
+         if isinstance(obj, GenerateReqInput):
+             self._validate_token_ids_logprob(obj)
++            if obj.activation_capture is not None:
++                from sglang.srt.activation_capture.spec import validate
++                if obj.image_data or obj.audio_data or obj.video_data or obj.session_params or obj.session_id:
++                    raise ValueError("activation capture currently accepts text-only, non-session requests")
++                if obj.sampling_params.get("beam_width", 1) > 1:
++                    raise ValueError("activation capture does not support beam search")
++                config = self.model_config.hf_config
++                config = getattr(config, "text_config", config)
++                obj.activation_capture = validate(
++                    obj.activation_capture, num_layers=config.num_hidden_layers,
++                    hidden_size=config.hidden_size, prompt_len=input_token_num,
++                    max_new_tokens=(obj.sampling_params.get("max_new_tokens") if obj.sampling_params.get("max_new_tokens") is not None else self.context_len))
+             requested_hidden_mode = get_request_return_hidden_states_mode(
+                 obj.return_hidden_states
+             )
+@@ -1401,6 +1413,7 @@
+                 custom_logit_processor=obj.custom_logit_processor,
+                 require_reasoning=obj.require_reasoning,
+                 return_hidden_states=obj.return_hidden_states,
++                activation_capture=obj.activation_capture,
+                 return_routed_experts=obj.return_routed_experts,
+                 routed_experts_start_len=obj.routed_experts_start_len,
+                 return_indexer_topk=obj.return_indexer_topk,
+@@ -2302,6 +2315,13 @@
+                 if video_tokens_list and video_tokens_list[i]:
+                     meta_info["video_tokens"] = video_tokens_list[i]
+ 
++            if getattr(recv_obj, "activation_outputs", None) is not None:
++                chunks = recv_obj.activation_outputs[i]
++                if chunks is not None:
++                    from sglang.srt.activation_capture.runtime import response
++                    activations = response(chunks, state, recv_obj.finished_reasons[i] is not None)
++                    if activations is not None:
++                        meta_info["activations"] = activations
+             if getattr(recv_obj, "output_hidden_states", None):
+                 hidden_states = recv_obj.output_hidden_states[i]
+                 if hidden_states is not None:
+--- a/sglang/srt/managers/utils.py
++++ b/sglang/srt/managers/utils.py
+@@ -181,6 +181,11 @@
+         if self.logits_output is None or self.auxiliary_host_output is not None:
+             return
+         device_output = self.logits_output.auxiliary_device_output
++        activation = self.logits_output.activation_device_output
++        if activation is not None:
++            from sglang.srt.activation_capture.runtime import CompositeDevice
++            device_output = activation if device_output is None else CompositeDevice(device_output, activation)
++            self.logits_output.activation_device_output = None
+         if device_output is not None:
+             self.auxiliary_host_output = device_output.copy_to_host(_async_d2h)
+             self.logits_output.auxiliary_device_output = None
+--- a/sglang/srt/model_executor/forward_batch_info.py
++++ b/sglang/srt/model_executor/forward_batch_info.py
+@@ -35,6 +35,7 @@
+ from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Set, Tuple, Union
+ 
+ import torch
++from sglang.srt.activation_capture.runtime import make_plan as make_activation_plan
+ 
+ from sglang.kernels.ops.attention.position import compute_position_triton
+ from sglang.srt.configs.hybrid_arch import mambaish_config
+@@ -496,6 +497,7 @@
+ 
+     # === Per-forward overrides passed explicitly to init_new ===
+     capture_hidden_mode: CaptureHiddenMode = None
++    activation_plan: Optional[List] = None
+     # For hidden states before normal
+     return_hidden_states_before_norm: bool = False
+ 
+@@ -818,6 +820,8 @@
+             encoder_lens_cpu=batch.encoder_lens_cpu,
+             lora_ids=[req.lora_id for req in batch.reqs],
+             rids=[req.rid for req in batch.reqs],
++            activation_plan=(make_activation_plan(batch) if any(
++                getattr(req, "activation_capture", None) is not None for req in batch.reqs) else None),
+             # Compound (carry their own device tensors)
+             sampling_info=batch.sampling_info,
+             spec_info=batch.spec_info,
+--- a/sglang/srt/model_executor/model_runner.py
++++ b/sglang/srt/model_executor/model_runner.py
+@@ -23,6 +23,7 @@
+ from typing import Optional, Union
+ 
+ import torch
++from sglang.srt.activation_capture import runtime as activation_runtime
+ import torch.distributed as dist
+ 
+ from sglang.srt.configs.load_config import LoadConfig
+@@ -1059,6 +1060,7 @@
+         )
+ 
+     def init_cuda_graphs(self, capture_decode_cuda_graph: bool = True):
++        activation_runtime.initialize(self)
+         capture = capture_cuda_graphs(
+             model_runner=self, capture_decode_cuda_graph=capture_decode_cuda_graph
+         )
+@@ -1577,6 +1579,7 @@
+         forward_batch.apply_deprecated_skip_attn_backend_init(skip_attn_backend_init)
+ 
+         self.forward_pass_id += 1
++        activation_runtime.begin(forward_batch)
+ 
+         # Try msprob debugger
+         if self.msprobe_debugger is not None:
+@@ -1624,6 +1627,8 @@
+                     reinit_attn_backend,
+                     split_forward_count,
+                 )
++        if output.logits_output is not None:
++            activation_runtime.finish(output.logits_output, output.can_run_graph)
+         output.expert_distribution_metrics = recorder_outputs.get("metrics")
+ 
+         no_copy_to_cpu = not get_schedule().disable_overlap_schedule
+@@ -1775,6 +1780,7 @@
+                 forward_batch.forward_mode.is_extend(include_draft_extend_v2=True)
+                 and not isinstance(self.prefill_cuda_graph_runner, EagerRunner)
+                 and self.prefill_cuda_graph_runner is not None
++                and not any(entry["positions"] for entry in (forward_batch.activation_plan or []))
+                 and self.prefill_cuda_graph_runner.can_run_graph(forward_batch)
+                 and _prefill_cuda_graph_allows_context_parallel(
+                     self.prefill_cuda_graph_runner, forward_batch
+--- a/sglang/srt/models/llama.py
++++ b/sglang/srt/models/llama.py
+@@ -22,6 +22,7 @@
+ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+ 
+ import torch
++from sglang.srt.activation_capture.runtime import tap as capture_activation
+ from torch import nn
+ from transformers import LlamaConfig
+ 
+@@ -448,6 +449,7 @@
+                 forward_batch,
+                 residual,
+             )
++            capture_activation(i, hidden_states, residual, forward_batch)
+ 
+         if not self.pp_group.is_last_rank:
+             return PPProxyTensors(
+--- a/sglang/srt/models/qwen2.py
++++ b/sglang/srt/models/qwen2.py
+@@ -20,6 +20,7 @@
+ from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
+ 
+ import torch
++from sglang.srt.activation_capture.runtime import tap as capture_activation
+ from torch import nn
+ 
+ from sglang.srt.distributed import (
+@@ -426,6 +427,7 @@
+                 forward_batch,
+                 residual,
+             )
++            capture_activation(i, hidden_states, residual, forward_batch)
+         if not self.pp_group.is_last_rank:
+             return PPProxyTensors(
+                 {
+--- a/sglang/srt/models/qwen3_5.py
++++ b/sglang/srt/models/qwen3_5.py
+@@ -20,6 +20,7 @@
+ from typing import Iterable, Optional, Set, Tuple, Union
+ 
+ import torch
++from sglang.srt.activation_capture.runtime import tap as capture_activation
+ import torch.nn as nn
+ import triton
+ 
+@@ -196,6 +197,9 @@
+ 
+ 
+ def _use_mnnvl_cutedsl_fusion(config: Qwen3_5TextConfig, is_nextn: bool) -> bool:
++    from sglang.srt.activation_capture.spec import enabled as activation_enabled
++    if activation_enabled():
++        return False  # Export needs complete post-collective FFN values.
+     return bool(
+         not is_nextn
+         and config.model_type == "qwen3_5_moe_text"
+@@ -1718,6 +1722,7 @@
+                     ),
+                 )
+ 
++            capture_activation(layer_idx, hidden_states, residual, forward_batch)
+             # Process deepstack embeddings if provided
+             if (
+                 input_deepstack_embeds is not None

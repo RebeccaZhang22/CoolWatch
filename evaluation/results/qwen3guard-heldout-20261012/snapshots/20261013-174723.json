@@ -1,0 +1,264 @@
+{
+  "snapshot_at": "2026-10-13T17:47:23+08:00",
+  "state": "partial",
+  "source": "/mnt/kpfs_qyang/yutongz/CoolWatch/evaluation/results/qwen3guard-heldout-20261012/predictions.jsonl",
+  "source_prefix_bytes": 127326925,
+  "source_prefix_sha256": "7085382305495287cff50d5b4077cbee58e8f852a20f796f6cd22f4063969833",
+  "partial_line_bytes_excluded": 0,
+  "duplicate_records": 0,
+  "protocol_sha256": "e3e51ba68fbcc9b51b9cccd94acc97982cbe2ef7a0ae9212a626778fefb28339",
+  "coverage_note": "After the fixed random 300-per-face pilot, remaining rows are processed by gp and id. Completed rows are not a representative random subset; positive and negative coverage can differ substantially.",
+  "overall": {
+    "expected": 402120,
+    "processed": 207725,
+    "valid": 207724,
+    "positive_count": 52505,
+    "safety_counts": {
+      "Safe": 201071,
+      "Controversial": 6349,
+      "Unsafe": 304
+    },
+    "unsafe": {
+      "tp": 304,
+      "fp": 0,
+      "tn": 155219,
+      "fn": 52201,
+      "precision": 1.0,
+      "recall": 0.005789924769069613,
+      "f1": 0.011513189039747013,
+      "fpr": 0.0,
+      "accuracy": 0.7487001983401051
+    },
+    "unsafe_or_controversial": {
+      "tp": 6458,
+      "fp": 195,
+      "tn": 155024,
+      "fn": 46047,
+      "precision": 0.9706899143243649,
+      "recall": 0.12299780973240644,
+      "f1": 0.2183305723655296,
+      "fpr": 0.0012562895006410298,
+      "accuracy": 0.7773873023820069
+    },
+    "jailbreak": {
+      "tp": 4921,
+      "fp": 30,
+      "tn": 155189,
+      "fn": 47584,
+      "precision": 0.9939406180569582,
+      "recall": 0.09372440719931435,
+      "f1": 0.1712962962962963,
+      "fpr": 0.00019327530779092767,
+      "accuracy": 0.7707823843176522
+    },
+    "auroc_unsafe_label_prefix_score": 0.668553739375382,
+    "negative_count": 155219,
+    "coverage": 0.5165721675121854
+  },
+  "by_face": {
+    "heldout_neulab": {
+      "expected": 139797,
+      "processed": 110045,
+      "valid": 110044,
+      "errors": {
+        "OverflowError": 1
+      },
+      "positive_count": 52156,
+      "safety_counts": {
+        "Safe": 103551,
+        "Controversial": 6192,
+        "Unsafe": 301
+      },
+      "unsafe": {
+        "tp": 301,
+        "fp": 0,
+        "tn": 57888,
+        "fn": 51855,
+        "precision": 1.0,
+        "recall": 0.005771148094179002,
+        "f1": 0.011476066111291153,
+        "fpr": 0.0,
+        "accuracy": 0.5287793973319763
+      },
+      "unsafe_or_controversial": {
+        "tp": 6419,
+        "fp": 74,
+        "tn": 57814,
+        "fn": 45737,
+        "precision": 0.9886031110426613,
+        "recall": 0.1230730884270266,
+        "f1": 0.21889546283824107,
+        "fpr": 0.0012783305693753455,
+        "accuracy": 0.5837028824833703
+      },
+      "jailbreak": {
+        "tp": 4888,
+        "fp": 9,
+        "tn": 57879,
+        "fn": 47268,
+        "precision": 0.9981621400857668,
+        "recall": 0.09371884346959122,
+        "f1": 0.17134944700541602,
+        "fpr": 0.0001554726368159204,
+        "accuracy": 0.5703809385336774
+      },
+      "auroc_unsafe_label_prefix_score": 0.7683829035825402,
+      "negative_count": 57888,
+      "coverage": 0.7871699678820003,
+      "expected_positive_count": 81908,
+      "expected_negative_count": 57889,
+      "positive_coverage": 0.6367631977340431,
+      "negative_coverage": 0.9999827255609874
+    },
+    "heldout_ota": {
+      "expected": 238509,
+      "processed": 97380,
+      "valid": 97380,
+      "errors": {},
+      "positive_count": 182,
+      "safety_counts": {
+        "Safe": 97236,
+        "Controversial": 144
+      },
+      "unsafe": {
+        "tp": 0,
+        "fp": 0,
+        "tn": 97198,
+        "fn": 182,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "fpr": 0.0,
+        "accuracy": 0.9981310330663381
+      },
+      "unsafe_or_controversial": {
+        "tp": 23,
+        "fp": 121,
+        "tn": 97077,
+        "fn": 159,
+        "precision": 0.1597222222222222,
+        "recall": 0.12637362637362637,
+        "f1": 0.1411042944785276,
+        "fpr": 0.001244881581925554,
+        "accuracy": 0.9971246662559047
+      },
+      "jailbreak": {
+        "tp": 18,
+        "fp": 21,
+        "tn": 97177,
+        "fn": 164,
+        "precision": 0.46153846153846156,
+        "recall": 0.0989010989010989,
+        "f1": 0.16289592760180996,
+        "fpr": 0.00021605382826807136,
+        "accuracy": 0.9981002259190799
+      },
+      "auroc_unsafe_label_prefix_score": 0.7950284838312369,
+      "negative_count": 97198,
+      "coverage": 0.40828647975548094,
+      "expected_positive_count": 141311,
+      "expected_negative_count": 97198,
+      "positive_coverage": 0.0012879393677774555,
+      "negative_coverage": 1.0
+    },
+    "heldout_swe": {
+      "expected": 23814,
+      "processed": 300,
+      "valid": 300,
+      "errors": {},
+      "positive_count": 167,
+      "safety_counts": {
+        "Safe": 284,
+        "Controversial": 13,
+        "Unsafe": 3
+      },
+      "unsafe": {
+        "tp": 3,
+        "fp": 0,
+        "tn": 133,
+        "fn": 164,
+        "precision": 1.0,
+        "recall": 0.017964071856287425,
+        "f1": 0.03529411764705882,
+        "fpr": 0.0,
+        "accuracy": 0.4533333333333333
+      },
+      "unsafe_or_controversial": {
+        "tp": 16,
+        "fp": 0,
+        "tn": 133,
+        "fn": 151,
+        "precision": 1.0,
+        "recall": 0.09580838323353294,
+        "f1": 0.17486338797814208,
+        "fpr": 0.0,
+        "accuracy": 0.49666666666666665
+      },
+      "jailbreak": {
+        "tp": 15,
+        "fp": 0,
+        "tn": 133,
+        "fn": 152,
+        "precision": 1.0,
+        "recall": 0.08982035928143713,
+        "f1": 0.16483516483516483,
+        "fpr": 0.0,
+        "accuracy": 0.49333333333333335
+      },
+      "auroc_unsafe_label_prefix_score": 0.7521498356670119,
+      "negative_count": 133,
+      "coverage": 0.012597631645250693,
+      "expected_positive_count": 13844,
+      "expected_negative_count": 9970,
+      "positive_coverage": 0.012062987575845131,
+      "negative_coverage": 0.013340020060180542
+    }
+  },
+  "safety_counts_by_ground_truth": {
+    "heldout_neulab": {
+      "0": {
+        "Safe": 57814,
+        "Controversial": 74
+      },
+      "1": {
+        "Safe": 45737,
+        "Controversial": 6118,
+        "Unsafe": 301
+      }
+    },
+    "heldout_ota": {
+      "0": {
+        "Safe": 97077,
+        "Controversial": 121
+      },
+      "1": {
+        "Safe": 159,
+        "Controversial": 23
+      }
+    },
+    "heldout_swe": {
+      "0": {
+        "Safe": 133
+      },
+      "1": {
+        "Safe": 151,
+        "Controversial": 13,
+        "Unsafe": 3
+      }
+    }
+  },
+  "errors": [
+    {
+      "id": "neulab_swe-smith_Mimino666__langdetect.a1598f1a.lm_rewrite__dk9wx21q.1ux6wee8_0:assistant:20",
+      "face": "heldout_neulab",
+      "gp": "neulab__default__swe-smith",
+      "label": 0,
+      "input_tokens": 32859,
+      "input_sha256": "a26d7218d7b6b8fc457dbcd27c0162137b59b71157405c8d57e4c3ba38555905",
+      "status": "error",
+      "error_type": "OverflowError",
+      "error": "32859 input tokens exceed context budget 32704",
+      "latency_seconds": 0.04638565378263593
+    }
+  ]
+}

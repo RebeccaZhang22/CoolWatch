@@ -1,0 +1,8 @@
+# PDF fixtures must retain their byte offsets and must not be normalized as text.
+*.pdf binary
+
+# Unified diff context lines contain meaningful leading spaces on blank lines.
+*.patch -whitespace
+
+# csv.writer emits CRLF; preserve frozen reports while checking other whitespace.
+*.csv whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol

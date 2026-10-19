@@ -3,12 +3,18 @@ from __future__ import annotations
 import asyncio
 import copy
 import json
+import logging
 import re
 from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import date
 from time import perf_counter
 from typing import Any
 from uuid import uuid4
+
+import httpx
+
+logger = logging.getLogger(__name__)
+STREAM_HEARTBEAT_SECONDS = 5.0
 
 from backend.config import Settings
 from backend.customer_agent_config import CustomerAgentRuntimeConfig
@@ -213,7 +219,7 @@ class CustomerServiceAgent:
             name=scenario.name,
             description=scenario.description,
             model=self.settings.customer_agent_model or scenario.default_model,
-            reasoning_enabled=True,
+            reasoning_enabled=self.settings.customer_agent_enable_reasoning,
             capabilities=list(scenario.capabilities),
             tools=[str(tool["function"]["name"]) for tool in scenario.tools],
             tool_schemas=list(scenario.tools),
@@ -249,7 +255,7 @@ class CustomerServiceAgent:
                 base_url=base_url,
                 model=self.settings.customer_agent_model,
                 model_available=available,
-                reasoning_enabled=True,
+                reasoning_enabled=self.settings.customer_agent_enable_reasoning,
                 defense_methods=list(self._enabled_defenses()),
                 shadow_base_url=shadow_base_url if self._dual_model_enabled else None,
                 shadow_model=self.settings.customer_agent_shadow_model if self._dual_model_enabled else None,
@@ -263,7 +269,7 @@ class CustomerServiceAgent:
                 base_url=base_url,
                 model=self.settings.customer_agent_model,
                 model_available=False,
-                reasoning_enabled=True,
+                reasoning_enabled=self.settings.customer_agent_enable_reasoning,
                 defense_methods=list(self._enabled_defenses()),
                 shadow_base_url=shadow_base_url if self._dual_model_enabled else None,
                 shadow_model=self.settings.customer_agent_shadow_model if self._dual_model_enabled else None,
@@ -476,7 +482,7 @@ class CustomerServiceAgent:
         reasoning = build_reasoning_report(
             private_reasoning,
             raw_output,
-            requested=True,
+            requested=model_params.enable_reasoning,
             delivered=not output_blocked,
         )
 
@@ -583,19 +589,42 @@ class CustomerServiceAgent:
                 await queue.put(("final", response.model_dump(mode="json")))
                 ok = True
             except Exception as error:
-                await queue.put(("error", {"message": str(error)}))
+                logger.exception("Customer Agent stream failed")
+                if isinstance(error, httpx.TimeoutException):
+                    message = "模型服务响应超时，请缩短问题或降低最大生成长度后重试。"
+                elif isinstance(error, httpx.ConnectError):
+                    message = "无法连接模型服务，请检查聊天模型和检测服务是否正常运行。"
+                else:
+                    message = str(error) or "Agent 运行失败，请检查后端日志。"
+                await queue.put(("error", {"message": message}))
             finally:
                 await queue.put(("done", {"ok": ok}))
 
         task = asyncio.create_task(execute())
+        last_status = None
+        status_started = perf_counter()
         try:
             while True:
-                event, payload = await queue.get()
+                try:
+                    event, payload = await asyncio.wait_for(queue.get(), STREAM_HEARTBEAT_SECONDS)
+                except TimeoutError:
+                    if last_status and last_status.get("status") == "running":
+                        yield "status", {
+                            **last_status,
+                            "heartbeat": True,
+                            "elapsed_seconds": round(perf_counter() - status_started),
+                        }
+                    continue
+                if event == "status":
+                    last_status = payload
+                    status_started = perf_counter()
                 yield event, payload
                 if event == "done":
                     break
         finally:
-            await task
+            if not task.done():
+                task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
 
     async def compare(
         self,
@@ -789,17 +818,17 @@ class CustomerServiceAgent:
         return self.settings.customer_agent_shadow_base_url
 
     def _business_model_params(self, model_params: ModelParams) -> ModelParams:
-        # Keep the business model's generation mode independent from the
-        # shadow replay model. In particular, enabling the shadow endpoint must
-        # not silently disable Qwen3 reasoning/tool selection on the user-facing
-        # request. The shadow model is still used only by pre-generation probes
-        # and never produces a second customer-visible answer.
+        # The deployment can disable business reasoning even for stale clients.
+        # Shadow replay keeps its independently trained thinking template.
         requested_model = _canonical_customer_model(model_params.model)
         selected_model = requested_model or self.settings.customer_agent_model or SCENARIO.default_model
         return model_params.model_copy(
             update={
                 "model": selected_model,
                 "vllm_port": None,
+                "enable_reasoning": (
+                    self.settings.customer_agent_enable_reasoning and model_params.enable_reasoning
+                ),
             }
         )
 
@@ -859,8 +888,9 @@ class CustomerServiceAgent:
         await _emit_event(
             event_sink,
             phase="message_load",
-            message="Load messages",
-            detail="system message + user prompt",
+            message="对话上下文已就绪",
+            detail="已载入系统提示和用户消息",
+            status="success",
             duration_ms=round((perf_counter() - message_load_started) * 1000),
         )
         language_instruction = _response_language_instruction(user_message)
@@ -905,6 +935,7 @@ class CustomerServiceAgent:
 
         final_response_started = False
         activation_published = False
+        checkpoint_number = 0
 
         async def publish_activation(signal) -> None:
             nonlocal activation_published
@@ -918,8 +949,10 @@ class CustomerServiceAgent:
             activation_published = True
 
         async def check_activation(tools=None, *, final_response=False) -> bool:
+            nonlocal checkpoint_number
             if not activation_enabled:
                 return False
+            checkpoint_number += 1
             # Runtime system reminders steer the business model, but they can
             # mask the risk signal at the detector's final-token capture. Keep
             # only the original leading system prompt in the shadow replay.
@@ -928,6 +961,11 @@ class CustomerServiceAgent:
                 *(message for message in activation_messages[1:] if message.get("role") != "system"),
             ]
             started = perf_counter()
+            await _emit_event(
+                event_sink, phase="input_guard", message="正在检测当前上下文",
+                detail="影子模型与探针正在运行",
+                checkpoint={"round": checkpoint_number, "status": "running"},
+            )
             assessment = await self.activation_probe_guard.bank_guard.moderate(
                 detector_messages,
                 tools=tools,
@@ -973,6 +1011,11 @@ class CustomerServiceAgent:
                 ),
                 status="blocked" if signal.blocked else "error" if signal.status == "error" else "success",
                 duration_ms=signal.latency_ms,
+                checkpoint={
+                    "round": checkpoint_number,
+                    "status": "blocked" if signal.blocked else signal.status,
+                    "detail": signal.detail,
+                },
             )
             terminal_detection = signal.blocked or signal.status == "error"
             # Intermediate checkpoints stay pending in the UI. Commit the
@@ -1005,6 +1048,11 @@ class CustomerServiceAgent:
                         "type": "function",
                         "function": {"name": required_tool},
                     }
+            await _emit_event(
+                event_sink, phase="generation", message="正在等待模型回复",
+                detail=f"{ROUND_LABELS.get(turn_index + 1, f'第 {turn_index + 1} 轮')}"
+                + (" · 推理模式已开启" if model_params.enable_reasoning else ""),
+            )
             generation = await self.llm_client.generate(
                 messages, model_params, base_url=base_url,
                 tools=list(scenario.tools), tool_choice=tool_choice,
@@ -1068,6 +1116,12 @@ class CustomerServiceAgent:
                 tool_started = perf_counter()
                 turn_retrieved: list[Any] = []
                 for tool_call in tool_calls:
+                    await _emit_event(
+                        event_sink,
+                        phase="tool",
+                        message="正在执行环境工具",
+                        detail=str((tool_call.get("function") or {}).get("name") or "工具调用"),
+                    )
                     tool_message, trace, retrieved = await self._execute_tool_call(
                         tool_call,
                         fallback_query=user_message,
@@ -1392,9 +1446,7 @@ class CustomerServiceAgent:
                         {"role": "user", "content": fallback_query}
                     ],
                 )
-                if not result["ok"]:
-                    status = "error"
-                summary = f"返回航旅模拟结果：{result['status']}"
+                summary = f"返回航旅模拟结果：{result.get('business_status', result['status'])}"
             except Exception as error:
                 status = "error"
                 result = {"ok": False, "mocked": True, "error": f"mock tool response failed: {error}"}
@@ -1713,6 +1765,7 @@ async def _emit_event(
     status: str = "running",
     defense_signals: list[CustomerAgentDefenseSignal] | None = None,
     duration_ms: int | None = None,
+    checkpoint: dict[str, Any] | None = None,
 ) -> None:
     if event_sink is None:
         return
@@ -1722,6 +1775,8 @@ async def _emit_event(
         "message": message,
         "detail": detail,
     }
+    if checkpoint is not None:
+        payload["checkpoint"] = checkpoint
     if duration_ms is not None:
         payload["duration_ms"] = max(0, round(duration_ms))
     if defense_signals is not None:
@@ -1770,7 +1825,7 @@ def _activation_signal(assessment: Any) -> CustomerAgentDefenseSignal:
             status="error" if assessment.error else "risk" if hit else "safe",
             connected=not bool(assessment.error), blocked=False,
             latency_ms=assessment.latency_ms,
-            detail=assessment.error or ("命中：" + "、".join(hit) if hit else "所有风险领域均未命中。"),
+            detail=assessment.error or ("命中：" + "、".join(hit) if hit else "已启用的探针均未命中。"),
             raw_output=assessment.raw_output, metadata=assessment.payload,
         )
     if assessment.error:

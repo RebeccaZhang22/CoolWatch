@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Stre
 from fastapi.staticfiles import StaticFiles
 
 from backend.auth_store import AuthStore
+from manager.integration import install_demo_tracking, record_account_event
 from backend.config import get_settings
 from backend.customer_agent import CustomerServiceAgent
 from backend.customer_agent_config import CustomerAgentRuntimeConfig
@@ -85,8 +86,6 @@ class AuthCredentials(BaseModel):
 
 settings = get_settings()
 auth_store = AuthStore()
-if settings.admin_password:
-    auth_store.ensure_admin(settings.admin_email, settings.admin_password)
 usage_store = UsageStore()
 session_store = SessionStore()
 business_llm_client = LlmClient(
@@ -157,6 +156,7 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+activity_store = install_demo_tracking(app, auth_store, usage_store)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins,
@@ -166,6 +166,7 @@ app.add_middleware(
 )
 
 PROTECTED_FRONTEND_PATHS = {
+    "/hr.html",
     "/",
     "/index.html",
     "/audit.html",
@@ -174,7 +175,6 @@ PROTECTED_FRONTEND_PATHS = {
     "/account.html",
     "/developer-docs.html",
     "/developer-examples.html",
-    "/admin.html",
 }
 
 
@@ -188,8 +188,6 @@ async def require_frontend_session(request: Request, call_next):
     user = auth_store.current_user(session=request.cookies.get("pm_session"))
     if not user:
         return RedirectResponse(url="/login.html", status_code=303)
-    if request.url.path == "/admin.html" and user.get("role") != "admin":
-        return RedirectResponse(url="/account.html", status_code=303)
     return await call_next(request)
 
 
@@ -234,6 +232,7 @@ async def auth_register(payload: AuthCredentials, response: Response) -> dict:
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     response.set_cookie("pm_session", result["session"], httponly=True, samesite="lax", max_age=30 * 24 * 3600)
+    record_account_event(activity_store, result["user"]["id"], "register")
     return {"user": result["user"], "token": result["token"]}
 
 
@@ -244,6 +243,7 @@ async def auth_login(payload: AuthCredentials, response: Response) -> dict:
     except ValueError as error:
         raise HTTPException(status_code=401, detail=str(error)) from error
     response.set_cookie("pm_session", result["session"], httponly=True, samesite="lax", max_age=30 * 24 * 3600)
+    record_account_event(activity_store, result["user"]["id"], "login")
     return {"user": result["user"], "token": result["token"]}
 
 
@@ -295,45 +295,6 @@ async def usage_events(request: Request, limit: int = 100, page: int | None = No
             raise HTTPException(status_code=400, detail="分页参数无效。")
         return usage_store.page_for_user(user["id"], page=page, page_size=page_size)
     return {"events": usage_store.list_for_user(user["id"], limit=limit)}
-
-
-def _admin_user(request: Request) -> dict:
-    authorization = request.headers.get("authorization", "")
-    scheme, _, value = authorization.partition(" ")
-    user = auth_store.current_user(
-        session=request.cookies.get("pm_session"),
-        token=value.strip() if scheme.lower() == "bearer" else None,
-    )
-    if not user:
-        raise HTTPException(status_code=401, detail="尚未登录。")
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="仅管理员可访问。")
-    return user
-
-
-@app.get("/api/admin/users")
-async def admin_users(request: Request, page: int = 1, page_size: int = 20) -> dict:
-    _admin_user(request)
-    if page < 1 or not 1 <= page_size <= 100:
-        raise HTTPException(status_code=400, detail="分页参数无效。")
-    result = auth_store.list_users(page=page, page_size=page_size)
-    counts = usage_store.counts_by_account()
-    for user in result["users"]:
-        user["api_calls"] = counts.get(user["id"], 0)
-    return result
-
-
-@app.get("/api/admin/usage")
-async def admin_usage(request: Request, page: int = 1, page_size: int = 20) -> dict:
-    _admin_user(request)
-    if page < 1 or not 1 <= page_size <= 100:
-        raise HTTPException(status_code=400, detail="分页参数无效。")
-    result = usage_store.page_all(page=page, page_size=page_size)
-    users = auth_store.users_by_id()
-    for event in result["events"]:
-        user = users.get(event.get("account_id"), {})
-        event["account_email"] = event.get("account_email") or user.get("email") or "未知账户"
-    return result
 
 
 @app.post("/v1/guardrails")
@@ -572,6 +533,17 @@ async def customer_agent_bootstrap() -> CustomerAgentBootstrapResponse:
     return customer_agent_service.bootstrap()
 
 
+@app.get("/api/customer-agent/scenarios")
+async def customer_agent_scenarios():
+    from backend.hr_demo import HrRuntimeConfig
+    current, _ = customer_agent_runtime_config.snapshot()
+    hr, _ = HrRuntimeConfig().snapshot()
+    return {"scenarios": [
+        {"id": "default", "name": current.name, "description": current.description},
+        {"id": "hr", "name": hr.name, "description": hr.description},
+    ]}
+
+
 @app.get(
     "/api/customer-agent/profile",
     response_model=CustomerAgentProfileResponse,
@@ -764,5 +736,9 @@ async def stream_customer_agent(request: CustomerAgentRunRequest) -> StreamingRe
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
+
+from backend.hr_demo import create_hr_router
+
+app.include_router(create_hr_router(customer_agent_service))
 
 app.mount("/", StaticFiles(directory=settings.frontend_dir, html=True), name="frontend")

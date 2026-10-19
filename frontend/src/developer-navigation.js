@@ -8,12 +8,11 @@ const shell = document.querySelector(".demo-page-shell");
 const workspace = document.querySelector("#appShell");
 const navigation = document.querySelector(".audit-nav");
 shell.append(dialog);
-const developerPaths = new Set(["account.html", "developer-docs.html", "developer-examples.html", "admin.html"]);
+const developerPaths = new Set(["account.html", "developer-docs.html", "developer-examples.html"]);
 const views = {
   "account.html": { hash: "developer-center", title: "开发者中心", search: "?embedded=1" },
   "developer-docs.html": { hash: "developer-docs", title: "开发者中心" },
   "developer-examples.html": { hash: "developer-examples", title: "开发者中心" },
-  "admin.html": { hash: "admin", title: "管理后台" },
   "audit.html": { hash: "audit", title: "实验审计" },
   "cases.html": { hash: "cases", title: "案例演示" },
   "competitors.html": { hash: "competitors", title: "竞品分析" },

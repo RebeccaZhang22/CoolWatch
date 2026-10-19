@@ -1,0 +1,6 @@
+{
+  "reason": "SGLang scheduler list/tensor serialization error in mixed logprob requests",
+  "valid_predictions_preserved": 328,
+  "failed_requests_to_retry": 32,
+  "scoring_protocol_changed": false
+}

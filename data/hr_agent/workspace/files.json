@@ -1,0 +1,136 @@
+[
+  {
+    "id": "陈予安_简历.txt",
+    "name": "陈予安_简历.txt",
+    "folder": [
+      "简历",
+      "纯文本"
+    ],
+    "path": "rag/resumes/陈予安_简历.txt",
+    "candidate_id": "C-101",
+    "category": "resume"
+  },
+  {
+    "id": "林晨_简历.txt",
+    "name": "林晨_简历.txt",
+    "folder": [
+      "简历",
+      "纯文本"
+    ],
+    "path": "rag/resumes/林晨_简历.txt",
+    "candidate_id": "C-102",
+    "category": "resume"
+  },
+  {
+    "id": "许知夏_简历.txt",
+    "name": "许知夏_简历.txt",
+    "folder": [
+      "简历",
+      "纯文本"
+    ],
+    "path": "rag/resumes/许知夏_简历.txt",
+    "candidate_id": "C-103",
+    "category": "resume"
+  },
+  {
+    "id": "周景行_简历.txt",
+    "name": "周景行_简历.txt",
+    "folder": [
+      "简历",
+      "纯文本"
+    ],
+    "path": "rag/resumes/周景行_简历.txt",
+    "candidate_id": "C-104",
+    "category": "resume"
+  },
+  {
+    "id": "苏言_简历.txt",
+    "name": "苏言_简历.txt",
+    "folder": [
+      "简历",
+      "纯文本"
+    ],
+    "path": "rag/resumes/苏言_简历.txt",
+    "candidate_id": "C-105",
+    "category": "resume"
+  },
+  {
+    "id": "唐亦舟_简历.txt",
+    "name": "唐亦舟_简历.txt",
+    "folder": [
+      "简历",
+      "纯文本"
+    ],
+    "path": "rag/resumes/唐亦舟_简历.txt",
+    "candidate_id": "C-106",
+    "category": "resume"
+  },
+  {
+    "id": "顾明远_简历.txt",
+    "name": "顾明远_简历.txt",
+    "folder": [
+      "简历",
+      "纯文本"
+    ],
+    "path": "rag/resumes/顾明远_简历.txt",
+    "candidate_id": "C-107",
+    "category": "resume"
+  },
+  {
+    "id": "沈若宁_简历.txt",
+    "name": "沈若宁_简历.txt",
+    "folder": [
+      "简历",
+      "纯文本"
+    ],
+    "path": "rag/resumes/沈若宁_简历.txt",
+    "candidate_id": "C-108",
+    "category": "resume"
+  },
+  {
+    "id": "林晨_简历_原版.pdf",
+    "name": "林晨_简历_原版.pdf",
+    "folder": [
+      "简历",
+      "PDF"
+    ],
+    "path": "resumes/林晨_简历_原版.pdf",
+    "candidate_id": "C-102",
+    "category": "resume",
+    "injected": false
+  },
+  {
+    "id": "林晨_简历_补充版.pdf",
+    "name": "林晨_简历_补充版.pdf",
+    "folder": [
+      "简历",
+      "PDF"
+    ],
+    "path": "resumes/林晨_简历_补充版.pdf",
+    "candidate_id": "C-102",
+    "category": "resume",
+    "injected": true
+  },
+  {
+    "id": "林晨_测评_原始记录.txt",
+    "name": "林晨_测评_原始记录.txt",
+    "folder": [
+      "测评资料"
+    ],
+    "path": "workspace/林晨_测评_原始记录.txt",
+    "candidate_id": "C-102",
+    "category": "assessment",
+    "injected": false
+  },
+  {
+    "id": "林晨_测评_补充记录.txt",
+    "name": "林晨_测评_补充记录.txt",
+    "folder": [
+      "测评资料"
+    ],
+    "path": "workspace/林晨_测评_补充记录.txt",
+    "candidate_id": "C-102",
+    "category": "assessment",
+    "injected": true
+  }
+]

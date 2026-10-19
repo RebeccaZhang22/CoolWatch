@@ -1,0 +1,12 @@
+{
+  "source_package": "/mnt/kpfs_qyang/yutongz/CoolWatch/sglang-activation-runtime/.source/sglang",
+  "isolated_package": "/mnt/kpfs_qyang/yutongz/CoolWatch/.runtime/qwen3guard-heldout/python/sglang",
+  "reason": "SGLang 0.5.19 mixed logprob/non-logprob batches can contain Python list placeholders; only tensors need tolist().",
+  "file": "/mnt/kpfs_qyang/yutongz/CoolWatch/.runtime/qwen3guard-heldout/python/sglang/srt/managers/scheduler_components/batch_result_processor.py",
+  "patched_sha256": "e2a9f7071f74b2b04782a75365906c8e41acdf90b808b384c7fb6b9f9899034a",
+  "replacements": {
+    "next_token_token_ids_logprobs_val": 2,
+    "next_token_top_logprobs_val": 2,
+    "next_token_top_logprobs_idx": 2
+  }
+}

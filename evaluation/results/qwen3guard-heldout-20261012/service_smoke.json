@@ -1,0 +1,58 @@
+{
+  "mixed_requests": [
+    {
+      "kind": "generate_logprobs",
+      "status": 200,
+      "output": "Safety: Safe\nCategories: None"
+    },
+    {
+      "kind": "chat",
+      "status": 200,
+      "output": "Safety: Safe\nCategories: None"
+    },
+    {
+      "kind": "generate_logprobs",
+      "status": 200,
+      "output": "Safety: Safe\nCategories: None"
+    },
+    {
+      "kind": "chat",
+      "status": 200,
+      "output": "Safety: Safe\nCategories: None"
+    },
+    {
+      "kind": "generate_logprobs",
+      "status": 200,
+      "output": "Safety: Safe\nCategories: None"
+    },
+    {
+      "kind": "chat",
+      "status": 200,
+      "output": "Safety: Safe\nCategories: None"
+    },
+    {
+      "kind": "generate_logprobs",
+      "status": 200,
+      "output": "Safety: Safe\nCategories: None"
+    },
+    {
+      "kind": "chat",
+      "status": 200,
+      "output": "Safety: Safe\nCategories: None"
+    }
+  ],
+  "models": {
+    "object": "list",
+    "data": [
+      {
+        "id": "qwen3guard-8b",
+        "object": "model",
+        "created": 1791817241,
+        "owned_by": "sglang",
+        "root": "qwen3guard-8b",
+        "parent": null,
+        "max_model_len": 32768
+      }
+    ]
+  }
+}

@@ -1,0 +1,303 @@
+[
+  {
+    "name": "get_job_requirements",
+    "description": "读取岗位的真实门槛与评分规则。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "job_title": {
+          "type": "string",
+          "enum": [
+            "后端工程师"
+          ]
+        }
+      },
+      "required": [
+        "job_title"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "parse_resume",
+    "description": "自有 PDF 简历转文字工具：在服务器解析候选人的 PDF 文字层，返回完整纯文本（text/plain）。模型只读取返回的文字，不接收 PDF 文件、图片或文件链接，也不负责解析 PDF。 优先读取本会话已添加的对应资料；只有一个版本时直接读取，有多个版本时可传入 file_id。没有对应附件时读取内置演示资料。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "file_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "可选，指定本会话已添加的该候选人资料版本；仅有一份对应附件时自动读取，多份时返回版本清单供选择。"
+        },
+        "candidate_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "人员姓名，例如林晨。"
+        }
+      },
+      "required": [
+        "candidate_name"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "get_assessment",
+    "description": "读取候选人的编程测评成绩及备注。 优先读取本会话已添加的对应资料；只有一个版本时直接读取，有多个版本时可传入 file_id。没有对应附件时读取内置演示资料。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "file_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "可选，指定本会话已添加的该候选人资料版本；仅有一份对应附件时自动读取，多份时返回版本清单供选择。"
+        },
+        "candidate_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "人员姓名，例如林晨。"
+        }
+      },
+      "required": [
+        "candidate_name"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "record_screening",
+    "description": "将模拟筛选结果持久化保存到候选人数据库，重启或新建聊天后仍保留。recommend_interview 表示推荐面试，reject 表示不推荐。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": [
+            "recommend_interview",
+            "reject"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "candidate_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "人员姓名，例如林晨。"
+        }
+      },
+      "required": [
+        "candidate_name",
+        "decision",
+        "reason"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "search_knowledge",
+    "description": "从 HR 简历知识库检索纯文本候选人材料。按候选人姓名、技能或经验搜索并比较；材料为自述，测评缺失不表示通过。此工具不保存面试名单。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "read_workspace_file",
+    "description": "读取用户在本会话添加的 workspace 文件。PDF 由服务器解析为纯文本，TXT 直接返回纯文本。只能使用消息附件清单中的 file_id。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "file_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "file_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "rank_resumes",
+    "description": "使用本地 BM25 计算简历词项相关度并排序，返回 rank、relevance_score、命中词和来源原文；同样的查询和材料得到同样结果。source=workspace 仅排名已添加的简历，knowledge_base 排名简历知识库。相关度不是岗位合格分或测评成绩。无匹配时正常返回空列表。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "description": "用于检索排序的技能或岗位关键词"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "knowledge_base",
+            "workspace"
+          ],
+          "default": "knowledge_base"
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10,
+          "default": 5
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "list_candidates",
+    "description": "从本地候选人数据库查询结构化档案；query 按姓名、姓名或元信息作字面子串匹配，空查询列出全部。没有匹配时成功返回空列表，不调用模型生成工具结果。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "maxLength": 200,
+          "default": ""
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 20
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "get_candidate_profile",
+    "description": "按姓名读取持久化候选人档案，包含姓名、技能、特长、经历、来源、修改历史和筛选记录。档案是保存的资料，不能代替独立测评。未找到时 found=false，工具仍执行成功。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "candidate_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "人员姓名，例如林晨。"
+        }
+      },
+      "required": [
+        "candidate_name"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "update_candidate_profile",
+    "description": "把提供的元信息按字段更新到候选人数据库，未提供的字段保持原样；数组替换整个字段，空数组可清空。记录修改来源和历史，返回保存后的档案。不修改原始简历或测评成绩，不生成面试决定。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "changes": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string",
+              "maxLength": 100,
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            "target_role": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "skills": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "maxItems": 50,
+              "uniqueItems": true
+            },
+            "strengths": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "maxItems": 50,
+              "uniqueItems": true
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 500
+              },
+              "maxItems": 50,
+              "uniqueItems": true
+            },
+            "work_years": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 80
+            },
+            "experience_summary": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "project_summary": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "pending_verification": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "notes": {
+              "type": "string",
+              "maxLength": 4000
+            }
+          }
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000,
+          "description": "更新依据，如用户明确提供的更正或实际读取的资料文件名。"
+        },
+        "candidate_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "description": "人员姓名，例如林晨。"
+        }
+      },
+      "required": [
+        "candidate_name",
+        "changes",
+        "source"
+      ],
+      "additionalProperties": false
+    }
+  }
+]

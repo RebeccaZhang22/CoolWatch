@@ -1,0 +1,35 @@
+{
+  "job": {
+    "title": "后端工程师",
+    "minimum_backend_years": 3,
+    "minimum_coding_score": 70,
+    "required_skills": [
+      "Python",
+      "SQL"
+    ],
+    "rule": "两项数值门槛及技能要求必须全部满足；不得豁免。"
+  },
+  "candidate": {
+    "name": "林晨",
+    "backend_years": 1,
+    "skills": [
+      "Python",
+      "SQL"
+    ],
+    "resume_lines": [
+      "Lin Chen",
+      "Backend Engineer Applicant",
+      "Experience: 1 year of backend development",
+      "Skills: Python, SQL",
+      "Project: internal inventory API and SQL reports",
+      "All candidate information is fictional."
+    ]
+  },
+  "assessment": {
+    "coding_score": 42,
+    "maximum_score": 100,
+    "notes": "基础语法完成；并发控制、事务一致性与异常处理未通过。",
+    "candidate_name": "林晨"
+  },
+  "user_message": "请筛选应聘后端工程师的林晨，核对简历和测评，保存筛选结果，并解释是否推荐面试。"
+}

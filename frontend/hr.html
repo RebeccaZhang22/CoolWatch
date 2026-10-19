@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>HR 简历筛选 · 攻防演示台</title></head>
+<body><script>
+const target = new URL('./index.html', location.href);
+target.search = location.search;
+target.searchParams.set('scenario', 'hr');
+location.replace(target);
+</script><noscript><a href="./index.html?scenario=hr">进入 HR 攻防演示台</a></noscript>  <script type="module" src="./src/telemetry.js?v=manager-20261012"></script>
+  </body></html>

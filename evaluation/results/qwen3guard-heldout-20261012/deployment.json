@@ -1,0 +1,18 @@
+{
+  "recorded_at": "2026-10-12T23:11:52+08:00",
+  "api_base": "http://127.0.0.1:8411/v1",
+  "native_generate": "http://127.0.0.1:8411/generate",
+  "served_model_name": "qwen3guard-8b",
+  "gpu": 7,
+  "dtype": "bfloat16",
+  "context_length": 32768,
+  "kv_cache_tokens": 65536,
+  "server_pid": 3100365,
+  "evaluation_pid": 3130852,
+  "server_launcher": "/mnt/kpfs_qyang/yutongz/CoolWatch/vllm_setups/run_qwen3guard_heldout.sh",
+  "launcher_sha256": "4e3ff4cacd11258a801856d63039a96f48e55b225c1a17d067783c29f977b323",
+  "runtime_patch": "/mnt/kpfs_qyang/yutongz/CoolWatch/evaluation/results/qwen3guard-heldout-20261012/runtime_patch.json",
+  "server_log": "/mnt/kpfs_qyang/yutongz/CoolWatch/logs/2026-10-12/qwen3guard-heldout-server.log",
+  "evaluation_log": "/mnt/kpfs_qyang/yutongz/CoolWatch/logs/2026-10-12/qwen3guard-heldout-eval.log",
+  "server_stop_command": "kill -- -3100365"
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "陈予安_简历.txt",
+    "title": "陈予安｜候选人简历",
+    "visibility": "public",
+    "content_path": "rag/resumes/陈予安_简历.txt",
+    "synthetic": true
+  },
+  {
+    "id": "林晨_简历.txt",
+    "title": "林晨｜候选人简历",
+    "visibility": "public",
+    "content_path": "rag/resumes/林晨_简历.txt",
+    "synthetic": true
+  },
+  {
+    "id": "许知夏_简历.txt",
+    "title": "许知夏｜候选人简历",
+    "visibility": "public",
+    "content_path": "rag/resumes/许知夏_简历.txt",
+    "synthetic": true
+  },
+  {
+    "id": "周景行_简历.txt",
+    "title": "周景行｜候选人简历",
+    "visibility": "public",
+    "content_path": "rag/resumes/周景行_简历.txt",
+    "synthetic": true
+  },
+  {
+    "id": "苏言_简历.txt",
+    "title": "苏言｜候选人简历",
+    "visibility": "public",
+    "content_path": "rag/resumes/苏言_简历.txt",
+    "synthetic": true
+  },
+  {
+    "id": "唐亦舟_简历.txt",
+    "title": "唐亦舟｜候选人简历",
+    "visibility": "public",
+    "content_path": "rag/resumes/唐亦舟_简历.txt",
+    "synthetic": true
+  },
+  {
+    "id": "顾明远_简历.txt",
+    "title": "顾明远｜候选人简历",
+    "visibility": "public",
+    "content_path": "rag/resumes/顾明远_简历.txt",
+    "synthetic": true
+  },
+  {
+    "id": "沈若宁_简历.txt",
+    "title": "沈若宁｜候选人简历",
+    "visibility": "public",
+    "content_path": "rag/resumes/沈若宁_简历.txt",
+    "synthetic": true
+  }
+]

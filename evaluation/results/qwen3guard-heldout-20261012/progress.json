@@ -1,0 +1,16 @@
+{
+  "state": "stopped_by_user",
+  "pid": 3130852,
+  "processed": 224127,
+  "target": 402120,
+  "elapsed_seconds_this_run": 75872.56,
+  "new_rows_per_second": 2.9493140769499835,
+  "by_face": {
+    "heldout_neulab": 126447,
+    "heldout_swe": 300,
+    "heldout_ota": 97380
+  },
+  "errors": 3,
+  "updated_at_unix": 1791893214.9306893,
+  "stopped_at": "2026-10-13T20:06:54+08:00"
+}

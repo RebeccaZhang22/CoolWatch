@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Demo 统计 · CoolWatch 管理中心</title><link rel="stylesheet" href="./manager.css"></head>
+<body>
+<div class="manager-shell">
+  <aside class="sidebar"><a class="brand" href="/manager/"><span class="brand-icon">C</span> CoolWatch</a><span class="workspace-label">管理者工作空间</span>
+    <nav aria-label="管理导航"><a href="#overview" class="selected"><span aria-hidden="true">◫</span> 体验概览</a><a href="#users"><span aria-hidden="true">♧</span> 注册用户</a><a href="#events"><span aria-hidden="true">≡</span> 操作与风险</a></nav>
+    <div class="sidebar-bottom"><span class="status-dot"></span> 独立管理环境<p id="identity">正在验证身份…</p><button id="logout" class="text-button">退出登录 ↗</button></div>
+  </aside>
+  <main class="main" id="overview">
+    <header class="page-heading"><div><span class="eyebrow">DEMO INTELLIGENCE</span><h1>体验概览</h1><p class="muted">看见每一位用户的探索过程，让下一次跟进有据可依。</p></div><button id="refresh" class="secondary">↻ 刷新数据</button></header>
+    <form class="date-bar" id="dateForm"><span class="live-tag"><span class="status-dot"></span> 使用数据</span><label>开始时间<input type="datetime-local" id="since"></label><span class="date-separator">—</span><label>结束时间<input type="datetime-local" id="until"></label><button class="secondary" type="submit">应用</button><button type="button" class="text-button" id="resetDates">全部时间</button><span class="muted small" id="updated"></span></form>
+    <p id="error" class="error" role="alert" hidden></p>
+    <section class="stats" aria-label="平台统计">
+      <article><span>注册用户 <small>累计</small></span><strong id="registeredUsers">—</strong><p>已注册 Demo 账号</p></article>
+      <article><span>活跃用户</span><strong id="activeUsers">—</strong><p>所选时间内有记录的用户</p></article>
+      <article><span>模型 / 检测请求</span><strong id="runs">—</strong><p id="requestCount">覆盖 Demo 与 API 调用</p></article>
+      <article class="risk-stat"><span>风险请求</span><strong id="risks">—</strong><p id="blockedCount">实际命中的检测结果</p></article>
+    </section>
+    <section class="risk-overview panel"><div><span class="eyebrow">RISK SIGNALS</span><h2>触发了哪些风险</h2><p class="muted small">按命中请求数统计；一次请求可命中多类风险。</p></div><div id="riskDistribution" class="risk-bars"><p class="empty">正在加载…</p></div></section>
+    <section class="panel" id="users"><div class="section-heading"><div><h2>注册用户 <span class="count" id="usersCount">—</span></h2><p class="muted small">点击用户查看操作时间线；意向标签由团队人工判断。</p></div></div>
+      <form id="userFilters" class="filters"><label class="search-field"><span class="sr-only">搜索用户</span><input id="userSearch" type="search" placeholder="搜索邮箱或用户 ID" maxlength="254"></label><label><span class="sr-only">活跃程度</span><select id="engagement"><option value="">全部活跃程度</option value="registered">仅注册</option><option value="exploring">浏览探索</option><option value="tried">已试用</option><option value="engaged">持续体验</option></select></label><label><span class="sr-only">意向标签</span><select id="leadFilter"><option value="">全部意向标签</option><option value="unreviewed">待判断</option><option value="follow_up">待跟进</option><option value="not_interested">暂无意向</option></select></label><button class="secondary">筛选</button></form>
+      <div class="table-wrap"><table><thead><tr><th>用户 / 注册时间</th><th>最近活跃</th><th>完成试用</th><th>交互 / 风险请求</th><th>活跃程度</th><th>意向标签</th><th>操作</th></tr></thead><tbody id="userRows"><tr><td colspan="7" class="empty">正在加载用户…</td></tr></tbody></table></div>
+      <div class="table-footer"><span class="muted small">持续体验：完成 ≥ 5 次请求，或至少在 2 个 UTC 日期完成试用。</span><nav id="userPages" class="pagination" aria-label="用户分页"></nav></div>
+    </section>
+    <section class="panel" id="events"><div class="section-heading"><div><h2>操作与风险 <span class="count" id="eventsCount">—</span></h2><p class="muted small" id="selectedUser">全部用户的操作时间线</p></div><button id="clearUser" class="secondary" hidden>查看全部用户</button></div>
+      <form class="filters" id="eventFilters"><label class="search-field"><span class="sr-only">搜索操作或请求</span><input id="eventSearch" type="search" placeholder="搜索操作、接口或请求内容" maxlength="250"></label><label><span class="sr-only">记录类型</span><select id="kind"><option value="">全部操作</option><option value="request">服务端请求</option><option value="interaction">页面交互</option><option value="account">注册 / 登录</option></select></label><label class="checkbox-label"><input id="riskOnly" type="checkbox"> 仅看风险</label><label><span class="sr-only">会话 ID</span><input id="sessionFilter" type="search" placeholder="筛选会话 ID" maxlength="128"></label><button class="secondary">筛选</button></form>
+      <div class="table-wrap"><table><thead><tr><th>时间 / 用户</th><th>操作</th><th>状态</th><th>风险</th><th>耗时</th><th>详情</th></tr></thead><tbody id="eventRows"><tr><td colspan="6" class="empty">正在加载操作记录…</td></tr></tbody></table></div><div class="table-footer"><span class="muted small">交互来自浏览器打点；请求结果与风险来自服务端。</span><nav id="eventPages" class="pagination" aria-label="记录分页"></nav></div>
+    </section>
+    <footer class="page-footer">CoolWatch · 管理中心<span>新增打点从功能启用后开始记录</span></footer>
+  </main>
+</div>
+<dialog id="detailDialog" class="detail-dialog"><header><div><span class="eyebrow">ACTIVITY DETAIL</span><h2 id="detailTitle">操作详情</h2></div><button data-close="detailDialog" class="icon-button" aria-label="关闭详情">×</button></header><div id="detailBody"></div></dialog>
+<dialog id="leadDialog" class="lead-dialog"><header><h2>更新意向标签</h2><button data-close="leadDialog" class="icon-button" aria-label="关闭标签编辑">×</button></header><form id="leadForm"><p id="leadUser" class="muted"></p><label>意向标签<select id="leadStatus"><option value="unreviewed">待判断</option><option value="follow_up">待跟进</option><option value="not_interested">暂无意向</option></select></label><label>跟进备注<textarea id="leadNote" rows="4" maxlength="2000" placeholder="记录判断依据或下次跟进事项"></textarea></label><p id="leadError" class="error" role="alert"></p><button class="primary" id="saveLead">保存标签</button></form></dialog>
+<script type="module" src="./manager.js"></script>
+</body></html>

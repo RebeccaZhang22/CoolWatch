@@ -1,0 +1,139 @@
+{
+  "heldout_neulab": {
+    "expected": 139797,
+    "processed": 261,
+    "valid": 261,
+    "errors": {},
+    "positive_count": 173,
+    "safety_counts": {
+      "Safe": 245,
+      "Controversial": 15,
+      "Unsafe": 1
+    },
+    "unsafe": {
+      "tp": 1,
+      "fp": 0,
+      "tn": 88,
+      "fn": 172,
+      "precision": 1.0,
+      "recall": 0.005780346820809248,
+      "f1": 0.011494252873563218,
+      "fpr": 0.0,
+      "accuracy": 0.34099616858237547
+    },
+    "unsafe_or_controversial": {
+      "tp": 16,
+      "fp": 0,
+      "tn": 88,
+      "fn": 157,
+      "precision": 1.0,
+      "recall": 0.09248554913294797,
+      "f1": 0.1693121693121693,
+      "fpr": 0.0,
+      "accuracy": 0.39846743295019155
+    },
+    "jailbreak": {
+      "tp": 11,
+      "fp": 0,
+      "tn": 88,
+      "fn": 162,
+      "precision": 1.0,
+      "recall": 0.06358381502890173,
+      "f1": 0.11956521739130435,
+      "fpr": 0.0,
+      "accuracy": 0.3793103448275862
+    },
+    "auroc_unsafe_label_prefix_score": 0.7628087230688386
+  },
+  "heldout_ota": {
+    "expected": 238509,
+    "processed": 261,
+    "valid": 261,
+    "errors": {},
+    "positive_count": 154,
+    "safety_counts": {
+      "Safe": 240,
+      "Controversial": 21
+    },
+    "unsafe": {
+      "tp": 0,
+      "fp": 0,
+      "tn": 107,
+      "fn": 154,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "fpr": 0.0,
+      "accuracy": 0.4099616858237548
+    },
+    "unsafe_or_controversial": {
+      "tp": 21,
+      "fp": 0,
+      "tn": 107,
+      "fn": 133,
+      "precision": 1.0,
+      "recall": 0.13636363636363635,
+      "f1": 0.24,
+      "fpr": 0.0,
+      "accuracy": 0.4904214559386973
+    },
+    "jailbreak": {
+      "tp": 16,
+      "fp": 0,
+      "tn": 107,
+      "fn": 138,
+      "precision": 1.0,
+      "recall": 0.1038961038961039,
+      "f1": 0.18823529411764706,
+      "fpr": 0.0,
+      "accuracy": 0.47126436781609193
+    },
+    "auroc_unsafe_label_prefix_score": 0.7945745842942105
+  },
+  "heldout_swe": {
+    "expected": 23814,
+    "processed": 261,
+    "valid": 261,
+    "errors": {},
+    "positive_count": 144,
+    "safety_counts": {
+      "Safe": 246,
+      "Controversial": 12,
+      "Unsafe": 3
+    },
+    "unsafe": {
+      "tp": 3,
+      "fp": 0,
+      "tn": 117,
+      "fn": 141,
+      "precision": 1.0,
+      "recall": 0.020833333333333332,
+      "f1": 0.04081632653061224,
+      "fpr": 0.0,
+      "accuracy": 0.45977011494252873
+    },
+    "unsafe_or_controversial": {
+      "tp": 15,
+      "fp": 0,
+      "tn": 117,
+      "fn": 129,
+      "precision": 1.0,
+      "recall": 0.10416666666666667,
+      "f1": 0.18867924528301888,
+      "fpr": 0.0,
+      "accuracy": 0.5057471264367817
+    },
+    "jailbreak": {
+      "tp": 14,
+      "fp": 0,
+      "tn": 117,
+      "fn": 130,
+      "precision": 1.0,
+      "recall": 0.09722222222222222,
+      "f1": 0.17721518987341772,
+      "fpr": 0.0,
+      "accuracy": 0.5019157088122606
+    },
+    "auroc_unsafe_label_prefix_score": 0.7644824311490979
+  }
+}

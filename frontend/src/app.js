@@ -1,9 +1,12 @@
+import { setTelemetryContext } from "./telemetry.js?v=manager-20261012";
+import { createWorkspaceFiles } from "./workspace-files.js?v=plus-small-20261012";
+import { createAgentFlow, advanceAgentFlow, finishAgentFlow } from "./agent-flow.js?v=loop-checkpoints-20261012";
 import { renderToolBrowser } from "./tool-browser.js";
-import { createCustomerAgentApiClient } from "./api.js?v=clear-generation-loop-20260920";
+import { createCustomerAgentApiClient } from "./api.js?v=ipi-only-20261012";
 
 const DEFENSES = [
-  { id: "activation_probe", name: "基于隐藏层的可解释性技术", stage: "输入", phase: "input", defaultEnabled: false, description: "基于目标模型隐藏状态中的可解释性信号，统一识别 Prompt、RAG 与 CoT 窃取意图" },
-  { id: "safegauge", name: "后缀概率探针", stage: "输入", phase: "input", defaultEnabled: false, hidden: true, description: "分析生成后缀的概率变化，评估隐藏信息窃取风险" },
+  { id: "activation_probe", name: "基于隐藏层的可解释性技术", stage: "输入", phase: "input", defaultEnabled: false, description: "当前仅启用提示词注入（IPI）探针，检测工具返回和检索内容中的隐藏指令" },
+  { id: "safegauge", name: "后缀概率检测", stage: "生成前", phase: "input", defaultEnabled: false, pendingModel: true, description: "在检测上下文后拼接固定后缀，根据后缀各 token 的 logprobs 识别风险。检测模型与 probe 权重待配置，当前仅展示方法。" },
   { id: "qwen_guard", name: "Qwen3Guard 文本检测", stage: "输入", phase: "input", origin: "baseline", description: "使用 Qwen3Guard 模型进行生成前输入文本检测", showInlineDescription: false },
   { id: "llama_prompt_guard", name: "护栏 C 文本检测", stage: "输入", phase: "input", origin: "baseline", hidden: true, description: "识别 Prompt Injection 与越权指令" },
   { id: "netease_yidun", name: "某某易盾文本检测", stage: "输入", phase: "input", origin: "baseline", description: "调用某某易盾文本检测服务进行输入检测", showInlineDescription: false },
@@ -12,11 +15,13 @@ const DEFENSES = [
 const GUARDRAIL_GROUP_ID = "guardrails";
 const GUARDRAIL_MEMBER_IDS = Object.freeze([
   "qwen_guard",
+  "llama_prompt_guard",
   "netease_yidun",
   "fangcun_guard",
 ]);
 const DEFAULT_SAFEGAUGE_THRESHOLD = 0.65;
-const AGENT_DISPLAY_NAME = "客服助手-小航";
+let isHrScenario = new URLSearchParams(window.location.search).get("scenario") === "hr";
+let AGENT_DISPLAY_NAME = isHrScenario ? "HR 简历筛选助手" : "客服助手-小航";
 
 const DEFENSE_SOURCES = {
   activation_probe: {
@@ -25,7 +30,7 @@ const DEFENSE_SOURCES = {
     linkLabel: "源码仓库",
   },
   safegauge: {
-    label: "LeakDojo · 开源实现",
+    label: "LeakDojo · 参考仓库",
     href: "https://github.com/yeasen-z/LeakDojo",
     linkLabel: "源码仓库",
   },
@@ -192,7 +197,7 @@ const state = {
     temperature: 1,
     top_p: 0.8,
     max_tokens: 8192,
-    enable_reasoning: true,
+    enable_reasoning: false,
   },
   safegaugeThreshold: DEFAULT_SAFEGAUGE_THRESHOLD,
   safegaugeThresholdExpanded: false,
@@ -211,9 +216,12 @@ const state = {
   draftAttackId: null,
   draftReplayCaseId: null,
   busy: false,
+  resetting: false,
+  switching: true,
   lastMessage: "",
   lastResult: null,
   livePhase: null,
+  agentFlow: createAgentFlow(),
   liveSignals: [],
   pendingDefenseIds: new Set(),
   comparing: false,
@@ -225,12 +233,17 @@ const state = {
 
 const demoMode = window.AGENT_GUARD_USE_MOCK === true
   || new URLSearchParams(window.location.search).get("demo") === "1";
-const api = createCustomerAgentApiClient({ useMock: demoMode });
+let api = createCustomerAgentApiClient({ useMock: demoMode && !isHrScenario, scenario: isHrScenario ? "hr" : "default" });
 
+setTelemetryContext(() => state.sessionId);
+
+const workspaceFiles = createWorkspaceFiles({loadFiles: () => api.workspaceFiles()});
 init();
 
 async function init() {
   bindEvents();
+  configureScenario();
+  setBusy(false);
   renderAgentConfigSummary();
   renderGuardList();
   renderSecurityFlow();
@@ -272,19 +285,114 @@ async function init() {
     setRuntimeStatus("degraded", "模型未连接", healthResult.reason?.message ?? "请检查 Qwen3-8B 服务");
   }
 
-  // Populate the two context cards independently. A temporary failure in one
-  // resource must not prevent the other resource or the chat UI from loading.
-  void Promise.allSettled([
+  // Load scenario context independently so one failure does not hide the chat.
+  await Promise.allSettled([
     loadSystemPromptConfig(),
     loadRagRuntimeConfig(),
+    loadScenarioChoices(),
   ]);
+  state.switching = false;
+  setBusy(false);
+}
+
+async function loadScenarioChoices() {
+  const { scenarios } = await api.scenarios();
+  const select = document.querySelector("#scenarioSelect");
+  select.replaceChildren(...scenarios.map(scene => {
+    const option = document.createElement("option");
+    option.value = scene.id;
+    option.textContent = scene.name;
+    return option;
+  }));
+  select.value = isHrScenario ? "hr" : "default";
+}
+
+function configureScenario() {
+  if (isHrScenario) Object.assign(state.modelParams, {temperature: 0, top_p: 1, max_tokens: 1024});
+  applyScenarioAppearance();
+  document.querySelector("#scenarioSelect").addEventListener("change", event => switchScenario(event.target.value));
+
+}
+
+function applyScenarioAppearance() {
+  AGENT_DISPLAY_NAME = isHrScenario ? "HR 简历筛选助手" : "客服助手-小航";
+  document.querySelector("#scenarioSelect").value = isHrScenario ? "hr" : "default";
+  document.title = `Demo · ${agentDisplayName()}攻防演示台`;
+  document.body.classList.toggle("hr-workbench", isHrScenario);
+  elements.agentTitle.textContent = agentDisplayName();
+  elements.messageInput.placeholder = isHrScenario
+    ? "向 HR 助手提问…"
+    : "输入消息…";
+  elements.messageInput.setAttribute("aria-label", `发送给${agentDisplayName()}的消息`);
+  document.querySelector(".chat-surface").setAttribute("aria-label", `${agentDisplayName()}对话`);
+  elements.editRagConfigButton.hidden = false;
+  elements.ragRetrievalList.closest(".drawer-section").hidden = false;
+  workspaceFiles.setEnabled(isHrScenario);
+  DEFENSES.find(item => item.id === "activation_probe").description = isHrScenario
+    ? "检测每轮工具上下文中的隐藏指令，在后续生成前识别并阻断风险"
+    : "当前仅启用提示词注入（IPI）探针，检测工具返回和检索内容中的隐藏指令";
+}
+
+async function switchScenario(id) {
+  const select = document.querySelector("#scenarioSelect");
+  const previous = isHrScenario ? "hr" : "default";
+  if (state.busy || state.comparing || state.resetting || state.switching || state.configSaving || id === previous) {
+    select.value = previous;
+    return;
+  }
+  state.switching = true;
+  setBusy(false);
+  closeAgentModal();
+  elements.turnStatus.textContent = "正在切换场景…";
+  const nextIsHr = id === "hr";
+  const nextApi = createCustomerAgentApiClient({useMock: demoMode && !nextIsHr, scenario: id});
+  try {
+    // Resolve the entire target context before replacing the current scene.
+    const [workspace, health, prompt, context] = await Promise.all([
+      nextApi.bootstrap(), nextApi.health(), nextApi.getSystemPrompt(),
+      nextApi.getRagConfig(),
+    ]);
+    await resetSession();
+    api = nextApi;
+    isHrScenario = nextIsHr;
+    state.workspace = workspace;
+    state.defensesInitialized = false;
+    state.selectedDefenseIds = [];
+    state.availableDefenseIds = normalizeDefenseIds(health.defense_methods);
+    state.ragConfig = context;
+    state.ragConfigLoaded = true;
+    state.ragDocumentContents.clear();
+    state.expandedRagDocumentId = null;
+    state.systemPrompt = prompt.content;
+    state.systemPromptSource = prompt.source;
+    state.systemPromptLoaded = true;
+    state.modelParams = {...state.modelParams, temperature: nextIsHr ? 0 : 1,
+      top_p: nextIsHr ? 1 : 0.8, max_tokens: nextIsHr ? 1024 : 8192};
+    elements.messageInput.value = "";
+    applyScenarioAppearance();
+    renderWorkspace(workspace);
+    syncModelParamsFromHealth(health);
+    renderHealth(health);
+    renderRuntimeConfig();
+    resizeComposer();
+    const url = new URL(window.location.href);
+    if (nextIsHr) url.searchParams.set("scenario", "hr");
+    else url.searchParams.delete("scenario");
+    window.history.replaceState(window.history.state, "", url);
+  } catch (error) {
+    select.value = previous;
+    elements.turnStatus.textContent = `场景切换失败：${error.message}`;
+  } finally {
+    state.switching = false;
+    setBusy(false);
+  }
 }
 
 function bindEvents() {
   elements.chatForm.addEventListener("submit", (event) => {
     event.preventDefault();
     const message = elements.messageInput.value.trim();
-    if (message) sendMessage(message);
+    if (message || workspaceFiles.files.length) sendMessage(message || "请阅读并分析添加的文件。");
   });
   elements.messageInput.addEventListener("input", () => {
     state.draftAttackId = null;
@@ -342,7 +450,8 @@ function bindEvents() {
 
 function renderWorkspace(workspace) {
   const profile = workspace.profile;
-  elements.agentTitle.textContent = AGENT_DISPLAY_NAME;
+  elements.agentTitle.textContent = agentDisplayName();
+  if (!isHrScenario) document.querySelector('#scenarioSelect option[value="default"]').textContent = profile.name || "原有业务场景";
   renderConnectedTools(profile);
   state.catalogDefenseIds = normalizeDefenseIds(profile.defense_pipeline);
   if (!state.defensesInitialized) {
@@ -384,6 +493,7 @@ function renderStarters(starters) {
         setBusy(true);
         try {
           const replay = await api.getReplayCase(starter.replay_case_id);
+          workspaceFiles.clear();
           state.sessionId = createSessionId();
           state.lastResult = null;
           renderTrajectory(null);
@@ -482,7 +592,7 @@ function renderGuardList() {
       stage: "输入",
       phase: "input",
       origin: "baseline",
-      description: "统一启用 Qwen3Guard、某某易盾和某某跃迁，仅检测当前用户输入。",
+      description: "统一启用当前场景已接入的文本护栏，检测当前用户输入。",
       members: guardrailDefenses,
     });
   }
@@ -494,8 +604,8 @@ function renderGuardList() {
     if (defense.id === GUARDRAIL_GROUP_ID) {
       return renderGuardrailGroupOption(defense);
     }
-    const available = state.availableDefenseIds.includes(defense.id);
-    const active = state.selectedDefenseIds.includes(defense.id);
+    const available = !defense.pendingModel && state.availableDefenseIds.includes(defense.id);
+    const active = available && state.selectedDefenseIds.includes(defense.id);
     return `
       <article class="guard-option ${defense.origin === "baseline" ? "baseline" : "ours"} ${active ? "active" : ""} ${available ? "" : "unavailable"}">
         <div class="guard-row">
@@ -503,10 +613,10 @@ function renderGuardList() {
             <input type="checkbox" value="${escapeHtml(defense.id)}" data-available="${available}" ${active ? "checked" : ""} ${available ? "" : "disabled"} autocomplete="off" />
             <strong>${escapeHtml(defense.name)}</strong>
           </label>
-          <span class="guard-state" title="${available ? "可用于当前运行时" : "当前运行时未连接该方法"}">${available ? (active ? "已启用" : "未启用") : "不可用"}</span>
+          <span class="guard-state" title="${defense.pendingModel ? "检测模型与 probe 权重待配置" : available ? "可用于当前运行时" : "当前运行时未连接该方法"}">${defense.pendingModel ? "待配置模型" : available ? (active ? "已启用" : "未启用") : "不可用"}</span>
           <button class="guard-info-button" data-guard-detail="${escapeHtml(defense.id)}" type="button" aria-label="查看 ${escapeHtml(defense.name)} 的方法详情">i</button>
         </div>
-        ${defense.id === "safegauge" ? `
+        ${defense.id === "safegauge" && !defense.pendingModel ? `
           <button
             class="safegauge-threshold-toggle"
             type="button"
@@ -577,6 +687,7 @@ function renderGuardList() {
         state.selectedDefenseIds = Array.from(selected);
       }
       state.lastResult = null;
+      state.agentFlow = createAgentFlow();
       renderTrajectory(null);
       renderGuardList();
       setFlowBadge("等待请求", "idle");
@@ -672,7 +783,7 @@ function renderGuardrailMemberOption(defense) {
           ${defense.showInlineDescription === false ? "" : `<small>${escapeHtml(defense.description)}</small>`}
         </span>
       </label>
-      <span class="guard-state">${available ? (active ? "已启用" : "未启用") : "不可用"}</span>
+      <span class="guard-state">${defense.pendingModel ? "待配置模型" : available ? (active ? "已启用" : "未启用") : "不可用"}</span>
       <button class="guard-info-button" data-guard-detail="${escapeHtml(defense.id)}" type="button" aria-label="查看 ${escapeHtml(defense.name)} 的方法详情">i</button>
     </div>
   `;
@@ -725,7 +836,7 @@ function formatThreshold(value) {
 function openGuardMethodDialog(defenseId) {
   const defense = DEFENSES.find((item) => item.id === defenseId);
   if (!defense) return;
-  const available = state.availableDefenseIds.includes(defense.id);
+  const available = !defense.pendingModel && state.availableDefenseIds.includes(defense.id);
   const enabled = state.selectedDefenseIds.includes(defense.id);
   const source = DEFENSE_SOURCES[defenseId] ?? { label: "我们的产品 · 平台实现", href: "./audit.html", linkLabel: "实验审计" };
   elements.guardMethodDialogType.textContent = defense.origin === "baseline" ? "其他已有产品" : "我们的产品";
@@ -733,16 +844,20 @@ function openGuardMethodDialog(defenseId) {
   elements.guardMethodDialogSummary.textContent = defense.description;
   elements.guardMethodDialogFacts.innerHTML = `
     <div><dt>执行阶段</dt><dd>${escapeHtml(defense.stage)}</dd></div>
-    <div><dt>当前状态</dt><dd>${available ? (enabled ? "已启用" : "未启用") : "当前运行时未连接"}</dd></div>
+    <div><dt>当前状态</dt><dd>${defense.pendingModel ? "待配置模型" : available ? (enabled ? "已启用" : "未启用") : "当前运行时未连接"}</dd></div>
     <div><dt>来源</dt><dd>${escapeHtml(source.label)} ${source.href !== "#" ? `<a href="${source.href}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.linkLabel)} ↗</a>` : ""}</dd></div>
-    <div><dt>运行模型</dt><dd>${escapeHtml(state.modelParams.model)}</dd></div>
-    ${defense.id === "safegauge" ? `<div><dt>当前风险阈值</dt><dd>${formatThreshold(state.safegaugeThreshold)}</dd></div>` : ""}
+    <div><dt>运行模型</dt><dd>${defense.pendingModel ? "待配置" : escapeHtml(state.modelParams.model)}</dd></div>
+    ${defense.id === "safegauge" && !defense.pendingModel ? `<div><dt>当前风险阈值</dt><dd>${formatThreshold(state.safegaugeThreshold)}</dd></div>` : ""}
   `;
-  elements.guardMethodDialogSteps.innerHTML = [
+  elements.guardMethodDialogSteps.innerHTML = (defense.pendingModel ? [
+    "在独立检测请求中拼接固定后缀，不修改业务对话。",
+    "读取后缀各 token 的 logprobs，由配套 probe 输出风险分数。",
+    "模型与 probe 权重配置完成前，不参与检测或拦截。",
+  ] : [
     `在${defense.stage}阶段接收本轮 Agent 的安全信号。`,
     "只对当前客服助手-小航请求生效，不改变业务工具和知识库。",
     "风险命中时仅记录和提示，原始 Query 仍会进入业务模型和工具。",
-  ].map((step) => `<li>${escapeHtml(step)}</li>`).join("");
+  ]).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
   elements.guardMethodDialog.showModal();
 }
 
@@ -752,7 +867,7 @@ function openGuardrailGroupDialog(members = []) {
   elements.guardMethodDialogType.textContent = "其他已有产品";
   elements.guardMethodDialogTitle.textContent = "护栏";
   elements.guardMethodDialogSummary.textContent =
-    "护栏是市面已有检测器的统一入口，勾选后会同时运行三种竞品方法。";
+    "护栏是市面已有检测器的统一入口，勾选后会同时运行当前场景可用的竞品方法。";
   elements.guardMethodDialogFacts.innerHTML = `
     <div><dt>执行阶段</dt><dd>生成前输入检测</dd></div>
     <div><dt>包含方法</dt><dd>${escapeHtml(members.map((defense) => defense.name).join("、"))}</dd></div>
@@ -938,6 +1053,7 @@ async function saveAgentConfiguration() {
     } else {
       state.modelParams = readModelParamsFromInputs();
       state.lastResult = null;
+      state.agentFlow = createAgentFlow();
       renderTrajectory(null);
       renderAgentConfigSummary();
       setFlowBadge("等待请求", "idle");
@@ -1274,7 +1390,7 @@ function renderRangeProgress(input) {
 function renderAgentConfigSummary() {
   const params = state.modelParams;
   elements.agentConfigModel.textContent = params.model;
-  elements.agentConfigParams.textContent = `vLLM :${params.vllm_port} · Temperature ${params.temperature.toFixed(1)} · Top P ${params.top_p.toFixed(1)} · Max ${params.max_tokens}`;
+  elements.agentConfigParams.textContent = `业务 API :${params.vllm_port} · Temperature ${params.temperature.toFixed(1)} · Top P ${params.top_p.toFixed(1)} · Max ${params.max_tokens}`;
 }
 
 function setRuntimeStatus(status, label, detail) {
@@ -1289,7 +1405,8 @@ function setFlowBadge(text, stateClass = "idle") {
 }
 
 async function sendMessage(message) {
-  if (state.busy) return;
+  if (state.busy || state.resetting || state.switching) return;
+  const attachedFiles = workspaceFiles.files;
   const attackId = state.draftAttackId;
   const replayCaseId = state.draftReplayCaseId;
   state.draftReplayCaseId = null;
@@ -1300,9 +1417,10 @@ async function sendMessage(message) {
   renderTrajectory(null);
   state.livePhase = null;
   state.liveSignals = [];
+  state.agentFlow = createAgentFlow();
   state.pendingDefenseIds = new Set(activeDefenseIds());
   setBusy(true);
-  if (!replayCaseId) appendUserMessage(message);
+  if (!replayCaseId) appendUserMessage(message, attachedFiles);
   const pending = appendPendingMessage();
   elements.messageInput.value = "";
   resizeComposer();
@@ -1311,6 +1429,7 @@ async function sendMessage(message) {
   try {
     const result = await api.streamTurn(
       {
+        ...(isHrScenario ? { workspace_file_ids: attachedFiles.map(file => file.id) } : {}),
         session_id: state.sessionId,
         message: replayCaseId ? undefined : message,
         attack_id: attackId,
@@ -1325,7 +1444,9 @@ async function sendMessage(message) {
         onDelta: (delta) => appendPendingDelta(pending, delta),
       },
     );
+    workspaceFiles.clear();
     state.lastResult = result;
+    state.sessionId = result.session_id || state.sessionId;
     replacePendingWithResult(pending, result);
     renderTurn(result);
   } catch (error) {
@@ -1333,6 +1454,7 @@ async function sendMessage(message) {
     replacePendingWithError(pending, error);
     elements.turnStatus.textContent = "本轮运行失败";
     setFlowBadge("运行异常", "error");
+    finishAgentFlow(state.agentFlow, true);
     renderSecurityFlow(state.liveSignals, "error");
   } finally {
     state.busy = false;
@@ -1341,6 +1463,7 @@ async function sendMessage(message) {
 }
 
 function handleLiveStatus(status, pending) {
+  advanceAgentFlow(state.agentFlow, status);
   const byId = new Map(state.liveSignals.map((signal) => [signal.defense_id, signal]));
   for (const signal of status.defense_signals ?? []) {
     if (signal.status === "not_run") continue;
@@ -1350,11 +1473,14 @@ function handleLiveStatus(status, pending) {
   state.liveSignals = [...byId.values()];
   renderSignals(state.liveSignals);
   state.livePhase = status.status === "running" ? status.phase : null;
-  elements.turnStatus.textContent = status.message || "Agent 正在运行";
+  const statusText = (status.message || "Agent 正在运行")
+    + (status.heartbeat ? `（已等待 ${status.elapsed_seconds} 秒）` : "");
+  elements.turnStatus.textContent = statusText;
   const text = pending.querySelector("[data-pending-text]");
-  if (text) text.textContent = status.message || "Agent 正在运行";
-  if (typeof appendLiveLoopStep === "function") appendLiveLoopStep(pending, status);
-  setFlowBadge("运行中", "running");
+  if (text) text.textContent = statusText;
+  if (!status.heartbeat && typeof appendLiveLoopStep === "function") appendLiveLoopStep(pending, status);
+  const checkpointRisk = state.agentFlow.checkpoints.find((item) => ["blocked", "risk", "error"].includes(item.status));
+  setFlowBadge(checkpointRisk ? (checkpointRisk.status === "error" ? "检测异常" : checkpointRisk.status === "blocked" ? "风险已拦截" : "检测到风险") : "运行中", checkpointRisk ? "error" : "running");
   renderSecurityFlow(state.liveSignals, state.livePhase, false);
 }
 
@@ -1432,13 +1558,19 @@ function finishLiveLoopTrace(trace) {
   return trace.hidden ? null : trace;
 }
 
-function appendUserMessage(message) {
+function appendUserMessage(message, attachedFiles = []) {
   const article = document.createElement("article");
   article.className = "message user";
   article.append(messageMeta("你", formatTime(new Date())));
   const bubble = document.createElement("div");
   bubble.className = "message-bubble";
   bubble.textContent = message;
+  if (attachedFiles.length) {
+    const files = document.createElement("div");
+    files.className = "message-attachments";
+    files.textContent = attachedFiles.map(file => `▤ ${file.name}`).join("\n");
+    bubble.append(files);
+  }
   article.append(bubble);
   elements.messageList.append(article);
   scrollConversation();
@@ -1770,11 +1902,14 @@ function messageMeta(author, detail) {
 }
 
 function renderTurn(result) {
+  finishAgentFlow(state.agentFlow);
   state.lastResult = result;
   elements.runId.textContent = result.run_id;
   elements.runId.title = result.run_id;
-  setFlowBadge(VERDICTS[result.verdict] ?? result.verdict, result.verdict === "compromised" ? "error" : "complete");
-  elements.turnStatus.textContent = result.output_blocked ? "输入风险已在模型生成前阻断" : "";
+  setFlowBadge(VERDICTS[result.verdict] ?? result.verdict, ["compromised", "blocked"].includes(result.verdict) ? "error" : "complete");
+  elements.turnStatus.textContent = result.output_blocked ? (state.agentFlow.checkpoints.some((item) => item.status === "blocked")
+      ? `第 ${state.agentFlow.checkpoints.find((item) => item.status === "blocked").round} 轮生成前检测到风险，已停止模型生成`
+      : "风险已在模型生成前拦截") : "";
   state.liveSignals = result.defense_signals ?? [];
   state.livePhase = null;
   state.pendingDefenseIds.clear();
@@ -1988,11 +2123,11 @@ function closeDetailDrawer() {
 
 function renderSecurityFlow(signals = [], livePhase = null, turnComplete = false) {
   const signalById = new Map(signals.map((signal) => [signal.defense_id, signal]));
-  // The flow represents the methods that will participate in this request.
-  // Keep the catalog for the guard settings panel, but only draw checked
-  // input guards here so an unchecked method does not look like it ran.
+  // One-time input guards stay outside the loop; the context probe is
+  // represented by its per-generation checkpoints inside the loop.
   const flowDefenses = visibleDefenses().filter(
-    (defense) => defense.phase !== "input" || state.selectedDefenseIds.includes(defense.id),
+    (defense) => defense.id !== "activation_probe"
+      && (defense.phase !== "input" || state.selectedDefenseIds.includes(defense.id)),
   );
   const stages = [
     { phase: "input", eyebrow: "用户提交后", title: "安全检测" },
@@ -2001,7 +2136,7 @@ function renderSecurityFlow(signals = [], livePhase = null, turnComplete = false
   ].filter((stage) => flowDefenses.some((defense) => defense.phase === stage.phase));
 
   let index = 1;
-  let markup = renderFlowEndpoint("用户输入", "Query", livePhase || signals.length || turnComplete ? "complete" : "idle");
+  let markup = renderFlowEndpoint("用户输入", "User", livePhase || signals.length || turnComplete ? "complete" : "idle");
   stages.forEach((stage) => {
     const methods = flowDefenses.filter((defense) => defense.phase === stage.phase);
     const stageState = getFlowStageState(methods, signalById, livePhase);
@@ -2009,19 +2144,45 @@ function renderSecurityFlow(signals = [], livePhase = null, turnComplete = false
     markup += renderFlowStage(stage, methods, signalById, livePhase, index);
     index += 1;
   });
-  const generationState = livePhase === "final_response"
-    ? "running"
-    : turnComplete ? "complete" : "idle";
-  markup += renderFlowConnector(
-    generationState === "running" ? "running" : generationState === "complete" ? "complete" : "idle",
-  );
-  markup += renderAgentNode(generationState);
-  markup += renderFlowConnector(turnComplete ? "complete" : generationState === "running" ? "running" : "idle");
-  const responseState = turnComplete
+  const flow = state.agentFlow;
+  const currentRound = Math.max(flow.rounds, flow.checkpoints.at(-1)?.round || 0);
+  const lastCheck = flow.checkpoints.at(-1);
+  const returnState = flow.env === "idle" ? "idle"
+    : ["blocked", "risk", "error"].includes(lastCheck?.status) ? "error"
+    : !turnComplete && lastCheck?.status === "running" ? "running"
+    : flow.env === "complete" ? "complete" : "idle";
+  markup += renderFlowConnector(flow.model);
+  markup += `<div class="flow-agent-loop" aria-label="Model 与 Env 交替运行循环">
+    <div class="flow-loop-heading"><span>Agent Loop</span><small>${currentRound ? `第 ${currentRound} 轮` : "等待运行"}</small></div>
+    <div class="flow-loop-body">
+      ${renderLoopCheckpoints(flow)}
+      ${renderAgentNode(flow.model)}
+      ${renderFlowConnector(flow.env)}
+      ${renderEnvironmentNode(flow.env)}
+      <div class="flow-loop-return ${returnState}" role="img" aria-label="从 Env 返回生成前检测，开始下一轮"></div>
+    </div>
+  </div>`;
+  markup += renderFlowConnector(turnComplete ? "complete" : "idle");
+  const responseState = livePhase === "error" || flow.checkpoints.some((item) => ["blocked", "risk", "error"].includes(item.status)) ? "error" : turnComplete
     ? (signals.some((signal) => signal.status === "error") ? "error" : "complete")
     : "idle";
-  markup += renderFlowEndpoint("最终响应", "Response", responseState);
+  markup += renderFlowEndpoint("最终结果", "Results", responseState);
   elements.securityFlow.innerHTML = markup;
+}
+
+function renderLoopCheckpoints(flow) {
+  const latest = flow.checkpoints.at(-1);
+  const enabled = state.selectedDefenseIds.includes("activation_probe");
+  const labels = { running: "检测中", safe: "通过", blocked: "风险 · 已拦截", risk: "检测到风险", error: "检测异常" };
+  const status = latest?.status || "idle";
+  const risk = flow.checkpoints.find((item) => ["blocked", "risk"].includes(item.status));
+  return `<section class="flow-checkpoint ${status}" aria-label="每次模型生成前的风险检测">
+    <div class="flow-checkpoint-heading"><strong>生成前检测</strong><span>${labels[status] || (enabled ? "待检测" : "未启用")}</span></div>
+    <p>每次 assistant 回复前检测当前上下文</p>
+    ${latest ? `<div class="flow-checkpoint-history" aria-label="各轮检测结果">${flow.checkpoints.map((item) => `<span class="flow-checkpoint-chip ${item.status}" title="${escapeHtml(item.detail || labels[item.status] || "")}">第 ${item.round} 轮 · ${labels[item.status] || "待检测"}</span>`).join("")}</div>` : ""}
+    ${risk ? `<div class="flow-risk-alert" role="alert"><strong>⚠ 第 ${risk.round} 轮检测到风险${risk.status === "blocked" ? " · 已拦截" : ""}</strong><span>${risk.status === "blocked" ? "已停止本轮模型生成" : "风险已标记"}</span><small>${escapeHtml(risk.detail || "")}</small></div>` : ""}
+    ${status === "error" ? '<div class="flow-checkpoint-error" role="status">检测异常，模型生成已暂停</div>' : ""}
+  </section>${renderFlowConnector(status === "running" ? "running" : status === "safe" ? "complete" : "idle")}`;
 }
 
 function renderFlowEndpoint(title, meta, stateClass) {
@@ -2081,9 +2242,22 @@ function renderAgentNode(stateClass) {
           <circle cx="9.5" cy="11.5" r="1"></circle><circle cx="14.5" cy="11.5" r="1"></circle><path d="M9 15h6"></path>
         </svg>
       </span>
-      <span class="flow-node-copy"><span class="flow-node-eyebrow">Agent 生成</span><strong>${escapeHtml(state.modelParams.model)}</strong></span>
+      <span class="flow-node-copy"><strong>模型生成</strong></span>
+      <span class="flow-execution-status">${flowExecutionLabel(stateClass)}</span>
     </div>
   `;
+}
+
+function flowExecutionLabel(stateClass) {
+  return { running: "运行中", complete: "已完成", error: "异常", idle: "待运行" }[stateClass] || "待运行";
+}
+
+function renderEnvironmentNode(stateClass) {
+  return `<div class="flow-agent-node flow-env-node ${stateClass}">
+    <span class="flow-node-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="4" width="18" height="14" rx="3"></rect><path d="m7 8 3 3-3 3m6 0h4M8 21h8m-4-3v3"></path></svg></span>
+    <span class="flow-node-copy"><strong>环境执行</strong></span>
+    <span class="flow-execution-status">${flowExecutionLabel(stateClass)}</span>
+  </div>`;
 }
 
 function getFlowStageState(methods, signalById, livePhase) {
@@ -2714,17 +2888,19 @@ function guardRawOutputItem(signal) {
   const showsRiskTypes = signal.defense_id === "activation_probe";
   facts.className = `guard-risk-results${showsRiskTypes ? "" : " single"}`;
   const perRisk = signal.metadata?.per_risk ?? {};
+  const disabledRisks = new Set(signal.metadata?.disabled_risks ?? []);
   const riskResults = showsRiskTypes ? PROBE_RISK_LABELS : [["overall", "是否命中"]];
   riskResults.forEach(([riskId, label]) => {
+    const disabled = showsRiskTypes && disabledRisks.has(riskId);
     const flagged = showsRiskTypes
       ? typeof perRisk[riskId]?.flagged === "boolean" ? perRisk[riskId].flagged : null
       : signal.blocked || signal.status === "risk" ? true : signal.status === "safe" ? false : null;
     const fact = document.createElement("span");
-    fact.dataset.status = flagged === true ? "hit" : flagged === false ? "safe" : "unknown";
+    fact.dataset.status = disabled ? "disabled" : flagged === true ? "hit" : flagged === false ? "safe" : "unknown";
     const key = document.createElement("small");
     key.textContent = label;
     const content = document.createElement("b");
-    content.textContent = flagged === true ? "已命中" : flagged === false ? "未命中" : "未检测";
+    content.textContent = disabled ? "已禁用" : flagged === true ? "已命中" : flagged === false ? "未命中" : "未检测";
     fact.append(key, content);
     facts.append(fact);
   });
@@ -2762,6 +2938,7 @@ function renderEmpty(container, message) {
 }
 
 function resetTurnInspector(running = true) {
+  state.agentFlow = createAgentFlow();
   elements.runId.textContent = "—";
   setFlowBadge(running ? "运行中" : "待运行", running ? "running" : "idle");
   renderSecurityFlow([], running ? "input_guard" : null);
@@ -2862,7 +3039,9 @@ function renderComparisonSide(result, verdictNode, outputNode, factsNode) {
 }
 
 async function resetSession() {
-  if (state.busy || state.comparing) return;
+  if (state.busy || state.comparing || state.resetting) return;
+  state.resetting = true;
+  setBusy(false);
   try {
     const response = await api.resetSession(state.sessionId);
     if (response?.rag) {
@@ -2875,6 +3054,7 @@ async function resetSession() {
   } catch {
     // Reset the local view even when the previous backend session has expired.
   }
+  workspaceFiles.clear();
   state.sessionId = createSessionId();
   state.lastMessage = "";
   state.lastResult = null;
@@ -2885,6 +3065,7 @@ async function resetSession() {
   state.promptCompareTranslationError = "";
   state.livePhase = null;
   state.liveSignals = [];
+  state.agentFlow = createAgentFlow();
   state.pendingDefenseIds.clear();
   state.draftAttackId = null;
   state.draftReplayCaseId = null;
@@ -2900,6 +3081,8 @@ async function resetSession() {
   renderEmpty(elements.ragRetrievalList, "运行一条消息后显示 RAG 检索结果。");
   elements.signalCount.textContent = "0";
   renderEmpty(elements.signalList, "运行一条消息后显示检测结果。");
+  state.resetting = false;
+  setBusy(false);
 }
 
 function activeDefenseIds() {
@@ -2907,7 +3090,7 @@ function activeDefenseIds() {
 }
 
 function selectedDefenseIds() {
-  const visible = new Set(visibleDefenses().map((defense) => defense.id));
+  const visible = new Set(visibleDefenses().filter((defense) => !defense.pendingModel).map((defense) => defense.id));
   return state.selectedDefenseIds.filter(
     (id) => visible.has(id) && state.availableDefenseIds.includes(id),
   );
@@ -2915,7 +3098,7 @@ function selectedDefenseIds() {
 
 function visibleDefenses() {
   const catalog = new Set(state.catalogDefenseIds);
-  return DEFENSES.filter((defense) => !defense.hidden && catalog.has(defense.id));
+  return DEFENSES.filter((defense) => (!defense.hidden || isHrScenario) && (defense.pendingModel || catalog.has(defense.id)));
 }
 
 function normalizeDefenseIds(values) {
@@ -2928,7 +3111,9 @@ function defenseName(defenseId) {
 }
 
 function setBusy(busy) {
-  const locked = busy || state.comparing;
+  const locked = busy || state.comparing || state.resetting || state.switching;
+  document.querySelector("#scenarioSelect").disabled = locked;
+  workspaceFiles.setBusy(locked);
   elements.sendButton.disabled = locked;
   // Keep the composer editable while the current turn is running so the next
   // message can be drafted without waiting for model generation to finish.
@@ -2937,9 +3122,9 @@ function setBusy(busy) {
   elements.resetSessionButton.disabled = locked;
   // Runtime configuration uses immutable per-turn snapshots, so opening or
   // editing it during generation is safe; changes apply to the next turn.
-  elements.editAgentConfigButton.disabled = false;
-  elements.editSystemPromptButton.disabled = false;
-  elements.editRagConfigButton.disabled = false;
+  elements.editAgentConfigButton.disabled = state.switching;
+  elements.editSystemPromptButton.disabled = state.switching;
+  elements.editRagConfigButton.disabled = state.switching;
   elements.guardList.querySelectorAll('input[type="checkbox"]').forEach((input) => {
     input.disabled = locked || input.dataset.available !== "true";
   });
@@ -2978,6 +3163,7 @@ function createSessionId() {
 }
 
 function fallbackWorkspace() {
+  if (isHrScenario) return {profile: {name: AGENT_DISPLAY_NAME, model: "qwen3-8b", tools: [], defense_pipeline: ["activation_probe"]}, conversation_starters: []};
   return {
     profile: {
       name: AGENT_DISPLAY_NAME,
@@ -2991,5 +3177,5 @@ function fallbackWorkspace() {
 }
 
 function agentDisplayName() {
-  return AGENT_DISPLAY_NAME;
+  return state.workspace?.profile?.name || AGENT_DISPLAY_NAME;
 }

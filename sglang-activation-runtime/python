@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+activation_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+activation_python="${SGLANG_ACTIVATION_PYTHON:-$activation_root/.venv/bin/python}"
+if [[ ! -x "$activation_python" ]]; then
+  activation_python="$activation_root/../probe-runtime/.venv-sglang/bin/python"
+fi
+export PYTHONPATH="$activation_root/.source"
+unset SGLANG_EXTERNAL_MODEL_PACKAGE
+exec "$activation_python" "$@"

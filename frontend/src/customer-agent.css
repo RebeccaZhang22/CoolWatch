@@ -521,16 +521,9 @@
   gap: 8px;
 }
 
-/* Keep the live flow as the only flexible region so panels cannot overlap on
-   short screens. */
+/* Configuration panels keep their natural height in the sidebar. */
 .sidebar > .panel {
   flex: 0 0 auto;
-}
-
-.sidebar > .flow-panel {
-  flex: 1 1 260px;
-  min-height: 220px;
-  overflow-y: auto;
 }
 
 .new-chat-icon {
@@ -3808,4 +3801,148 @@
   .tool-detail-header { padding: 14px 16px 10px; }
   .tool-view-controls { padding: 0 16px; }
   .tool-detail-content { padding: 0 16px 16px; }
+}
+
+/* Live model/environment loop in the request flow. */
+.flow-agent-loop {
+  position: relative;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line, #dde3eb);
+  border-radius: 12px;
+}
+.flow-loop-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.flow-loop-heading { margin-bottom: 8px; }
+.flow-loop-heading > span { font-weight: 650; }
+.flow-loop-heading small { font-size: inherit; }
+.flow-agent-loop .flow-node-copy { min-width: 0; flex: 1; }
+.flow-agent-loop .flow-node-copy strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.flow-execution-status { flex-shrink: 0; font-size: 10px; color: var(--muted); }
+.flow-agent-node.running .flow-execution-status { color: var(--flow-accent); }
+.flow-agent-node.error .flow-execution-status { color: var(--flow-danger); }
+.flow-agent-loop .flow-agent-node.running {
+  animation: agent-execution-pulse 1.5s ease-in-out infinite;
+}
+@keyframes agent-execution-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(85,119,183,.12); }
+  50% { box-shadow: 0 0 0 4px rgba(85,119,183,.24), 0 0 14px rgba(85,119,183,.18); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-agent-loop .flow-agent-node.running { animation: none; }
+}
+.flow-agent-loop .flow-agent-node { grid-template-columns: 32px minmax(0, 1fr) auto; }
+.flow-execution-status { white-space: nowrap; }
+
+
+/* Keep the live request flow visible at the top right of the workspace. */
+.workspace.request-flow-workspace {
+  grid-template-columns: minmax(0, 1fr) 304px;
+}
+.request-flow-workspace > .topbar { grid-column: 1; grid-row: 1; }
+.request-flow-workspace > .chat-surface { grid-column: 1; grid-row: 2; min-width: 0; }
+.request-flow-workspace > .flow-panel {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  align-self: start;
+  min-height: 0;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+  margin: 12px;
+}
+@media (max-width: 1100px) {
+  .workspace.request-flow-workspace {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+  .request-flow-workspace > .flow-panel {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: end;
+    width: min(304px, calc(100% - 24px));
+    max-height: 200px;
+    margin: 8px 12px;
+  }
+  .request-flow-workspace > .chat-surface { grid-row: 3; }
+}
+
+.flow-checkpoint {
+  min-width: 0;
+  border: 1px solid var(--flow-line);
+  border-radius: 9px;
+  padding: 9px;
+  background: var(--surface, #fff);
+}
+.flow-checkpoint-heading { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; }
+.flow-checkpoint-heading > span { font-size: 10px; }
+.flow-checkpoint > p { margin: 5px 0 0; color: var(--muted); font-size: 10px; }
+.flow-checkpoint-history { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.flow-checkpoint-chip { padding: 3px 6px; border-radius: 5px; font-size: 10px; }
+.flow-checkpoint.running { border-color: var(--flow-accent); background: var(--flow-accent-bg); }
+.flow-checkpoint.running .flow-checkpoint-heading { color: var(--flow-accent); }
+.flow-checkpoint-chip.running { color: var(--flow-accent); background: #e8eef9; }
+.flow-checkpoint.safe { border-color: rgba(46, 125, 91, .4); }
+.flow-checkpoint.safe .flow-checkpoint-heading,
+.flow-checkpoint-chip.safe { color: var(--flow-success); }
+.flow-checkpoint-chip.safe { background: var(--flow-success-bg); }
+.flow-checkpoint.blocked, .flow-checkpoint.risk, .flow-checkpoint.error {
+  border-color: var(--flow-danger);
+  background: var(--flow-danger-bg);
+}
+.flow-checkpoint.blocked .flow-checkpoint-heading,
+.flow-checkpoint.risk .flow-checkpoint-heading,
+.flow-checkpoint.error .flow-checkpoint-heading,
+.flow-checkpoint-chip.blocked, .flow-checkpoint-chip.risk, .flow-checkpoint-chip.error,
+.flow-checkpoint-error { color: var(--flow-danger); }
+.flow-checkpoint-chip.blocked, .flow-checkpoint-chip.risk, .flow-checkpoint-chip.error { background: #f8dede; }
+.flow-risk-alert { display: grid; gap: 5px; margin-top: 9px; padding: 9px; border-left: 3px solid var(--flow-danger); background: #fff2f2; color: var(--flow-danger); font-size: 11px; }
+.flow-risk-alert small { font-size: 10px; overflow-wrap: anywhere; }
+.flow-checkpoint-error { margin-top: 8px; font-size: 11px; }
+
+
+/* The return path joins Env to the next pre-generation check. */
+.flow-loop-body { position: relative; padding-right: 23px; }
+.flow-loop-return {
+  position: absolute;
+  top: 20px;
+  right: 0;
+  bottom: 25px;
+  width: 23px;
+  border: 1px solid #c5cdd7;
+  border-left: 0;
+  border-radius: 0 11px 11px 0;
+  color: #c5cdd7;
+  pointer-events: none;
+}
+.flow-loop-return::before {
+  content: "";
+  position: absolute;
+  top: -3.5px;
+  left: 0;
+  width: 6px;
+  height: 6px;
+  border-left: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+.flow-loop-return.complete,
+.flow-loop-return.running { border-color: var(--flow-accent); color: var(--flow-accent); }
+.flow-loop-return.running { animation: loop-return-glow 1.5s ease-in-out infinite; }
+.flow-loop-return.error { border-color: var(--flow-danger); color: var(--flow-danger); }
+@keyframes loop-return-glow {
+  0%, 100% { opacity: .65; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow-loop-return.running { animation: none; }
 }

@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+activation_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export SGLANG_ACTIVATION_CAPTURE=1
+exec "$activation_root/python" -m sglang.launch_server "$@"

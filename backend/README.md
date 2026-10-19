@@ -2,7 +2,7 @@
 
 FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回护栏检测状态、泄露指标和 RAG Trace。在原有 `/api/chat` 中，Qwen3Guard、Llama Prompt Guard、Suffix Probe（界面名称为 SafeGauge）和易盾在生成前执行；FinVault/系统提示词场景的基于隐藏层的可解释性技术可由 patched vLLM worker 或独立 Transformers 服务执行；间接提示词注入的 Inline Probing 则嵌入新工具返回后的首次真实 assistant generation。这条旧链路中的护栏均不改写模型上下文或输出。
 
-首页使用独立的 `/api/customer-agent/*` API：面向终端客户的 Qwen3-8B 银行财富管理客服自主选择客户持仓、资金审批、调仓草稿或知识检索工具，并使用 `jieba + BM25Okapi` 检索合成金融语料；金融沙盒工具再使用 `gpt-4.1-mini` 生成合成业务响应。defended 模式会在业务模型生成前执行输入检测；任一已启用护栏命中风险，就跳过模型和工具调用，只返回固定安全提示。任意自然消息都可以直接运行或做“其他已有产品对照 / 我们的产品防护”对照。启动方式、API 契约和双模型隔离规则见 [银行财富管理客服后端](CUSTOMER_AGENT.md)。原有 `/api/chat` 仅供旧审计与回放页面兼容。
+首页演示台使用 `/api/customer-agent/*` API，默认运行航旅客服，也可切换到 `/api/customer-agent/hr/*` 提供的 HR 简历筛选场景。业务模型自主选择工具，Probe Bank 在每轮生成前检查包含工具/RAG 返回的上下文，前端通过 SSE 展示执行阶段、检测结果与等待心跳。HR 工具从合成资料和本地数据库返回确定性结果，金融/航旅演示工具保留模拟响应。场景与启动方式见[项目 README](../README.md) 和 [HR 演示说明](../data/hr_agent/README.md)；金融场景及原有 API 说明见 [Customer Agent 文档](CUSTOMER_AGENT.md)。原有 `/api/chat` 仅供旧审计与回放页面兼容，下文部分护栏说明针对该旧链路。
 
 ## Llama Prompt Guard 2
 
@@ -54,7 +54,7 @@ checkpoint。若融合请求中的某一项失败，聊天路径只对失败项�
 
 ## 基于隐藏层的可解释性技术
 
-当前使用 Probe Bank，启动 `vllm_setups/run_probe_bank_qwen3_8b.sh`，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL=http://127.0.0.1:8302`。三个权重在 `probe/qwen3-8b/`；旧版 recipe 后端已移除。`standalone` Transformers 后端保留用于旧部署对照。
+当前使用 Probe Bank，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL=http://127.0.0.1:8302`。默认 `PROBE_BANK_ENABLED_RISKS=ipi`，仅加载和执行 IPI 探针；另外两类权重保留在 `probe/qwen3-8b/`。修改启用范围时，检测服务和 Web 后端应保持一致。可使用[新版请求级激活采集服务](../sglang-activation-runtime/deploy/README.md)，或通过 `vllm_setups/run_probe_bank_qwen3_8b.sh` 启动原有特征提取实现。`standalone` Transformers 后端保留用于旧部署对照。
 
 ## Inline Probing
 
@@ -159,7 +159,7 @@ FANGCUN_TIMEOUT_SECONDS=15
 输入请求体为 `{"messages":[{"role":"user","content":"..."}],"stream":false}`；
 Hook 返回顶层 `action`（例如 `allow` / `block`）和 `detection_result`。
 
-## 运行
+## 旧审计链路运行
 
 ```bash
 ./start-perspective-watch.sh
@@ -186,3 +186,7 @@ http://127.0.0.1:18088
 ```
 
 前端点击“发送”会请求 `POST /api/chat`，后端会实际调用 vLLM 的 `/chat/completions`。
+
+## 独立管理中心
+
+`manager/` 独立维护管理页面、认证、活动采集和统计接口。`backend/app.py` 通过 `manager.integration` 接入请求与浏览器活动采集，并保留同源 `/manager/` 兼容入口；管理端也可通过 `bash manager/start.sh` 在 18089 端口独立运行，不加载业务模型。管理者使用独立账号查看注册用户、演示交互、请求及风险结果，普通用户会话与 CLI Token 不授予管理权限。账号开通、采集范围和验证方式见 [管理中心说明](../manager/README.md)。

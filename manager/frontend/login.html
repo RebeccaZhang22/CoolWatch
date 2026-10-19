@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>管理者登录 · CoolWatch</title><link rel="stylesheet" href="./manager.css"></head>
+<body class="login-page">
+  <main class="login-shell">
+    <section class="login-story"><a class="brand" href="./login.html"><span class="brand-icon">C</span> CoolWatch <span class="brand-sub">管理中心</span></a>
+      <div><span class="eyebrow">DEMO INTELLIGENCE</span><h1>每一次体验，<br>都有迹可循。</h1><p>了解用户如何探索你的产品。<br>从第一次注册，到每一次交互与风险检测。</p></div>
+      <div class="story-line"><span>01 用户</span><span>02 交互</span><span>03 风险</span></div>
+    </section>
+    <section class="login-form-wrap"><span class="eyebrow">MANAGER ACCESS</span><h2>登录管理中心</h2><p class="muted">使用独立管理者账号查看 Demo 使用情况。</p>
+      <form id="loginForm"><label>管理者邮箱<input id="email" type="email" autocomplete="username" required placeholder="you@company.com" maxlength="254"></label>
+        <label>密码<input id="password" type="password" autocomplete="current-password" required maxlength="256" placeholder="输入管理者密码"></label>
+        <p id="loginError" class="error" role="alert"></p><button type="submit" class="primary" id="loginButton">登录管理中心 <span aria-hidden="true">→</span></button>
+      </form><p class="login-footnote">管理者账号由项目维护者开通。<br>演示用户账号与管理者账号分别管理。</p>
+    </section>
+  </main><script type="module" src="./login.js"></script>
+</body></html>

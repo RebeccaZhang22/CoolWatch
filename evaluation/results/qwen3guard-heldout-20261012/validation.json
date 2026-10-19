@@ -1,0 +1,9 @@
+{
+  "unit_tests": {
+    "command": "python3 -m unittest discover -s evaluation/tests -p test_qwen3guard_heldout.py",
+    "passed": 4
+  },
+  "input_audit": "All three audited false negatives preserve the entire original injected user/tool message",
+  "runtime_regression": "CPU tensor/list conversion regression passed; eight mixed native-logprob/OpenAI-chat requests returned HTTP 200 after isolated patch",
+  "dataset_audit": "All 402120 held-out decision points and exact positive counts match original five-arm partitions; source SHA256 hashes saved"
+}

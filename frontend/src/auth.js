@@ -104,7 +104,7 @@ async function initLogin() {
     try {
       const payload = await request(register ? "/api/auth/register" : "/api/auth/login", { method: "POST", body: JSON.stringify({ email: document.querySelector("#email").value, password: document.querySelector("#password").value }) });
       saveToken(payload.token);
-      window.location.href = payload.user?.role === "admin" ? "/index.html#admin" : "/index.html";
+      window.location.href = "/index.html";
     } catch (e) { error.textContent = e.message; } finally { submit.disabled = false; }
   });
 }
@@ -119,8 +119,6 @@ async function initAccount() {
   try {
     const me = await request("/api/auth/me");
     document.querySelector("#userLine").textContent = `当前账号：${me.user.email} · ${me.user.role === "admin" ? "开发者 Admin" : "成员"}`;
-    const adminLink = document.querySelector("[data-admin-link]");
-    if (adminLink) adminLink.hidden = me.user.role !== "admin";
     const token = sessionStorage.getItem(tokenKey);
     renderToken(token);
   } catch { (embedded ? window.parent : window).location.href = "/login.html"; return; }

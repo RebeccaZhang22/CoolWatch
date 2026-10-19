@@ -33,6 +33,15 @@ AssetSource = Literal[
 ]
 DocumentVisibility = Literal["public", "private", "untrusted"]
 ToolName = Literal[
+    "list_candidates",
+    "get_candidate_profile",
+    "update_candidate_profile",
+    "rank_resumes",
+    "read_workspace_file",
+    "get_job_requirements",
+    "parse_resume",
+    "get_assessment",
+    "record_screening",
     "search_knowledge",
     "refund_ticket",
     "process_refund",
@@ -428,9 +437,9 @@ def _load_tools(
             f"{sorted(unsupported_tool_names)}"
         )
     if not tool_names.intersection(
-        {"search_knowledge", "search_knowledge_base", "search_financial_knowledge", "search_legal_corpus"}
+        {"search_knowledge", "search_knowledge_base", "search_financial_knowledge", "search_legal_corpus", "get_job_requirements"}
     ):
-        raise ValueError("Agent tool data must define a supported knowledge search tool")
+        raise ValueError("Agent tool data must define a supported knowledge or job requirements tool")
     for tool in configs:
         if any(not phrase.strip() for phrase in tool.required_when_any):
             raise ValueError(f"required_when_any for {tool.name} must not be blank")

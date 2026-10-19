@@ -12,6 +12,7 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 .venv/
+.venv-sglang/
 venv/
 env/
 ENV/
@@ -51,6 +52,7 @@ node_modules/
 # remain versioned under data/customer_agent/.
 data/customer_agent/agent/system_prompt.override.md
 data/customer_agent/rag/uploads/
+data/hr_agent/state/
 
 # Local model/download caches
 .cache/
@@ -66,7 +68,7 @@ events.out.tfevents.*
 # Do not ignore scripts/, train/, data/, evaluation/, results/ or probe/.
 # In particular, test.jsonl and *_test_predictions.jsonl are data, not test code.
 
-# Automated tests and test-only mocks (never use a broad *test* or *mock* rule).
+# Automated tests and test-only mocks (focused regression suites are allowed below).
 /test/
 /tests/
 /mock/
@@ -122,3 +124,23 @@ conftest.py
 # Singprobe experiments, scripts, model weights and evaluation outputs.
 /evaluation/src/singprobe*/
 /evaluation/results/singprobe*/
+
+# HR scenario integration regression tests.
+!/evaluation/tests/test_hr_demo.py
+!/evaluation/tests/test_hr_store.py
+!/evaluation/tests/test_probe_risks.py
+!/evaluation/tests/test_tool_result_status.py
+!/evaluation/tests/test_qwen3guard_heldout.py
+
+# Live agent loop state regression checks.
+!/frontend/tests/
+/frontend/tests/*
+!/frontend/tests/agent-flow.test.mjs
+
+# Independent manager authentication and activity regression tests.
+!/manager/tests/test_*.py
+/manager/data/*
+!/manager/data/.gitkeep
+
+# Activation capture contract tests referenced by the runtime README.
+!/sglang-activation-runtime/tests/test_capture.py

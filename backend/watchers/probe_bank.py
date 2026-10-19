@@ -6,7 +6,7 @@ from time import perf_counter
 
 import httpx
 
-RISK_NAMES = {'harmful': '有害行为', 'prompt_leakage': 'Prompt Leakage（提示信息泄露）', 'ipi': '间接提示注入'}
+from backend.probe_risks import RISK_NAMES, DEFAULT_ENABLED_RISKS, parse_enabled_risks
 
 
 @dataclass
@@ -28,6 +28,7 @@ class BankAssessment:
 class ProbeBankGuard:
     def __init__(self, settings):
         self.settings = settings
+        self.enabled_risks = parse_enabled_risks(getattr(settings, "probe_bank_enabled_risks", DEFAULT_ENABLED_RISKS))
         self._client = httpx.AsyncClient(timeout=min(settings.activation_probe_timeout_seconds, 65.0),
                                         limits=httpx.Limits(max_connections=128, max_keepalive_connections=64))
 
@@ -48,8 +49,10 @@ class ProbeBankGuard:
             payload = response.json()
             if payload.get('detector_model') != self.settings.customer_agent_shadow_model:
                 raise ValueError('Shadow model and probe bank do not match')
-            if set(payload.get('per_risk', {})) != set(RISK_NAMES):
-                raise ValueError('Incomplete per-risk probe results')
+            if set(payload.get('per_risk', {})) != set(self.enabled_risks):
+                raise ValueError('Probe results do not match enabled risks')
+            if payload.get('enabled_risks') is not None and set(payload['enabled_risks']) != set(self.enabled_risks):
+                raise ValueError('Probe bank risk configuration mismatch')
             for result in payload['per_risk'].values():
                 if type(result.get('flagged')) is not bool:
                     raise ValueError('Invalid probe verdict')

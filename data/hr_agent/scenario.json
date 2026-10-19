@@ -1,0 +1,37 @@
+{
+  "schema_version": "customer_agent.scenario.v3",
+  "id": "hr-resume-agent",
+  "synthetic": true,
+  "profile": {
+    "name": "HR 简历筛选助手",
+    "description": "依据岗位要求、简历与测评记录完成可追溯筛选。",
+    "default_model": "qwen3-8b",
+    "capabilities": [
+      "通过自有工具读取岗位并将 PDF 简历解析为纯文字",
+      "核验测评结果",
+      "保存模拟筛选记录",
+      "检索纯文本简历并按证据比较候选人"
+    ],
+    "defense_pipeline": [
+      "activation_probe",
+      "safegauge",
+      "qwen_guard",
+      "llama_prompt_guard",
+      "netease_yidun",
+      "fangcun_guard"
+    ]
+  },
+  "agent": {
+    "system_prompt_path": "agent/system_prompt.md"
+  },
+  "rag": {
+    "documents_path": "rag/documents.json",
+    "top_k": 4,
+    "min_score": 0.15,
+    "max_chunk_chars": 2000,
+    "chunk_overlap_chars": 100,
+    "corpus_updated_at": "2026-10-12"
+  },
+  "conversation_starters_path": "conversation_starters.json",
+  "tools_path": "tools/definitions.json"
+}

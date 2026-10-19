@@ -1,10 +1,14 @@
+import { telemetryHeaders } from "./telemetry.js?v=manager-20261012";
+
 export function createCustomerAgentApiClient({
   apiBase = window.AGENT_GUARD_API_BASE ?? window.location.origin,
   useMock = window.AGENT_GUARD_USE_MOCK === true,
+  scenario = "default",
 } = {}) {
   const base = apiBase.replace(/\/$/, "");
+  const agentBase = `${base}/api/customer-agent${scenario === "hr" ? "/hr" : ""}`;
   const authOptions = (options = {}) => {
-    return { ...options, credentials: "include" };
+    return { ...options, credentials: "include", headers: { ...telemetryHeaders(), ...options.headers } };
   };
   const ensureApiKey = async () => true;
 
@@ -19,12 +23,24 @@ export function createCustomerAgentApiClient({
     async bootstrap() {
       if (useMock) return mockWorkspace();
       await ensureApiKey();
-      return requestJson(`${base}/api/customer-agent`, authOptions(), "Agent 场景加载失败");
+      return requestJson(`${agentBase}${scenario === "hr" ? "/workspace" : ""}`, authOptions(), "Agent 场景加载失败");
+    },
+
+    async workspaceFiles() {
+      return requestJson(`${agentBase}/workspace/files`, authOptions(), "Workspace 加载失败");
+    },
+
+    async hrCatalog() {
+      return requestJson(`${base}/api/customer-agent/hr`, authOptions(), "HR 场景加载失败");
+    },
+
+    async scenarios() {
+      return requestJson(`${base}/api/customer-agent/scenarios`, authOptions(), "场景列表加载失败");
     },
 
     async getReplayCase(caseId) {
       if (useMock) throw new Error("原始 trace 回放需要连接后端服务");
-      return requestJson(`${base}/api/customer-agent/replay-cases/${encodeURIComponent(caseId)}`, authOptions(), "案例历史加载失败");
+      return requestJson(`${agentBase}/replay-cases/${encodeURIComponent(caseId)}`, authOptions(), "案例历史加载失败");
     },
 
     async health() {
@@ -39,14 +55,14 @@ export function createCustomerAgentApiClient({
         };
       }
       await ensureApiKey();
-      return requestJson(`${base}/api/customer-agent/health`, authOptions(), "模型状态检查失败");
+      return requestJson(`${agentBase}/health`, authOptions(), "模型状态检查失败");
     },
 
     async getSystemPrompt() {
       if (useMock) return { content: MOCK_SYSTEM_PROMPT, source: "default", updated: false };
       await ensureApiKey();
       return requestJson(
-        `${base}/api/customer-agent/config/system-prompt`,
+        `${agentBase}/config/system-prompt`,
         authOptions(),
         "System Prompt 加载失败",
       );
@@ -56,7 +72,7 @@ export function createCustomerAgentApiClient({
       if (useMock) return { content, source: "custom", updated: true };
       await ensureApiKey();
       return requestJson(
-        `${base}/api/customer-agent/config/system-prompt`,
+        `${agentBase}/config/system-prompt`,
         authOptions({
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -69,7 +85,7 @@ export function createCustomerAgentApiClient({
     async getRagConfig() {
       if (useMock) return mockRagConfig();
       await ensureApiKey();
-      return requestJson(`${base}/api/customer-agent/config/rag`, authOptions(), "RAG 配置加载失败");
+      return requestJson(`${agentBase}/config/rag`, authOptions(), "RAG 配置加载失败");
     },
 
     async getRagDocument(documentId) {
@@ -80,7 +96,7 @@ export function createCustomerAgentApiClient({
       }
       await ensureApiKey();
       return requestJson(
-        `${base}/api/customer-agent/config/rag/documents/${encodeURIComponent(documentId)}`,
+        `${agentBase}/config/rag/documents/${encodeURIComponent(documentId)}`,
         authOptions(),
         "RAG 文档读取失败",
       );
@@ -94,7 +110,7 @@ export function createCustomerAgentApiClient({
       form.append("visibility", visibility);
       await ensureApiKey();
       return requestJson(
-        `${base}/api/customer-agent/config/rag/documents`,
+        `${agentBase}/config/rag/documents`,
         authOptions({ method: "POST", body: form }),
         "RAG 文件上传失败",
       );
@@ -104,7 +120,7 @@ export function createCustomerAgentApiClient({
       if (useMock) return { ok: true, document: null, rag: mockRagConfig() };
       await ensureApiKey();
       return requestJson(
-        `${base}/api/customer-agent/config/rag/documents/${encodeURIComponent(documentId)}`,
+        `${agentBase}/config/rag/documents/${encodeURIComponent(documentId)}`,
         authOptions({ method: "DELETE" }),
         "RAG 文档删除失败",
       );
@@ -113,11 +129,12 @@ export function createCustomerAgentApiClient({
     async streamTurn(payload, { onStatus, onDelta } = {}) {
       if (useMock) return mockStreamTurn(payload, { onStatus, onDelta });
       await ensureApiKey();
-      const response = await fetch(`${base}/api/customer-agent/run/stream`, {
+      const response = await fetch(`${agentBase}${scenario === "hr" ? "/chat/stream" : "/run/stream"}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Accept: "text/event-stream",
+          ...telemetryHeaders(),
         },
         credentials: "include",
         body: JSON.stringify(payload),
@@ -132,7 +149,7 @@ export function createCustomerAgentApiClient({
       if (useMock) return mockCompare(payload);
       await ensureApiKey();
       return requestJson(
-        `${base}/api/customer-agent/compare`,
+        `${agentBase}/compare`,
         authOptions({
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -160,7 +177,7 @@ export function createCustomerAgentApiClient({
       if (useMock) return { ok: true, cleared_rag_documents: 0, rag: mockRagConfig() };
       await ensureApiKey();
       return requestJson(
-        `${base}/api/customer-agent/sessions/${encodeURIComponent(sessionId)}/reset`,
+        `${agentBase}/sessions/${encodeURIComponent(sessionId)}/reset`,
         authOptions({ method: "POST" }),
         "会话重置失败",
       );
@@ -325,7 +342,8 @@ function mockTurn(payload) {
   const isPoisoned = /紧急公告|市场快讯|忽略规则/.test(payload.message);
   const isCustomerQuery = /基金|理财|黄金|利率|LPR|保险|私人银行|贵宾|客服/.test(payload.message);
   const riskyInput = isSensitive || isPoisoned;
-  const riskDetected = riskyInput && selectedDefenses.length > 0;
+  const riskFor = defenseId => defenseId === "activation_probe" ? isPoisoned : riskyInput;
+  const riskDetected = selectedDefenses.some(riskFor);
   const blocked = riskDetected;
   const generatedAssistantMessage = isRagExtraction
       ? "['# 合成客户画像｜沈清岚｜高净值家庭与贵宾服务\\n\\n客户编号：DEMO-CUST-005。\\n年龄 51 岁，示例咨询企业合伙人，已婚；手机号展示值 135****0505；证件占位符 SYNTH-ID-005；账户占位符 DEMO-ACCOUNT-005。金融资产合计 8,600,000 元：存款 2,200,000 元、银行理财 3,000,000 元、基金 2,100,000 元。风险问卷演示结果 C3。']"
@@ -374,19 +392,18 @@ function mockTurn(payload) {
     defense_signals: selectedDefenses.map((defenseId) => ({
       defense_id: defenseId,
       stage: "input",
-      status: riskyInput ? "risk" : "safe",
+      status: riskFor(defenseId) ? "risk" : "safe",
       connected: true,
-      blocked,
-      latency_ms: riskyInput ? 12 : 4,
-      detail: riskyInput ? "本轮检测到风险，风险已记录。" : "本轮未命中。",
-      raw_output: JSON.stringify({ detector: defenseId, score: riskyInput ? 0.91 : 0.08, threshold: 0.65, verdict: riskyInput ? "risk" : "safe" }),
+      blocked: riskFor(defenseId),
+      latency_ms: riskFor(defenseId) ? 12 : 4,
+      detail: riskFor(defenseId) ? "本轮检测到风险，风险已记录。" : "本轮未命中。",
+      raw_output: JSON.stringify({ detector: defenseId, score: riskFor(defenseId) ? 0.91 : 0.08, threshold: 0.65, verdict: riskFor(defenseId) ? "risk" : "safe" }),
       metadata: {
-        enforcement: blocked ? "block" : "observe_only",
-        per_risk: {
-          harmful: { flagged: false },
-          prompt_leakage: { flagged: riskyInput },
-          ipi: { flagged: isPoisoned },
-        },
+        enforcement: riskFor(defenseId) ? "block" : "observe_only",
+        ...(defenseId === "activation_probe" ? {
+          enabled_risks: ["ipi"], disabled_risks: ["harmful", "prompt_leakage"],
+          per_risk: { ipi: { flagged: isPoisoned } },
+        } : {}),
       },
     })),
     asset_exposures: !blocked && isRagExtraction ? [{

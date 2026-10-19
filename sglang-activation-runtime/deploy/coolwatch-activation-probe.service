@@ -1,0 +1,22 @@
+[Unit]
+Description=CoolWatch probe API using request activation capture
+Wants=coolwatch-activation-shadow.service
+After=network-online.target coolwatch-activation-shadow.service
+StartLimitIntervalSec=0
+
+[Service]
+Type=exec
+User=yutongz
+Group=yutongz
+WorkingDirectory=/mnt/kpfs_qyang/yutongz/CoolWatch
+ExecStart=/usr/bin/bash /mnt/kpfs_qyang/yutongz/CoolWatch/sglang-activation-runtime/deploy/run_probe.sh
+ExecStartPost=/usr/bin/python3 /mnt/kpfs_qyang/yutongz/CoolWatch/vllm_setups/wait_service.py http://127.0.0.1:8302/health/ready
+Restart=on-failure
+RestartSec=10
+TimeoutStartSec=660
+TimeoutStopSec=60
+KillMode=control-group
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

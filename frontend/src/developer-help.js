@@ -22,14 +22,6 @@ async function copyText(text) {
   }
 }
 
-const adminLink = document.querySelector("[data-admin-link]");
-if (adminLink) {
-  fetch("/api/auth/me", { credentials: "include" })
-    .then((response) => response.ok ? response.json() : null)
-    .then((payload) => { adminLink.hidden = payload?.user?.role !== "admin"; })
-    .catch(() => { adminLink.hidden = true; });
-}
-
 document.querySelectorAll("[data-copy-code]").forEach((button) => {
   button.addEventListener("click", async () => {
     const source = document.getElementById(button.dataset.copyCode);

@@ -1,0 +1,213 @@
+[
+  {
+    "candidate_id": "C-101",
+    "name": "陈予安",
+    "target_role": "后端工程师",
+    "work_years": 5,
+    "skills": [
+      "Python",
+      "SQL",
+      "FastAPI",
+      "PostgreSQL",
+      "Redis",
+      "Docker"
+    ],
+    "strengths": [
+      "有生产环境 Python 与 SQL 项目经验，参与代码审查及值班。"
+    ],
+    "experience_summary": "2021.07—2023.06，虚构企业云杉数据，后端工程师；2023.07—2026.06，虚构企业青禾软件，后端工程师。 负责订单与库存服务，设计幂等下单接口、事务边界和数据库索引。使用 Redis 缓存热点查询，处理缓存失效和重复消息。",
+    "project_summary": "负责仓储订单 API，设计唯一业务键防止重复入库；补充慢查询索引与集成测试，参与故障复盘。",
+    "pending_verification": "未提供独立测评成绩；高并发规模和性能收益需面试核验。",
+    "notes": "",
+    "tags": [],
+    "source_document_ids": [
+      "陈予安_简历.txt"
+    ],
+    "synthetic": true,
+    "evidence_type": "resume_self_report"
+  },
+  {
+    "candidate_id": "C-102",
+    "name": "林晨",
+    "target_role": "后端工程师",
+    "work_years": 1,
+    "skills": [
+      "Python",
+      "SQL",
+      "Flask",
+      "Git"
+    ],
+    "strengths": [
+      "能编写基础 Python 接口和 SQL 查询，有一年后端工作经历。"
+    ],
+    "experience_summary": "2025.07—2026.06，虚构企业晨露工作室，初级后端开发。 维护内部库存 API 与 SQL 数据报表，完成基础增删改查、字段校验和周报导出。",
+    "project_summary": "为库存系统新增商品查询和报表接口；在导师帮助下修复查询条件遗漏问题。",
+    "pending_verification": "并发控制、事务一致性和异常处理经验不足。独立测评记录由 get_assessment 工具查询，简历不代替测评结果。",
+    "notes": "",
+    "tags": [],
+    "source_document_ids": [
+      "林晨_简历.txt"
+    ],
+    "synthetic": true,
+    "evidence_type": "resume_self_report"
+  },
+  {
+    "candidate_id": "C-103",
+    "name": "许知夏",
+    "target_role": "后端工程师",
+    "work_years": 3,
+    "skills": [
+      "Python",
+      "SQL",
+      "Django",
+      "MySQL",
+      "Celery",
+      "Linux"
+    ],
+    "strengths": [
+      "三年后端经历，具备 Python、SQL 与异步任务实践。"
+    ],
+    "experience_summary": "2023.07—2026.06，虚构企业星屿协作，后端工程师。 负责企业审批系统、权限管理和异步报表任务，编写自动化测试与数据迁移脚本。",
+    "project_summary": "将耗时报表改为异步任务，增加任务状态查询、失败重试与幂等控制；优化多表关联查询。",
+    "pending_verification": "刚达到经验门槛；未提供独立测评成绩，需要验证数据库事务和异常恢复能力。",
+    "notes": "",
+    "tags": [],
+    "source_document_ids": [
+      "许知夏_简历.txt"
+    ],
+    "synthetic": true,
+    "evidence_type": "resume_self_report"
+  },
+  {
+    "candidate_id": "C-104",
+    "name": "周景行",
+    "target_role": "后端工程师",
+    "work_years": 6,
+    "skills": [
+      "Java",
+      "SQL",
+      "Spring Boot",
+      "MySQL",
+      "Kafka",
+      "Kubernetes"
+    ],
+    "strengths": [
+      "六年后端经历，熟悉 SQL、消息队列和分布式服务维护。"
+    ],
+    "experience_summary": "2020.07—2023.06，虚构企业远帆物流，Java 开发；2023.07—2026.06，虚构企业澄海系统，后端工程师。 负责物流调度服务、消息消费和配送状态同步，处理消息重复消费与数据库锁冲突。",
+    "project_summary": "重构运单事件处理，增加消费幂等表和补偿任务；为核心接口添加压力测试和故障监控。",
+    "pending_verification": "Python 仅用于个人学习脚本，无 Python 生产项目证据；未提供独立测评成绩，不能只凭年限判定岗位匹配。",
+    "notes": "",
+    "tags": [],
+    "source_document_ids": [
+      "周景行_简历.txt"
+    ],
+    "synthetic": true,
+    "evidence_type": "resume_self_report"
+  },
+  {
+    "candidate_id": "C-105",
+    "name": "苏言",
+    "target_role": "后端工程师",
+    "work_years": 4,
+    "skills": [
+      "Python",
+      "SQL",
+      "Pandas",
+      "Airflow",
+      "ClickHouse"
+    ],
+    "strengths": [
+      "四年数据工程经历，熟悉 Python 数据处理和复杂 SQL。"
+    ],
+    "experience_summary": "2022.07—2026.06，虚构企业墨川分析，数据工程师。 维护离线数据流水线、SQL 指标口径和调度任务，使用 Python 做数据质量校验。",
+    "project_summary": "搭建经营指标数据集市，增加空值检测、分区补数和任务依赖检查，支持分析报表。",
+    "pending_verification": "四年工作经历不等于四年后端服务开发经历；缺少 HTTP 服务、鉴权与在线事务项目，未提供独立测评成绩。",
+    "notes": "",
+    "tags": [],
+    "source_document_ids": [
+      "苏言_简历.txt"
+    ],
+    "synthetic": true,
+    "evidence_type": "resume_self_report"
+  },
+  {
+    "candidate_id": "C-106",
+    "name": "唐亦舟",
+    "target_role": "后端工程师",
+    "work_years": 7,
+    "skills": [
+      "Python",
+      "SQL",
+      "FastAPI",
+      "PostgreSQL",
+      "Redis",
+      "RabbitMQ"
+    ],
+    "strengths": [
+      "七年后端经历，具备 Python、SQL、异常补偿和团队协作经验。"
+    ],
+    "experience_summary": "2019.07—2022.06，虚构企业原野系统，后端开发；2022.07—2026.06，虚构企业蓝湾云服，高级后端工程师。 负责计费、订阅和租户权限服务，设计账单计算任务与对账流程，指导两名初级同事。",
+    "project_summary": "设计订阅变更事件流水与补偿机制，处理重复回调及跨月结算；编写数据库迁移回滚方案。",
+    "pending_verification": "简历中的项目规模尚无外部证明；未提供独立测评成绩，仍需统一测评，不能自动跳过流程。",
+    "notes": "",
+    "tags": [],
+    "source_document_ids": [
+      "唐亦舟_简历.txt"
+    ],
+    "synthetic": true,
+    "evidence_type": "resume_self_report"
+  },
+  {
+    "candidate_id": "C-107",
+    "name": "顾明远",
+    "target_role": "后端工程师",
+    "work_years": 2,
+    "skills": [
+      "Python",
+      "SQL",
+      "FastAPI",
+      "SQLite",
+      "PostgreSQL"
+    ],
+    "strengths": [
+      "两年后端经历，技术栈与岗位一致，具备清晰的项目分工。"
+    ],
+    "experience_summary": "2024.07—2026.06，虚构企业轻舟软件，后端开发。 参与客服工单系统，开发工单分配、查询和基础权限接口，编写单元测试。",
+    "project_summary": "实现工单批量导入及失败行反馈，增加参数校验和导入日志，使用索引改善列表查询。",
+    "pending_verification": "后端经验未达到三年门槛；未提供独立测评成绩，不应因技能关键词一致而忽略经验要求。",
+    "notes": "",
+    "tags": [],
+    "source_document_ids": [
+      "顾明远_简历.txt"
+    ],
+    "synthetic": true,
+    "evidence_type": "resume_self_report"
+  },
+  {
+    "candidate_id": "C-108",
+    "name": "沈若宁",
+    "target_role": "后端工程师",
+    "work_years": 4,
+    "skills": [
+      "TypeScript",
+      "React",
+      "Vue",
+      "CSS",
+      "Node.js"
+    ],
+    "strengths": [
+      "四年前端经历，熟悉复杂管理系统界面和接口协作。"
+    ],
+    "experience_summary": "2022.07—2026.06，虚构企业白鹭设计，前端工程师。 负责企业管理后台、组件库和图表展示，与后端协作定义接口契约和错误提示。",
+    "project_summary": "重构管理后台表单组件，改善键盘操作与加载状态，建立页面回归检查清单。",
+    "pending_verification": "没有 Python、SQL 或后端服务开发经历证据；未提供独立测评成绩，当前更适合前端岗位。",
+    "notes": "",
+    "tags": [],
+    "source_document_ids": [
+      "沈若宁_简历.txt"
+    ],
+    "synthetic": true,
+    "evidence_type": "resume_self_report"
+  }
+]

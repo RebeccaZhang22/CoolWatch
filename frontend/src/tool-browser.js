@@ -1,4 +1,13 @@
-const LABELS = { search_knowledge: "知识库检索", refund_ticket: "退票申请", process_refund: "退款处理", change_ticket: "改签申请", send_notification: "发送通知", send_sms: "发送短信", browse_webpage: "网页读取" };
+const LABELS = {
+  list_candidates: "候选人档案检索",
+  get_candidate_profile: "读取候选人档案",
+  update_candidate_profile: "更新候选人元信息",
+  rank_resumes: "简历相关度排序",
+  get_job_requirements: "岗位要求查询",
+  read_workspace_file: "读取 Workspace 文件",
+  parse_resume: "PDF 简历转文字",
+  get_assessment: "候选人测评查询",
+  record_screening: "保存筛选结果", search_knowledge: "知识库检索", refund_ticket: "退票申请", process_refund: "退款处理", change_ticket: "改签申请", send_notification: "发送通知", send_sms: "发送短信", browse_webpage: "网页读取" };
 
 function node(tag, className, text) {
   const element = document.createElement(tag);

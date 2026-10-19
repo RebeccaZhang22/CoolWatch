@@ -1,0 +1,5 @@
+{
+  "source": "/mnt/kpfs_qyang/djs/from-zhisuanyun-g03/follow-your-heart/results/all_arm_optimal_queue/analysis.json",
+  "sha256": "54454abf5f9d46385ac7ee0bfb7c85d8a1b827a6425201c9c6dacbde7f32d2a6",
+  "note": "Full held-out probe metrics from the 2026-10-09 handoff. Recommended configurations were selected post hoc on Neulab. Do not label comparison to a sampled Guard pilot as an identical-example comparison."
+}

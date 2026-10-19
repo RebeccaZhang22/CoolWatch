@@ -1,0 +1,416 @@
+{
+  "date": "2026-10-11",
+  "timezone": "Asia/Shanghai",
+  "sglang": "0.5.19",
+  "gpu": "NVIDIA H20-3e (shared with other workloads)",
+  "unit_tests": {
+    "passed": 8,
+    "includes": [
+      "validation",
+      "request output budget",
+      "chunk/cache offsets",
+      "mixed request mapping",
+      "CPU buffer ownership and deduplication",
+      "dynamic CUDA graph selection and snapshot lifetime",
+      "sparse GPU gather and residual addition",
+      "unverified MoE rejection"
+    ]
+  },
+  "http_tests": {
+    "passed": true,
+    "coverage": [
+      "native generate",
+      "8 concurrent requests",
+      "OpenAI completions",
+      "OpenAI chat completions",
+      "both OpenAI streaming endpoints",
+      "invalid request returns HTTP 400"
+    ]
+  },
+  "rebuild_test": {
+    "passed": true,
+    "description": "Fresh extraction from hash-pinned wheel, patch application, isolated venv, and imports"
+  },
+  "original_environment": {
+    "modified_upstream_files": 0,
+    "checked_files": 18,
+    "comparison": "Original installed source files corresponding to the patch remain byte-identical to the official wheel"
+  },
+  "integration": [
+    {
+      "max_absolute_reference_error": 0.00341796875,
+      "concurrent_requests_checked": 16,
+      "decode_cuda_graph_verified": true,
+      "cache_hit_verified": true,
+      "timings": [
+        {
+          "concurrency": 1,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.014934804290533066,
+          "requests_per_second": 66.95769027478211
+        },
+        {
+          "concurrency": 1,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.011474458035081625,
+          "requests_per_second": 87.15008560252984
+        },
+        {
+          "concurrency": 1,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.012288506142795086,
+          "requests_per_second": 81.37685642012013
+        },
+        {
+          "concurrency": 8,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.020131069235503674,
+          "requests_per_second": 397.39568258455904
+        },
+        {
+          "concurrency": 8,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.021246130112558603,
+          "requests_per_second": 376.5391606667792
+        },
+        {
+          "concurrency": 8,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.038129722233861685,
+          "requests_per_second": 209.81007810477772
+        },
+        {
+          "concurrency": 16,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.025631539057940245,
+          "requests_per_second": 624.2309509324393
+        },
+        {
+          "concurrency": 16,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.024716506246477365,
+          "requests_per_second": 647.3406815852197
+        },
+        {
+          "concurrency": 16,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.06502666184678674,
+          "requests_per_second": 246.052919611629
+        }
+      ],
+      "model": "tiny-qwen3",
+      "tp_size": 1,
+      "reference_device": "cpu",
+      "dtype": "bfloat16"
+    },
+    {
+      "max_absolute_reference_error": 0.0029296875,
+      "concurrent_requests_checked": 16,
+      "decode_cuda_graph_verified": true,
+      "timings": [
+        {
+          "concurrency": 1,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.013188560958951712,
+          "requests_per_second": 75.82328376177021
+        },
+        {
+          "concurrency": 1,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.0134149887599051,
+          "requests_per_second": 74.54348400118035
+        },
+        {
+          "concurrency": 1,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.014229205902665854,
+          "requests_per_second": 70.27799069325782
+        },
+        {
+          "concurrency": 8,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.022693672217428684,
+          "requests_per_second": 352.5211752135919
+        },
+        {
+          "concurrency": 8,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.023652025032788515,
+          "requests_per_second": 338.23742317664966
+        },
+        {
+          "concurrency": 8,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.03751492314040661,
+          "requests_per_second": 213.24847101668064
+        },
+        {
+          "concurrency": 16,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.030612492933869362,
+          "requests_per_second": 522.6624317909685
+        },
+        {
+          "concurrency": 16,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.028680233284831047,
+          "requests_per_second": 557.8755179952594
+        },
+        {
+          "concurrency": 16,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.25693900790065527,
+          "requests_per_second": 62.27158783996844
+        }
+      ],
+      "model": "tiny-qwen3",
+      "tp_size": 2
+    },
+    {
+      "max_absolute_reference_error": 0.0009765625,
+      "concurrent_requests_checked": 16,
+      "decode_cuda_graph_verified": true,
+      "cache_hit_verified": false,
+      "timings": [
+        {
+          "concurrency": 1,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.019398339092731476,
+          "requests_per_second": 51.55080521170487
+        },
+        {
+          "concurrency": 1,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.01965123089030385,
+          "requests_per_second": 50.887397618100955
+        },
+        {
+          "concurrency": 1,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.020180632825940847,
+          "requests_per_second": 49.55245995628874
+        },
+        {
+          "concurrency": 8,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.05380044784396887,
+          "requests_per_second": 148.69764696385914
+        },
+        {
+          "concurrency": 8,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.06529350578784943,
+          "requests_per_second": 122.52367066938429
+        },
+        {
+          "concurrency": 8,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.06662522908300161,
+          "requests_per_second": 120.0746340404115
+        },
+        {
+          "concurrency": 16,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.19872297905385494,
+          "requests_per_second": 80.51409090271297
+        },
+        {
+          "concurrency": 16,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.11995481513440609,
+          "requests_per_second": 133.38355765104083
+        },
+        {
+          "concurrency": 16,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.12167607387527823,
+          "requests_per_second": 131.49668205435768
+        }
+      ],
+      "model": "tiny-qwen3.5",
+      "tp_size": 1
+    },
+    {
+      "max_absolute_reference_error": 0.0029296875,
+      "concurrent_requests_checked": 16,
+      "decode_cuda_graph_verified": true,
+      "cache_hit_verified": true,
+      "timings": [
+        {
+          "concurrency": 1,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.010875799227505922,
+          "requests_per_second": 91.9472655831036
+        },
+        {
+          "concurrency": 1,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.010966346133500338,
+          "requests_per_second": 91.18807557470475
+        },
+        {
+          "concurrency": 1,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.013008488807827234,
+          "requests_per_second": 76.87288006876695
+        },
+        {
+          "concurrency": 8,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.02040291717275977,
+          "requests_per_second": 392.100792855294
+        },
+        {
+          "concurrency": 8,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.020399463828653097,
+          "requests_per_second": 392.16717003920445
+        },
+        {
+          "concurrency": 8,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.034494878724217415,
+          "requests_per_second": 231.9184845947446
+        },
+        {
+          "concurrency": 16,
+          "mode": "no_capture",
+          "median_batch_seconds": 0.02494092332199216,
+          "requests_per_second": 641.5159452373473
+        },
+        {
+          "concurrency": 16,
+          "mode": "last_prompt",
+          "median_batch_seconds": 0.02721497928723693,
+          "requests_per_second": 587.9115258964594
+        },
+        {
+          "concurrency": 16,
+          "mode": "prompt_and_decode",
+          "median_batch_seconds": 0.06696350639685988,
+          "requests_per_second": 238.93611402568797
+        }
+      ],
+      "model": "tiny-llama",
+      "tp_size": 1
+    }
+  ],
+  "real_model_benchmark": {
+    "model": "/mnt/kpfs_qyang/yutongz/models/Qwen3-8B",
+    "prompt_tokens": 128,
+    "output_tokens": 32,
+    "targets": [
+      9,
+      19
+    ],
+    "cache_enabled": false,
+    "shared_gpu": true,
+    "results": [
+      {
+        "concurrency": 1,
+        "mode": "no_capture",
+        "median_seconds": 0.3364818771369755,
+        "output_tokens_per_second": 95.10170435412007,
+        "base64_response_bytes": 0
+      },
+      {
+        "concurrency": 1,
+        "mode": "last_prompt",
+        "median_seconds": 0.3292716280557215,
+        "output_tokens_per_second": 97.18420074317714,
+        "base64_response_bytes": 21848
+      },
+      {
+        "concurrency": 1,
+        "mode": "all_prompt_and_decode",
+        "median_seconds": 0.4280479517765343,
+        "output_tokens_per_second": 74.75797949082546,
+        "base64_response_bytes": 3473496
+      },
+      {
+        "concurrency": 8,
+        "mode": "no_capture",
+        "median_seconds": 0.5550436372868717,
+        "output_tokens_per_second": 461.2249971035838,
+        "base64_response_bytes": 0
+      },
+      {
+        "concurrency": 8,
+        "mode": "last_prompt",
+        "median_seconds": 0.6381255476735532,
+        "output_tokens_per_second": 401.17497400521296,
+        "base64_response_bytes": 174784
+      },
+      {
+        "concurrency": 8,
+        "mode": "all_prompt_and_decode",
+        "median_seconds": 0.7199368281289935,
+        "output_tokens_per_second": 355.5867542785735,
+        "base64_response_bytes": 27787968
+      },
+      {
+        "concurrency": 16,
+        "mode": "no_capture",
+        "median_seconds": 0.8164466149173677,
+        "output_tokens_per_second": 627.1077503969067,
+        "base64_response_bytes": 0
+      },
+      {
+        "concurrency": 16,
+        "mode": "last_prompt",
+        "median_seconds": 0.7865104973316193,
+        "output_tokens_per_second": 650.9766897416546,
+        "base64_response_bytes": 349568
+      },
+      {
+        "concurrency": 16,
+        "mode": "all_prompt_and_decode",
+        "median_seconds": 1.1480127600952983,
+        "output_tokens_per_second": 445.98807417218785,
+        "base64_response_bytes": 55575936
+      }
+    ]
+  },
+  "feature_disabled_baseline": {
+    "model": "/mnt/kpfs_qyang/yutongz/models/Qwen3-8B",
+    "prompt_tokens": 128,
+    "output_tokens": 32,
+    "targets": [
+      9,
+      19
+    ],
+    "cache_enabled": false,
+    "capture_feature_enabled": false,
+    "shared_gpu": true,
+    "results": [
+      {
+        "concurrency": 1,
+        "mode": "no_capture",
+        "median_seconds": 0.3881703889928758,
+        "output_tokens_per_second": 82.43802440218413,
+        "base64_response_bytes": 0
+      },
+      {
+        "concurrency": 8,
+        "mode": "no_capture",
+        "median_seconds": 0.5307010961696506,
+        "output_tokens_per_second": 482.38076357423586,
+        "base64_response_bytes": 0
+      },
+      {
+        "concurrency": 16,
+        "mode": "no_capture",
+        "median_seconds": 0.7779550338163972,
+        "output_tokens_per_second": 658.1357247452885,
+        "base64_response_bytes": 0
+      }
+    ]
+  },
+  "limitations": {
+    "capture_prefill": "eager, with continuous batching/chunking preserved; non-capture prefill can use graphs",
+    "decode": "CUDA graph replay tested",
+    "moe": "Not enabled. BF16 Qwen3.5 MoE reference check failed for 54/9216 elements, maximum absolute error 0.01080322265625 with atol=0.003 and rtol=0.04. Cause unresolved; do not claim supported.",
+    "real_model_numerical_reference": "Real Qwen3-8B benchmark exercised layers 9 and 19; independent full-model numerical references use small official-architecture fixtures.",
+    "performance": "Sequential short runs on shared GPUs. Figures include activation output handling and are observations, not isolated performance guarantees."
+  }
+}

@@ -7,7 +7,9 @@
     <title>Demo · 客服助手-小航攻防演示台</title>
     <style>html.auth-pending body { visibility: hidden; }</style>
     <link rel="stylesheet" href="./src/styles.css?v=demo-20260917-trajectory" />
-    <link rel="stylesheet" href="./src/customer-agent.css?v=ipi-highlights-20260920" />
+    <link rel="stylesheet" href="./src/customer-agent.css?v=loop-arrow-thin-20261012" />
+    <link rel="stylesheet" href="./src/hr-workbench.css" />
+    <link rel="stylesheet" href="./src/workspace-files.css?v=composer-compact-20261012">
   </head>
   <body>
     <div class="demo-page-shell">
@@ -43,7 +45,7 @@
       </header>
 
       <div class="app-shell" id="appShell">
-        <aside class="sidebar" aria-label="客服助手-小航配置">
+        <aside class="sidebar" aria-label="Agent 配置">
           <div class="sidebar-actions">
             <div class="sidebar-action-row">
               <button class="button button-primary new-chat-button" id="resetSessionButton" type="button">
@@ -89,51 +91,60 @@
             </div>
           </section>
 
-          <section class="panel context-settings-panel" aria-labelledby="connectedToolsTitle">
-            <div class="panel-header"><h2 id="connectedToolsTitle">工具配置</h2></div>
-            <div class="context-settings-list">
-              <button class="context-settings-item" id="viewConnectedToolsButton" type="button" aria-label="查看已接入工具">
-                <span class="context-settings-icon rag" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"></path></svg>
-                </span>
-                <span class="context-settings-copy"><strong>已接入工具</strong><small id="connectedToolsCount">正在加载…</small></span>
-                <span class="context-settings-chevron" aria-hidden="true">›</span>
-              </button>
+          <section class="panel scenario-config-panel" aria-labelledby="scenarioConfigTitle">
+            <div class="panel-header"><h2 id="scenarioConfigTitle">场景配置</h2></div>
+            <div class="scenario-panel">
+              <select id="scenarioSelect" aria-label="切换演示场景">
+                <option value="default">原有业务场景</option>
+                <option value="hr">HR 简历筛选</option>
+              </select>
             </div>
-          </section>
+            <section class="scenario-config-section" aria-labelledby="connectedToolsTitle">
+              <div class="panel-header"><h3 id="connectedToolsTitle">工具配置</h3></div>
+              <div class="context-settings-list">
+                <button class="context-settings-item" id="viewConnectedToolsButton" type="button" aria-label="查看已接入工具">
+                  <span class="context-settings-icon rag" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z"></path></svg>
+                  </span>
+                  <span class="context-settings-copy"><strong>已接入工具</strong><small id="connectedToolsCount">正在加载…</small></span>
+                  <span class="context-settings-chevron" aria-hidden="true">›</span>
+                </button>
+              </div>
+            </section>
 
-          <section class="panel context-settings-panel" aria-labelledby="contextSettingsTitle">
-            <div class="panel-header">
-              <h2 id="contextSettingsTitle">上下文配置</h2>
-            </div>
-            <div class="context-settings-list">
-              <button class="context-settings-item" id="editSystemPromptButton" type="button" aria-label="编辑 System Prompt">
-                <span class="context-settings-icon prompt" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <path d="M6 3.5h9l3 3V20.5H6z"></path>
-                    <path d="M15 3.5v3h3M9 10h6M9 13.5h6M9 17h4"></path>
-                  </svg>
-                </span>
-                <span class="context-settings-copy">
-                  <strong>System Prompt</strong>
-                  <small id="systemPromptConfigMeta">点击编辑完整提示词</small>
-                </span>
-                <span class="context-settings-chevron" aria-hidden="true">›</span>
-              </button>
-              <button class="context-settings-item" id="editRagConfigButton" type="button" aria-label="管理 RAG 知识库">
-                <span class="context-settings-icon rag" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" focusable="false">
-                    <ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
-                    <path d="M5 5.5v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6M5 11.5v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path>
-                  </svg>
-                </span>
-                <span class="context-settings-copy">
-                  <strong>RAG 知识库</strong>
-                  <small id="ragConfigMeta">点击管理 BM25 文档</small>
-                </span>
-                <span class="context-settings-chevron" aria-hidden="true">›</span>
-              </button>
-            </div>
+            <section class="scenario-config-section" aria-labelledby="contextSettingsTitle">
+              <div class="panel-header">
+                <h3 id="contextSettingsTitle">上下文配置</h3>
+              </div>
+              <div class="context-settings-list">
+                <button class="context-settings-item" id="editSystemPromptButton" type="button" aria-label="编辑 System Prompt">
+                  <span class="context-settings-icon prompt" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <path d="M6 3.5h9l3 3V20.5H6z"></path>
+                      <path d="M15 3.5v3h3M9 10h6M9 13.5h6M9 17h4"></path>
+                    </svg>
+                  </span>
+                  <span class="context-settings-copy">
+                    <strong>System Prompt</strong>
+                    <small id="systemPromptConfigMeta">点击编辑完整提示词</small>
+                  </span>
+                  <span class="context-settings-chevron" aria-hidden="true">›</span>
+                </button>
+                <button class="context-settings-item" id="editRagConfigButton" type="button" aria-label="管理 RAG 知识库">
+                  <span class="context-settings-icon rag" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" focusable="false">
+                      <ellipse cx="12" cy="5.5" rx="7" ry="3"></ellipse>
+                      <path d="M5 5.5v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6M5 11.5v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"></path>
+                    </svg>
+                  </span>
+                  <span class="context-settings-copy">
+                    <strong>RAG 知识库</strong>
+                    <small id="ragConfigMeta">点击管理 BM25 文档</small>
+                  </span>
+                  <span class="context-settings-chevron" aria-hidden="true">›</span>
+                </button>
+              </div>
+            </section>
           </section>
 
           <section class="panel guard-panel">
@@ -149,16 +160,10 @@
             </div>
           </section>
 
-          <section class="panel flow-panel">
-            <div class="panel-header">
-              <h2>请求处理流程</h2>
-              <span class="flow-mode-badge idle" id="flowModeBadge">等待请求</span>
-            </div>
-            <div class="security-flow" id="securityFlow"></div>
-          </section>
+
         </aside>
 
-        <main class="workspace">
+        <main class="workspace request-flow-workspace">
           <header class="topbar">
             <button class="nav-icon-button sidebar-open-button" id="sidebarOpenButton" type="button" aria-label="展开侧边栏" title="展开侧边栏">☰</button>
             <div class="topbar-copy">
@@ -178,15 +183,25 @@
                   id="messageInput"
                   rows="1"
                   maxlength="12000"
-                  placeholder="输入航班、行李或退改签问题，Enter 发送，Shift + Enter 换行"
+                  placeholder="输入消息…"
+                  title="Enter 发送，Shift + Enter 换行"
                   aria-label="发送给客服助手-小航的消息"
                 ></textarea>
-                <button class="send-button" id="sendButton" type="submit">运行 Agent</button>
+                <button class="send-button" id="sendButton" type="submit" aria-label="发送消息" title="发送消息">
+                  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6"/></svg>
+                </button>
               </div>
               <div class="composer-meta">
                 <span id="turnStatus" role="status">等待消息</span>
               </div>
             </form>
+          </section>
+          <section class="panel flow-panel">
+            <div class="panel-header">
+              <h2>请求处理流程</h2>
+              <span class="flow-mode-badge idle" id="flowModeBadge">等待请求</span>
+            </div>
+            <div class="security-flow" id="securityFlow"></div>
           </section>
         </main>
       </div>
@@ -436,6 +451,7 @@
       <iframe id="developerCenterFrame" title="开发者中心与 API Token" allow="clipboard-write 'self'"></iframe>
     </dialog>
     <script type="module" src="./src/developer-navigation.js?v=aviation-20260919"></script>
-    <script type="module" src="./src/app.js?v=rag-retrieval-neutral-copy-20260921"></script>
+    <script type="module" src="./src/app.js?v=no-outcome-banner-any-state-20261012"></script>
+    <script type="module" src="./src/telemetry.js?v=manager-20261012"></script>
   </body>
 </html>

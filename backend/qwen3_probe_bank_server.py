@@ -1,4 +1,4 @@
-"""Qwen3-8B shared-prefill adapter for the three production risk detectors.
+"""Qwen3-8B shared-prefill adapter for the enabled production risk detectors.
 
 Run with the source project's sglang environment. No training assets are copied.
 """
@@ -11,6 +11,8 @@ from pathlib import Path
 import sys
 import time
 
+from backend.probe_risks import DEFAULT_ENABLED_RISKS, parse_enabled_risks, risk_selection
+
 
 EXPECTED_IPI_CHECKPOINT_SHA256 = "a1e6ca136a49b769409d4b9679ae704f1f30b7d8550c4988a7a83aa8431f5278"
 
@@ -20,10 +22,12 @@ def main():
     parser.add_argument('--source-root', required=True)
     parser.add_argument('--model', default='qwen3-8b', choices=['qwen3-8b'])
     parser.add_argument('--model-path', required=True)
+    parser.add_argument('--enabled-risks', default=DEFAULT_ENABLED_RISKS)
     parser.add_argument('--ipi-threshold', type=float, default=0.91)
     parser.add_argument('--port', type=int, default=8302)
     parser.add_argument('--spool', required=True)
     parser.add_argument('--mem-fraction', type=float, default=0.2)
+    parser.add_argument('--max-total-tokens', type=int, default=32768)
     parser.add_argument('--content-safety-checkpoint', required=True)
     parser.add_argument('--ipi-checkpoint', required=True)
     parser.add_argument('--leakage-checkpoint', required=True)
@@ -33,6 +37,7 @@ def main():
     parser.add_argument('--batch-wait-ms', type=float, default=10)
     parser.add_argument('--request-timeout', type=float, default=60)
     args = parser.parse_args()
+    enabled_risks = parse_enabled_risks(args.enabled_risks)
     root = Path(args.source_root).resolve()
     sys.path[:0] = [str(root / 'src'), str(root / 'framework/safety_probe')]
     from sglang_det.core import DetectorCore
@@ -47,13 +52,16 @@ def main():
     torch.set_num_threads(4)
     if args.batch_tokens < 16384 or not 1 <= args.max_batch <= 64:
         raise ValueError('Batch token budget must cover 16K requests; max batch must be 1..64')
+    if args.max_total_tokens < 16400:
+        raise ValueError('KV token budget must cover the 16K context plus generation')
 
     model_path = Path(args.model_path).resolve()
     config = json.loads((model_path / 'config.json').read_text())
     if config['model_type'] != 'qwen3' or config['hidden_size'] != 4096 or config['num_hidden_layers'] != 36:
         raise ValueError('Expected Qwen3-8B architecture')
     probes = {risk: Qwen3Checkpoint(path, model_path, risk) for risk, path in
-              [('harmful', args.content_safety_checkpoint), ('prompt_leakage', args.leakage_checkpoint)]}
+              [('harmful', args.content_safety_checkpoint), ('prompt_leakage', args.leakage_checkpoint)]
+              if risk in enabled_risks}
     bank = dict(model=args.model, hidden=4096, n_layers=36, entries=[], thresholds={})
     for risk, probe in probes.items():
         bank['entries'].append(dict(id=f'{risk}/qwen3-8b', risk=risk, method=probe.classifier_type,
@@ -61,35 +69,37 @@ def main():
             cal_mu=0., cal_sd=1., position='T-1', checkpoint_id='sha256:'+probe.sha256))
         bank['thresholds'][risk] = {'balanced': probe.threshold}
     bank_bytes = json.dumps(bank, sort_keys=True).encode()
-    ipi_checkpoint_path = Path(args.ipi_checkpoint).resolve()
-    checkpoint_bytes = ipi_checkpoint_path.read_bytes()
-    checkpoint_hash = hashlib.sha256(checkpoint_bytes).hexdigest()
-    if checkpoint_hash != EXPECTED_IPI_CHECKPOINT_SHA256:
-        raise ValueError('IPI checkpoint checksum mismatch')
-    checkpoint = torch.load(ipi_checkpoint_path, map_location='cpu', weights_only=True)
-    if (checkpoint['schema'] != 'fyh.probe_checkpoint.v2'
-            or checkpoint['selected_layer_index'] != 22
-            or checkpoint['selected_layer_indices'] != [22]
-            or checkpoint['selected_positions'] != [-1]
-            or checkpoint['input_dim'] != bank['hidden']
-            or checkpoint['training_config']['feature_normalization'] != 'standard'):
-        raise ValueError('Unsupported IPI checkpoint contract')
-    state = {k: v.float().reshape(-1) for k, v in checkpoint['model_state_dict'].items()}
-    if any(state[k].numel() != bank['hidden'] for k in ('input_mean', 'input_std', 'probe.weight')) or state['probe.bias'].numel() != 1:
-        raise ValueError('IPI parameter dimension mismatch')
-    if any(not torch.isfinite(v).all() for v in state.values()) or not (state['input_std'] > 0).all():
-        raise ValueError('Invalid IPI checkpoint parameters')
-    bank['entries'].append(dict(id='ipi/broad-l22', risk='ipi', method='linear_probe',
-        layer_hf=23, rel_depth=23/36, val_auroc=None,
-        w=state['probe.weight'].tolist(), b=state['probe.bias'].item(),
-        scaler_mu=state['input_mean'].tolist(), scaler_sd=state['input_std'].tolist(),
-        cal_mu=0., cal_sd=1., position='T-1', calibration='sigmoid',
-        checkpoint_id='sha256:' + checkpoint_hash))
+    checkpoint_bytes = b''
+    if 'ipi' in enabled_risks:
+        ipi_checkpoint_path = Path(args.ipi_checkpoint).resolve()
+        checkpoint_bytes = ipi_checkpoint_path.read_bytes()
+        checkpoint_hash = hashlib.sha256(checkpoint_bytes).hexdigest()
+        if checkpoint_hash != EXPECTED_IPI_CHECKPOINT_SHA256:
+            raise ValueError('IPI checkpoint checksum mismatch')
+        checkpoint = torch.load(ipi_checkpoint_path, map_location='cpu', weights_only=True)
+        if (checkpoint['schema'] != 'fyh.probe_checkpoint.v2'
+                or checkpoint['selected_layer_index'] != 22
+                or checkpoint['selected_layer_indices'] != [22]
+                or checkpoint['selected_positions'] != [-1]
+                or checkpoint['input_dim'] != bank['hidden']
+                or checkpoint['training_config']['feature_normalization'] != 'standard'):
+            raise ValueError('Unsupported IPI checkpoint contract')
+        state = {k: v.float().reshape(-1) for k, v in checkpoint['model_state_dict'].items()}
+        if any(state[k].numel() != bank['hidden'] for k in ('input_mean', 'input_std', 'probe.weight')) or state['probe.bias'].numel() != 1:
+            raise ValueError('IPI parameter dimension mismatch')
+        if any(not torch.isfinite(v).all() for v in state.values()) or not (state['input_std'] > 0).all():
+            raise ValueError('Invalid IPI checkpoint parameters')
+        bank['entries'].append(dict(id='ipi/broad-l22', risk='ipi', method='linear_probe',
+            layer_hf=23, rel_depth=23/36, val_auroc=None,
+            w=state['probe.weight'].tolist(), b=state['probe.bias'].item(),
+            scaler_mu=state['input_mean'].tolist(), scaler_sd=state['input_std'].tolist(),
+            cal_mu=0., cal_sd=1., position='T-1', calibration='sigmoid',
+            checkpoint_id='sha256:' + checkpoint_hash))
+        if not 0 < args.ipi_threshold < 1:
+            raise ValueError('Invalid IPI threshold')
+        bank['thresholds']['ipi'] = {'balanced': args.ipi_threshold}
     bank['layer_union'] = sorted({e['layer_hf'] for e in bank['entries']})
-    if not 0 < args.ipi_threshold < 1:
-        raise ValueError('Invalid IPI threshold')
-    bank['thresholds']['ipi'] = {'balanced': args.ipi_threshold}
-    bank['calibration'] = {risk: 'checkpoint_standardization_then_sigmoid' for risk in ['harmful','prompt_leakage','ipi']}
+    bank['calibration'] = {risk: 'checkpoint_standardization_then_sigmoid' for risk in enabled_risks}
     bank['protocol'] = 'Qwen3-8B enable_thinking=True; full raw block residual T-1 before final RMSNorm'
     bank['fusion'] = {risk: 'single_probe' for risk in bank['thresholds']}
     version = 'sha256:' + hashlib.sha256(bank_bytes + checkpoint_bytes + json.dumps(bank,sort_keys=True).encode()).hexdigest()
@@ -106,7 +116,8 @@ def main():
         for hook in kwargs['forward_hooks']:
             hook['hook_factory'] = hook['hook_factory'].replace('sglang_fe.hooks:', 'backend.qwen3_probe_hooks:')
         kwargs.update(max_running_requests=args.max_batch, max_prefill_tokens=args.batch_tokens,
-                      max_queued_requests=args.max_inflight, watchdog_timeout=60)
+                      max_queued_requests=args.max_inflight, watchdog_timeout=60,
+                      max_total_tokens=args.max_total_tokens)
         return original_engine(**kwargs)
     sglang.Engine = mixed_position_engine
     core = DetectorCore(str(model_path), str(runtime_bank_path), tp_size=1,
@@ -129,9 +140,9 @@ def main():
             per_risk[risk] = dict(score=score, threshold=bank['thresholds'][risk]['balanced'], flagged=flagged)
             if flagged:
                 triggered.append(entry_id)
-        if set(per_risk) != {'harmful','ipi','prompt_leakage'} or len(per_entry) != 3:
+        if set(per_risk) != set(enabled_risks) or len(per_entry) != len(enabled_risks):
             raise RuntimeError('Incomplete probe bank result')
-        return dict(overall=any(r['flagged'] for r in per_risk.values()),
+        return dict(**risk_selection(enabled_risks), overall=any(r['flagged'] for r in per_risk.values()),
                     profile='balanced', per_risk=per_risk, per_entry=per_entry,
                     triggered_entries=triggered, detector_model=args.model,
                     bank_version=version, input_tokens=tokens)
@@ -187,7 +198,7 @@ def main():
 
     @app.get('/bank')
     def info():
-        return {**{k: bank[k] for k in ('model', 'hidden', 'n_layers', 'layer_union', 'thresholds', 'fusion', 'calibration', 'protocol')},
+        return {**risk_selection(enabled_risks), **{k: bank[k] for k in ('model', 'hidden', 'n_layers', 'layer_union', 'thresholds', 'fusion', 'calibration', 'protocol')},
                 'bank_version': version, 'max_len': 16384, 'batching': batcher.info(),
                 'entries': [{k: e[k] for k in ('id', 'risk', 'method', 'layer_hf', 'val_auroc', 'position', 'checkpoint_id') if k in e} for e in bank['entries']]}
 

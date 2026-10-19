@@ -33,7 +33,7 @@ def default_customer_model_params() -> ModelParams:
         # The gpu3 deployment reserves a 2K context window for the 8B chat
         # model; keep the client default within vLLM's max_model_len.
         max_tokens=2048,
-        enable_reasoning=True,
+        enable_reasoning=False,
     )
 
 
@@ -246,7 +246,7 @@ class CustomerAgentRagTraceItem(BaseModel):
     included: bool
     score: float = Field(ge=0)
     rank: int = Field(ge=1)
-    retriever: Literal["bm25_okapi"] = "bm25_okapi"
+    retriever: Literal["bm25_okapi", "bm25_positive_idf"] = "bm25_okapi"
     preview: str
     matched_terms: list[str] = Field(default_factory=list)
     token_count: int = Field(default=0, ge=0)

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     app_name: str = "ProspectMonitor"
     admin_email: str = Field(default="admin@admin.com", alias="PROSPECTMONITOR_ADMIN_EMAIL")
     admin_password: str = Field(default="", alias="PROSPECTMONITOR_ADMIN_PASSWORD")
+    probe_bank_enabled_risks: str = Field(default="ipi", alias="PROBE_BANK_ENABLED_RISKS")
     probe_bank_base_url: str = Field(default="http://127.0.0.1:8302", alias="PROBE_BANK_BASE_URL")
     vllm_base_url: str = Field(default="http://127.0.0.1:8013/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
@@ -50,6 +51,10 @@ class Settings(BaseSettings):
     customer_agent_enable_runtime_probes: bool = Field(
         default=True,
         alias="CUSTOMER_AGENT_ENABLE_RUNTIME_PROBES",
+    )
+    customer_agent_enable_reasoning: bool = Field(
+        default=False,
+        alias="CUSTOMER_AGENT_ENABLE_REASONING",
     )
     customer_agent_data_root: str = Field(default="", alias="CUSTOMER_AGENT_DATA_ROOT")
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")

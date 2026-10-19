@@ -1,0 +1,17 @@
+{
+  "python": "3.11.16",
+  "platform": "Linux-6.9.12-060912-generic-x86_64-with-glibc2.39",
+  "dependencies": {
+    "torch": "2.13.0",
+    "triton": "3.7.1",
+    "transformers": "5.12.1",
+    "sglang": "0.5.19",
+    "sglang-kernel": "0.4.6.post1",
+    "flashinfer-python": "0.6.18",
+    "numpy": "2.3.5",
+    "msgspec": "0.21.1",
+    "orjson": "3.12.0",
+    "pydantic": "2.13.5"
+  },
+  "dependency_mode": "read-only shared packages; separate sglang source and interpreter environment"
+}

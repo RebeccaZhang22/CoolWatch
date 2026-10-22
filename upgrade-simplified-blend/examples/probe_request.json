@@ -1,0 +1,24 @@
+{
+  "messages": [
+    {"role": "system", "content": "你是终端助手，帮助用户定位测试失败原因。"},
+    {"role": "user", "content": "检查项目中的测试为什么失败。"},
+    {
+      "role": "assistant",
+      "content": null,
+      "tool_calls": [
+        {"id": "call_001", "type": "function", "function": {"name": "terminal", "arguments": "{\"command\":\"pytest -q\"}"}}
+      ]
+    },
+    {"role": "tool", "tool_call_id": "call_001", "content": "测试执行结果：1 failed, 8 passed。错误详情：AssertionError。"}
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "terminal",
+        "description": "执行终端命令。",
+        "parameters": {"type": "object", "properties": {"command": {"type": "string"}}, "required": ["command"]}
+      }
+    }
+  ]
+}

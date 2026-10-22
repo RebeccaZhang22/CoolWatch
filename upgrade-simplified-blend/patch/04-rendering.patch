@@ -1,0 +1,44 @@
+--- a/shadow_server/rendering.py
++++ b/shadow_server/rendering.py
+@@ -1,33 +1,10 @@
+-import copy
+-import json
++from .composer import ComposerConfig, compose_prompt
+ 
+ 
+-def render_ids(tokenizer, messages, tools=None):
+-    """Preserve old CoolWatch's thinking/template and tool normalization contract."""
+-    normalized = copy.deepcopy(messages)
+-    for message in normalized:
+-        # Qwen3's template has no developer branch and would silently omit it.
+-        # Preserve the client's list; adapt only the copy sent to the tokenizer.
+-        if message.get("role") == "developer":
+-            message["role"] = "system"
+-        if "reasoning_content" not in message and "reasoning" in message:
+-            message["reasoning_content"] = message["reasoning"]
+-        if message.get("tool_calls"):
+-            calls = []
+-            for call in message["tool_calls"]:
+-                function = call.get("function") or {}
+-                arguments = function.get("arguments", call.get("arguments"))
+-                if isinstance(arguments, str):
+-                    try:
+-                        arguments = json.loads(arguments)
+-                    except ValueError:
+-                        arguments = {"raw": arguments}
+-                calls.append({"name": function.get("name") or call.get("name") or "",
+-                              "arguments": arguments})
+-            message["tool_calls"] = calls
+-    text = tokenizer.apply_chat_template(normalized, tools=tools, tokenize=False,
+-                                        add_generation_prompt=True, enable_thinking=True)
+-    ids = tokenizer(text, truncation=False, add_special_tokens=False)["input_ids"]
+-    if not ids or any(type(i) is not int or i < 0 for i in ids):
+-        raise ValueError("Tokenizer returned invalid token ids")
+-    return ids
++def render_ids(tokenizer, messages, tools=None, config=None):
++    """在线入口：返回必须原样送进 engine 的 token ids。
++
++    规则全部在 composer 里（选窗、discard CoT、merge、question prefix）；
++    这里只保持原有调用形状，避免热路径出现第二套消息处理。
++    """
++    return list(compose_prompt(tokenizer, messages, tools, config or ComposerConfig()).token_ids)

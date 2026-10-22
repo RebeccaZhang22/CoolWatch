@@ -1,0 +1,44 @@
+--- a/shadow_server/backend.py
++++ b/shadow_server/backend.py
+@@ -19,13 +19,14 @@
+             if (r["schema_version"] != "inscope.feature_capture.v1"
+                     or type(r["layer"]) is not int or r["layer"] not in layers or r["layer"] in by_layer
+                     or r["site"] != "block_output" or r["positions"] != list(positions)
+-                    or r["shape"] != [4, 4096] or r["encoding"] != "float_list"
++                    or r["shape"] != [1, 4096] or r["encoding"] != "float_list"
+                     or r["dtype"] not in ("bfloat16", "float16", "float32")):
+                 raise ValueError("Feature contract mismatch")
+             h = torch.tensor(r["data"], dtype=torch.float32)
+-            if h.shape != (4, 4096) or not torch.isfinite(h).all():
++            if h.shape != (1, 4096) or not torch.isfinite(h).all():
+                 raise ValueError("Invalid feature data")
+             by_layer[r["layer"]] = h
++        # 按请求的 layers 顺序 stack；不能依赖响应 records 的排列顺序。
+         return torch.stack([by_layer[layer] for layer in layers], dim=0).unsqueeze(0)
+     except (KeyError, TypeError, ValueError, RuntimeError, OverflowError) as exc:
+         raise BackendError("Invalid InScope feature response") from exc
+@@ -41,8 +42,8 @@
+             limits=httpx.Limits(max_connections=settings.max_inflight + 1), trust_env=False)
+ 
+     async def capture(self, ids, layers):
+-        if len(ids) < 4:
+-            raise BackendError("Last4 capture requires at least four prompt tokens")
++        if len(ids) < 1:
++            raise BackendError("Capture requires at least one prompt token")
+         try:
+             async with asyncio.timeout(self.settings.timeout):
+                 # Verify the running model, including after backend restarts or a port change.
+@@ -62,11 +63,11 @@
+                     "input_ids": ids,
+                     "sampling_params": {"max_new_tokens": 0},
+                     "feature_capture": {"layers": list(layers), "site": "block_output",
+-                                        "positions": {"mode": "explicit", "index": [-4,-3,-2,-1]},
++                                        "positions": {"mode": "explicit", "index": [-1]},
+                                         "encoding": "float_list"},
+                 })
+                 response.raise_for_status()
+-                return decode_features(response.json(), layers, range(len(ids)-4,len(ids)))
++                return decode_features(response.json(), layers, range(len(ids)-1, len(ids)))
+         except (httpx.TimeoutException, TimeoutError):
+             raise TimeoutError("SGLang request timed out") from None
+         except (httpx.HTTPError, ValueError) as exc:

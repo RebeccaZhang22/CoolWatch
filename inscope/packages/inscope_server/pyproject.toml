@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "inscope-server"
+version = "0.4.0"
+description = "InScope detection API: simplified composer + A5 blend probe over an SGLang engine"
+requires-python = ">=3.11"
+dependencies = [
+    "inscope-contract",
+    "fastapi",
+    "httpx",
+    "pydantic>=2",
+    "torch",
+    "transformers",
+    "uvicorn",
+]
+
+[project.scripts]
+inscope-serve = "inscope_server.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["inscope_server*"]

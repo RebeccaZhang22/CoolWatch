@@ -1,12 +1,12 @@
 """HTTP adapter for one-or-more single-risk InScope probe services.
 
-部署形态：**一个 probe 服务实例只负责一类风险**。多类风险 = 多个实例、多个端口，
-由本适配层并发调用后合并成 coolwatch 一贯使用的 `per_risk` 结构。
+部署约定（方案 A，不是服务端能力上限）：**Coolwatch 让一个 inscope-service 实例只负责一类风险**。
+多类风险 = 多个实例、多个端口，由本适配层并发调用后合并成 `per_risk`。
+外部服务自己也可以在一个进程里加载多探针；本层不使用那条路径，也不把顶层分数
+当成“配置里的风险”。顶层 `probability` 始终是该实例的主探针，顶层 `risk` 还保留历史固定值。
 
-为什么在客户端合并而不是让服务端多风险：
-inscope-service 的一个实例只加载一个探针 checkpoint（其 README 明确“服务负责如何
-运行探测，探针决定探测什么”）。与其要求服务端扩展成多探针，不如让本层按风险扇出，
-服务端保持单风险的简单形态。
+因此每次检测前先读 `/info`：`risks` 必须恰好声明本端点配置的那一类，且与主探针一致。
+身份不符、多风险实例、或 `/info` 不可用，都按失败关闭，不会把别的风险的分数标成本类。
 
 失败语义（与旧版一致，不做静默降级）：
 * 任一**已启用**风险的检测失败 → 整体判定为不可用，返回 error。已成功的那几类仍留在
@@ -125,6 +125,37 @@ class ProbeBankGuard:
         response.raise_for_status()
         return response.json()
 
+    @staticmethod
+    def _advertised_risks(info):
+        """Risks this instance actually loaded, from `/info`, not from our config.
+
+        `risks[].risk` is the registry. Top-level `risk` on `/detect` is a historical
+        constant and must not be used as identity. A missing or malformed registry is
+        not "trust the URL": it is an identity we cannot verify.
+        """
+        rows = info.get('risks') if isinstance(info, dict) else None
+        if not isinstance(rows, list) or not rows:
+            raise ValueError('probe service /info did not advertise a risk registry')
+        advertised = []
+        for row in rows:
+            if not isinstance(row, dict) or not isinstance(row.get('risk'), str) or not row['risk']:
+                raise ValueError('probe service /info has a malformed risk registry')
+            advertised.append(row['risk'])
+        if len(set(advertised)) != len(advertised):
+            raise ValueError('probe service /info repeats a risk: ' + ','.join(advertised))
+        return tuple(advertised)
+
+    def _require_single_risk(self, probe, info):
+        """Option A: this URL must serve exactly the risk we configured for it."""
+        advertised = self._advertised_risks(info)
+        if advertised != (probe.risk,):
+            raise ValueError(
+                f'{probe.base_url} is configured as {probe.risk} but advertises '
+                + ','.join(advertised)
+                + '; one endpoint must serve exactly that risk'
+            )
+        return info
+
     async def get_model_info(self):
         """Report what each enabled risk is actually served by.
 
@@ -140,10 +171,19 @@ class ProbeBankGuard:
             if isinstance(info, BaseException):
                 failures.append({'risk': probe.risk, 'base_url': probe.base_url, 'error': str(info)})
                 continue
+            try:
+                self._require_single_risk(probe, info)
+            except ValueError as error:
+                failures.append({'risk': probe.risk, 'base_url': probe.base_url, 'error': str(error)})
+                continue
             per_risk[probe.risk] = {'base_url': probe.base_url, **info}
-        if failures and len(failures) == len(self.probes):
+        # Transport failures of every instance stay an exception: there is no
+        # service to describe. An identity mismatch is a reply we understood, so
+        # it stays in `unavailable` and health can report degraded instead of down.
+        transport_failures = [item for item in failures if 'advertises' not in item['error']]
+        if transport_failures and len(transport_failures) == len(self.probes):
             raise ValueError('; '.join(f"{item['risk']}@{item['base_url']}: {item['error']}"
-                                       for item in failures))
+                                       for item in transport_failures))
         primary_key = next((probe.risk for probe in self.probes if probe.risk in per_risk), None)
         payload = dict(per_risk.get(primary_key) or {}) if primary_key else {}
         payload.update(
@@ -158,9 +198,14 @@ class ProbeBankGuard:
         """Score one risk on its own instance and normalise it to a per_risk row.
 
         `response_payload` is only for CPU tests: it replaces the HTTP round trip
-        while keeping every validation below in the path under test.
+        while keeping every score validation below in the path under test.
+        Those tests also skip the `/info` identity check; production always runs it.
         """
         if response_payload is None:
+            # Identity before score. A reachable instance that loaded another risk
+            # must not have its primary probability labelled as this configured risk.
+            info = await self._fetch_info(probe)
+            self._require_single_risk(probe, info)
             response = await self._client.post(probe.base_url + '/detect',
                                                headers=self._auth_headers(),
                                                json={'messages': messages, 'tools': tools})

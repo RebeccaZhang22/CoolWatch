@@ -114,7 +114,7 @@ PROBE_BANK_BASE_URL=http://127.0.0.1:8302
 PROBE_BANK_API_KEY=<与该服务的 INSCOPE_API_KEY 相同>
 ```
 
-**一个检测服务实例只负责一类风险**（inscope-service 的一个实例加载一个探针 checkpoint）。因此启用多种风险时，需要为每类风险各起一个实例，并按风险声明地址；只配置 `PROBE_BANK_BASE_URL` 却启用多类风险会直接拒绝启动，而不是把某类风险发到别的实例上：
+**当前部署约定是一个检测服务实例只负责一类风险。** 这是 Coolwatch 的接法，不是 inscope-service 的能力上限：外部服务可以在一个进程里加载多类探针，本仓库不使用那条路径。启用多种风险时，为每类风险各起一个实例，并按风险声明地址；只配置 `PROBE_BANK_BASE_URL` 却启用多类风险会直接拒绝启动。检测前还会核对实例 `/info` 声明的风险，地址配到了别的风险上会失败关闭，而不是把那一类的分数标成这一类：
 
 ```dotenv
 PROBE_BANK_ENABLED_RISKS=harmful,prompt_leakage,ipi
@@ -125,14 +125,9 @@ PROBE_BANK_RISK_ENDPOINTS=harmful=http://127.0.0.1:8301,prompt_leakage=http://12
 
 防护模式（`defense_mode=defended`）不会静默降级：请求的方法当前不可用、或检测服务返回错误时，本轮业务执行直接拒绝/暂停，而不是退回无检测继续生成。需要无防护对照时请显式使用 `baseline`。`ACTIVATION_PROBE_BACKEND` 只接受 `probe_bank` 或 `standalone`，旧版 `vllm` 取值会在启动时被拒绝。演示台的 `GET /api/health` 会单独报告探针状态（`probe_bank_reachable` / `probe_bank_enabled_risks`），业务模型可用但探针不可用时前端显示“检测服务未就绪”。
 
-业务模型接入 OpenAI-compatible 服务。仓库保留两套 Probe Bank 运行方式，均提供 `/detect` 与 `/bank` 接口：
+业务模型接入 OpenAI-compatible 服务。InsScope Detect 的检测服务是仓库外的 inscope-service，Coolwatch 只通过 `PROBE_BANK_BASE_URL` / `PROBE_BANK_RISK_ENDPOINTS` 调用它。
 
-| 运行方式 | 代码与部署入口 |
-| --- | --- |
-| 按请求采集隐藏状态的 SGLang 运行时 | [`sglang-activation-runtime/`](sglang-activation-runtime/README.md) + [`backend/activation_probe_server.py`](backend/activation_probe_server.py)，部署见[新版服务说明](sglang-activation-runtime/deploy/README.md) |
-| 兼容原有特征提取的 Probe Bank | `probe-runtime/` + `backend/qwen3_probe_bank_server.py`，使用下方脚本 |
-
-两套方案的默认聊天/探针端口有重叠，部署时选择一套。兼容方案的启动入口为：
+仓库里还留着两套旧的仓内检测实现（`sglang-activation-runtime/` + `backend/activation_probe_server.py`，以及 `probe-runtime/` + `backend/qwen3_probe_bank_server.py`）。它们提供 `/bank` 和 `per_risk`，**不满足当前适配器要求的 `/info` 风险身份和顶层 `probability`**，不能当作 inscope-service 的替代部署。需要对照旧实验时再单独看对应目录，不要和上面的 Web 启动混用。兼容方案的历史入口为：
 
 ```bash
 PROBE_SOURCE_ROOT=/path/to/probe-runtime \
@@ -142,13 +137,13 @@ CUDA_VISIBLE_DEVICES=0 \
 bash vllm_setups/run_probe_bank_qwen3_8b.sh
 ```
 
-将上述路径替换为已准备好的 Probe 运行环境与模型目录。启动脚本使用配套 SGLang 运行环境，默认只加载 `probe/qwen3-8b/` 中的 IPI 探针；`PROBE_BANK_ENABLED_RISKS=harmful,prompt_leakage,ipi` 可启用全部三类。**旧版兼容方案的启动脚本本身会在一个进程里加载多类探针；改用 inscope-service 时，多类风险要按上面的 `PROBE_BANK_RISK_ENDPOINTS` 拆成多个单风险实例。** Web 后端和检测服务必须使用相同的风险配置，修改后分别重启。响应中的 `enabled_risks` / `disabled_risks` 表明实际启用范围，未启用不代表检测通过。部署参数见[启动脚本](vllm_setups/run_probe_bank_qwen3_8b.sh)，探针训练与数据处理见[训练代码说明](probe/src/README.md)。
+上面这段只保留给旧实验对照，**不要用它启动当前 Web 后端所调用的检测服务**。当前检测服务在仓库外单独部署；Web 后端和各实例的风险配置必须一致，改完分别重启。响应中的 `enabled_risks` / `disabled_risks` 表明实际启用范围，未启用不代表检测通过。
 
 其他护栏的服务地址、模型与凭证统一在[配置模板](backend/.env.example)中设置。
 
 ### 4. 持久部署
 
-新版运行时的 chat、shadow 和 probe 服务配置见 [`sglang-activation-runtime/deploy/`](sglang-activation-runtime/deploy/README.md)。原有 Probe Bank、业务聊天、Qwen3Guard 和 Web 的 systemd 示例见 [`deploy/`](deploy/README.md)。配置文件中的用户、绝对路径、GPU 和端口需要按目标服务器调整；版本库中的 unit 文件本身不代表服务已安装或启用。
+当前持久部署只需要业务模型、仓库外的 inscope-service，以及本仓库的 Web 后端。`sglang-activation-runtime/deploy/` 和 `deploy/` 里的 probe unit 启动的是上一节所说的旧仓内检测服务，不能接到现在的 `PROBE_BANK_*` 配置上。配置文件中的用户、绝对路径、GPU 和端口需要按目标服务器调整；版本库中的 unit 文件本身不代表服务已安装或启用。
 
 管理者控制台通过 `manager/start.sh` 独立启动；如需长期运行，可按同样方式交给进程管理器。账户数据库、HR 演示状态、日志、模型缓存与本地 `.env` 均不提交到 GitHub。
 

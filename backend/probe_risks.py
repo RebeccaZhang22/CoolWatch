@@ -1,8 +1,8 @@
 """Shared active-risk contract for probe servers and their HTTP adapter.
 
-一条部署可以挂多类风险，但每个检测服务实例只负责其中一类：
-inscope-service 的一个实例 = 一个探针 checkpoint = 一类风险。
-聚合与合并发生在适配层（见 watchers/probe_bank.py），不要求服务端支持多风险。
+一条部署可以挂多类风险。Coolwatch 的约定是每个检测服务实例只负责其中一类
+（方案 A），聚合发生在适配层（见 watchers/probe_bank.py）。
+这不是 inscope-service 的能力上限：服务可以在一个进程里加载多探针，本层不走那条路径。
 """
 RISK_NAMES = {
     'harmful': '有害行为',

@@ -54,7 +54,7 @@ checkpoint。若融合请求中的某一项失败，聊天路径只对失败项�
 
 ## InsScope Detect
 
-当前使用 Probe Bank，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL=http://127.0.0.1:8302`。默认 `PROBE_BANK_ENABLED_RISKS=ipi`，仅加载和执行 IPI 探针；另外两类权重保留在 `probe/qwen3-8b/`。修改启用范围时，检测服务和 Web 后端应保持一致。可使用[新版请求级激活采集服务](../sglang-activation-runtime/deploy/README.md)，或通过 `vllm_setups/run_probe_bank_qwen3_8b.sh` 启动原有特征提取实现。`standalone` Transformers 后端保留用于旧部署对照。
+当前使用外部 inscope-service，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL=http://127.0.0.1:8302` 和与该服务相同的 `PROBE_BANK_API_KEY`。默认 `PROBE_BANK_ENABLED_RISKS=ipi`。Coolwatch 约定每个实例只服务一类风险；检测前会核对 `/info` 的 `risks`，声明不符就失败关闭。仓内 `activation_probe_server.py` / `qwen3_probe_bank_server.py` 是旧实现，接口已不兼容，不能当作这个配置的检测服务。`standalone` Transformers 后端只保留给旧部署对照。
 
 ## Inline Probing
 

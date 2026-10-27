@@ -1,4 +1,4 @@
-"""End-to-end adapter compatibility: real inscope-service apps + CoolWatch adapter.
+"""Optional cross-repo adapter check: real inscope-service apps + CoolWatch adapter.
 
 Deployment shape under test (decision A): **one instance = one risk**. Each instance
 here is a real FastAPI app built by `create_app`, running in-process over an
@@ -6,24 +6,47 @@ httpx transport; one app per risk. Only tokenizer, probe and engine backend are
 stubbed, because this must run without GPU. It proves the wire contract, auth and
 the fan-out/merge that CoolWatch's ProbeBankGuard performs - not detection accuracy.
 
-Run directly (``python evaluation/tests/test_probe_bank_e2e.py``) or under pytest.
+This is not part of the default CoolWatch test set. It imports the external
+service source, so a CoolWatch-only checkout must skip it rather than fail
+collection. Point ``INSCOPE_SERVICE_ROOT`` at that checkout, or place it next to
+this repository. Run directly (``python evaluation/tests/test_probe_bank_e2e.py``).
 """
 import asyncio
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import httpx
+import pytest
 import torch
 from fastapi.testclient import TestClient
 
 REPO = Path(__file__).resolve().parents[1]
-# Checkout root, so `import backend` and `import inscope_server` both work no
-# matter which directory this file is run from.
 ROOT = REPO.parent
-for entry in (str(ROOT), str(REPO), "/data/zmosg/inscope-service"):
+for entry in (str(ROOT), str(REPO)):
     if entry not in sys.path:
         sys.path.insert(0, entry)
+
+
+def _service_root():
+    configured = os.environ.get("INSCOPE_SERVICE_ROOT", "").strip()
+    candidates = [Path(configured)] if configured else []
+    candidates.append(ROOT.parent / "inscope-service")
+    for candidate in candidates:
+        if (candidate / "inscope_server" / "app.py").is_file():
+            return candidate
+    return None
+
+
+_SERVICE_ROOT = _service_root()
+if _SERVICE_ROOT is not None and str(_SERVICE_ROOT) not in sys.path:
+    sys.path.insert(0, str(_SERVICE_ROOT))
+
+pytestmark = pytest.mark.skipif(
+    _SERVICE_ROOT is None,
+    reason="optional cross-repo check; set INSCOPE_SERVICE_ROOT to an inscope-service checkout",
+)
 
 
 def _original_service_helpers():
@@ -32,7 +55,10 @@ def _original_service_helpers():
     return {"get_profile": app_module.get_profile, "bind_profile": app_module.bind_profile}
 
 
-_ORIGINAL_HELPERS = _original_service_helpers()
+def _helpers():
+    if _SERVICE_ROOT is None:
+        pytest.skip("optional cross-repo check; set INSCOPE_SERVICE_ROOT to an inscope-service checkout")
+    return _original_service_helpers()
 
 
 def _build_service(score, load=("ipi",), instance="ipi"):
@@ -47,8 +73,9 @@ def _build_service(score, load=("ipi",), instance="ipi"):
 
     # Restored by _restore(); must be the originals, not the previous instance's
     # patched pair, so consecutive instances do not nest patches.
-    real_get_profile = _ORIGINAL_HELPERS["get_profile"]
-    real_bind = _ORIGINAL_HELPERS["bind_profile"]
+    helpers = _helpers()
+    real_get_profile = helpers["get_profile"]
+    real_bind = helpers["bind_profile"]
     profiles = "a6_nemotron_risk_faced_v1"
     profile = real_get_profile(profiles)
 
@@ -63,8 +90,8 @@ def _build_service(score, load=("ipi",), instance="ipi"):
     app_module.get_profile = lambda name: Profile()
 
     def make(risk, layer, threshold):
-        # `risk` is the *instance* label used in the checkpoint identity; the
-        # service itself always calls its single risk "indirect_prompt_injection".
+        # `risk` labels this stubbed checkpoint. The service advertises primary_risk,
+        # which the caller below sets to the same instance label.
         spec = SimpleNamespace(
             probe_id=f"probe:{risk}", schema="x", probe_architecture="linear",
             layer_semantics="block", block_indices=(layer - 1,),
@@ -101,7 +128,7 @@ def _build_service(score, load=("ipi",), instance="ipi"):
         max_tokens=40959, max_inflight=4, timeout=60, analyze_timeout=600, analyze_batch=8,
         audit_timeout=1200, detect_batch=8, max_body_bytes=10 ** 7, max_batch_items=128,
         backend_max_inflight=4, probes={},
-        detector_model="qwen3-8b", primary_risk=load[0])
+        detector_model="qwen3-8b", primary_risk=instance)
     extra = {risk: make(f"{instance}-{risk}", 9 + 8 * index, 0.9)
              for index, risk in enumerate(load) if index}
     app = create_app(settings, tokenizer=Tokenizer(), probe=make(instance, 9, 0.9),

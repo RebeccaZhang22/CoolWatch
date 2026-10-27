@@ -87,6 +87,8 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
             port = request.url.port
             risk = by_port[port]
             seen.append((risk, request))
+            if request.url.path == "/info":
+                return httpx.Response(200, json={"risks": [{"risk": risk}]})
             value = responses[risk]
             if isinstance(value, Exception):
                 return httpx.Response(getattr(value, "status_code", 500), json={"detail": "boom"})
@@ -121,8 +123,8 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("harmful@sha_harmful", payload["bank_version"])
         self.assertIn("ipi@sha_ipi", payload["bank_version"])
         self.assertEqual(payload["detector_model"], "Qwen3-8B-FP8")
-        # Every instance got its own authenticated call.
-        self.assertEqual(len(seen), 2)
+        # Each instance is identified, then scored: one /info and one /detect.
+        self.assertEqual(sorted(request.url.path for _, request in seen), ["/detect", "/detect", "/info", "/info"])
         for _, request in seen:
             self.assertEqual(request.headers["authorization"], "Bearer test-bank-key")
 
@@ -200,6 +202,42 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await guard.close()
 
+    async def test_wrong_instance_identity_fails_closed(self):
+        # A harmful URL that actually loaded IPI must not be scored as harmful.
+        guard, seen = await self._guard({"harmful": detect_payload(0.93)}, risks=("harmful",))
+
+        def handler(request):
+            seen.append(("harmful", request))
+            if request.url.path == "/info":
+                return httpx.Response(200, json={"risks": [{"risk": "ipi"}]})
+            return httpx.Response(200, json=detect_payload(0.93))
+
+        await guard._client.aclose()
+        guard._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            result = await guard.moderate([{"role": "user", "content": "hi"}])
+        finally:
+            await guard.close()
+        self.assertIsNotNone(result.error)
+        self.assertIn("advertises ipi", result.error)
+        self.assertIsNone(result.risky)
+        self.assertTrue(all(request.url.path == "/info" for _, request in seen))
+
+    async def test_multi_risk_instance_is_rejected(self):
+        guard, _ = await self._guard({"ipi": detect_payload(0.05)})
+
+        def handler(request):
+            return httpx.Response(200, json={"risks": [{"risk": "ipi"}, {"risk": "harmful"}]})
+
+        await guard._client.aclose()
+        guard._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        try:
+            result = await guard.moderate([{"role": "user", "content": "hi"}])
+        finally:
+            await guard.close()
+        self.assertIn("advertises ipi,harmful", result.error or "")
+        self.assertIsNone(result.risky)
+
 
 class ModelInfoTests(unittest.IsolatedAsyncioTestCase):
     async def test_composite_info_keeps_legacy_top_level_fields(self):
@@ -208,7 +246,8 @@ class ModelInfoTests(unittest.IsolatedAsyncioTestCase):
 
         async def fake_fetch(probe):
             if probe.risk == "ipi":
-                return {"detector": "linear:arm6", "model": "Qwen3-8B-FP8", "threshold": 0.9}
+                return {"detector": "linear:arm6", "model": "Qwen3-8B-FP8", "threshold": 0.9,
+                        "risks": [{"risk": "ipi"}]}
             raise ValueError("down")
         guard._fetch_info = fake_fetch
         info = await guard.get_model_info()
@@ -217,6 +256,17 @@ class ModelInfoTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([item["risk"] for item in info["unavailable"]], ["harmful"])
         # First *working* instance populates the legacy single-risk fields.
         self.assertEqual(info["threshold"], 0.9)
+
+    async def test_wrong_risk_identity_is_unavailable(self):
+        guard = ProbeBankGuard(settings())
+
+        async def fake_fetch(probe):
+            return {"risks": [{"risk": "harmful"}]}
+        guard._fetch_info = fake_fetch
+        info = await guard.get_model_info()
+        self.assertEqual(info["per_risk"], {})
+        self.assertEqual(len(info["unavailable"]), 1)
+        self.assertIn("advertises harmful", info["unavailable"][0]["error"])
 
     async def test_all_instances_down_raises(self):
         guard = ProbeBankGuard(settings())

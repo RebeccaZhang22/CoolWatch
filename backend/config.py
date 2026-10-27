@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     admin_password: str = Field(default="", alias="PROSPECTMONITOR_ADMIN_PASSWORD")
     probe_bank_enabled_risks: str = Field(default="ipi", alias="PROBE_BANK_ENABLED_RISKS")
     probe_bank_base_url: str = Field(default="http://127.0.0.1:8302", alias="PROBE_BANK_BASE_URL")
+    # Bearer key for the probe service; must equal its INSCOPE_API_KEY.
+    probe_bank_api_key: str = Field(default="", alias="PROBE_BANK_API_KEY")
     vllm_base_url: str = Field(default="http://127.0.0.1:8013/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
     vllm_model: str = Field(default="qwen3-8b", alias="VLLM_MODEL")

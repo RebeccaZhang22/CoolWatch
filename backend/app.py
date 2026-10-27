@@ -396,7 +396,6 @@ async def standardized_moderate(request: Request) -> JSONResponse:
     if tools is not None and (not isinstance(tools, list) or any(not isinstance(t, dict) for t in tools)):
         return JSONResponse(status_code=400, content={"error": {"code": "invalid_tools", "message": "tools must be an array of objects."}})
     started = time.perf_counter()
-    detector_model = settings.customer_agent_shadow_model or "qwen3-8b"
     assessment = await probe_bank_guard.moderate(normalized_messages, tools=payload.get("tools"))
     if assessment.error:
         request_id = f"req_{uuid4().hex}"
@@ -416,7 +415,7 @@ async def standardized_moderate(request: Request) -> JSONResponse:
         "id": f"mod_{uuid4().hex}",
         "request_id": request_id,
         "created": int(time.time()),
-        "detector_model": detector_model,
+        "detector_model": bank_result["detector_model"],
         "bank_version": bank_result["bank_version"],
         "action": "block" if flagged else "pass",
         "per_risk": bank_result["per_risk"],
@@ -437,7 +436,12 @@ async def inline_probing_info():
 @app.get("/api/guards/activation_probe/info")
 async def activation_probe_info():
     if settings.activation_probe_backend == "probe_bank":
-        return await probe_bank_guard.get_model_info()
+        try:
+            return await probe_bank_guard.get_model_info()
+        except Exception as error:
+            # Info is diagnostics only; never let it take the page down.
+            return JSONResponse(status_code=503,
+                                content={"error": "probe_bank_unavailable", "message": str(error)})
     return await activation_probe_guard.get_model_info()
 
 

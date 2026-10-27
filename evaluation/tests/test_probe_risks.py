@@ -21,21 +21,55 @@ class RiskSelectionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_adapter_only_accepts_enabled_results(self):
         settings = SimpleNamespace(probe_bank_base_url='http://test', activation_probe_timeout_seconds=10,
-                                   customer_agent_shadow_model='qwen3-8b', probe_bank_enabled_risks='ipi')
+                                   customer_agent_shadow_model='qwen3-8b', probe_bank_enabled_risks='ipi',
+                                   probe_bank_api_key='test-bank-key')
         guard = ProbeBankGuard(settings)
         await guard._client.aclose()
         payload = dict(detector_model='qwen3-8b', bank_version='test-bank', input_tokens=20,
-                       per_risk={'ipi':dict(flagged=False,score=0.1,threshold=0.91)}, enabled_risks=['ipi'])
-        guard._client = httpx.AsyncClient(transport=httpx.MockTransport(lambda r: httpx.Response(200,json=payload)))
+                       per_risk={'ipi':dict(flagged=False,score=0.1,threshold=0.91)}, enabled_risks=['ipi'],
+                       per_entry={'ipi':0.1}, triggered_entries=[])
+        seen = []
+        def handler(request):
+            seen.append(request)
+            return httpx.Response(200, json=payload)
+        guard._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         try:
             clean = await guard.moderate([{'role':'user','content':'test'}])
             self.assertIsNone(clean.error)
             self.assertFalse(clean.risky)
+            # Probe service rejects unauthenticated calls; the adapter must send Bearer.
+            self.assertEqual(seen[-1].headers.get('authorization'), 'Bearer test-bank-key')
+            # The adapter asks the service only for the risks it needs.
+            self.assertEqual(json.loads(seen[-1].content)['enabled_risks'], ['ipi'])
             payload['per_risk']['ipi'].update(flagged=True,score=0.99)
             self.assertTrue((await guard.moderate([])).risky)
+            # Service may serve more risks than we enable: intersect, never fail.
             payload['per_risk']['harmful'] = dict(flagged=True,score=0.99,threshold=0.8)
+            payload['enabled_risks'] = ['ipi', 'harmful']
+            payload['per_entry'] = {'ipi': 0.99, 'harmful': 0.99}
+            payload['triggered_entries'] = ['harmful', 'ipi']
+            extra = await guard.moderate([])
+            self.assertIsNone(extra.error, extra.error)
+            self.assertEqual(extra.payload['enabled_risks'], ['ipi'])
+            self.assertEqual(extra.payload['triggered_entries'], ['ipi'])
+            self.assertEqual(set(extra.payload['disabled_risks']), {'harmful','prompt_leakage'})
+            self.assertTrue(extra.risky)
+            # An enabled risk missing from the response is an error, not a silent pass.
+            payload['per_risk'].pop('ipi')
+            payload['enabled_risks'] = ['harmful']
             self.assertIsNotNone((await guard.moderate([])).error)
+            # The probe service owns its detector model; we must not require our own name.
+            payload['per_risk'] = {'ipi':dict(flagged=False,score=0.1,threshold=0.91)}
+            payload['enabled_risks'] = ['ipi']
+            payload['detector_model'] = 'some-other-model'
+            foreign = await guard.moderate([])
+            self.assertIsNone(foreign.error, foreign.error)
+            self.assertEqual(foreign.payload['detector_model'], 'some-other-model')
+            payload['detector_model'] = ''
+            self.assertIsNotNone((await guard.moderate([])).error)
+            payload['detector_model'] = 'qwen3-8b'
             payload['per_risk'] = {}
+            payload['enabled_risks'] = ['ipi']
             self.assertIsNotNone((await guard.moderate([])).error)
         finally:
             await guard.close()

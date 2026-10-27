@@ -1,0 +1,197 @@
+--- /dev/null
++++ b/tests/test_composer.py
+@@ -0,0 +1,194 @@
++"""simplified composer 协议测试：选窗、去 CoT、merge、prefix 边界。"""
++import unittest
++
++from shadow_server.composer import ComposerConfig, compose_prompt, select_prompt_messages
++
++PREFIX = "Are there risks of indirect prompt injection?"
++THINK = "<" + "think" + ">"
++END = "<" + "/think" + ">"
++
++
++class FakeTokenizer:
++    """逐字符编码：只验证结构，不验证分词正确性。"""
++
++    def __init__(self):
++        self.text = None
++
++    def apply_chat_template(self, messages, tools=None, tokenize=False,
++                            add_generation_prompt=False, enable_thinking=False):
++        self.enable_thinking = enable_thinking
++        self.tools = tools
++        blocks = []
++        if tools:
++            blocks.append("<|tools|>%d" % len(tools))
++        for message in messages:
++            blocks.append("<|im_start|>%s\n%s<|im_end|>" % (message["role"], message.get("content") or ""))
++            for call in message.get("tool_calls") or []:
++                blocks.append('<tool_call>{"name":"%s","arguments":%r}</tool_call>'
++                              % (call["function"]["name"], dict(call["function"]["arguments"])))
++        blocks.append("<|im_start|>assistant\n")
++        self.text = "\n".join(blocks)
++        return self.text
++
++    def encode(self, text, add_special_tokens=False):
++        return [1000 + ord(ch) for ch in text]
++
++
++def config(**overrides):
++    base = dict(discard_cots=True, retain_n_assistant_turns=1, merge_consecutive_assistants=False,
++                drop_final_tool_result=False, probe_prefix=PREFIX, enable_thinking=True,
++                selected_positions=(-1,))
++    base.update(overrides)
++    return ComposerConfig(**base)
++
++
++def conversation():
++    return [
++        {"role": "system", "content": "rules"},
++        {"role": "developer", "content": "dev rules"},
++        {"role": "user", "content": "original task"},
++        {"role": "assistant", "content": "action A"},
++        {"role": "tool", "tool_call_id": "c1", "content": "observation A"},
++        {"role": "assistant", "content": "action B"},
++        {"role": "user", "content": "observation B"},
++    ]
++
++
++class SelectionTests(unittest.TestCase):
++    def test_keeps_opening_all_system_and_last_turn(self):
++        selected = select_prompt_messages(conversation(), 1)
++        roles = [m["role"] for m in selected]
++        self.assertEqual(roles, ["system", "developer", "user", "assistant", "user"])
++        self.assertEqual(selected[2]["content"], "original task")
++        self.assertEqual(selected[-1]["content"], "observation B")
++
++    def test_input_without_assistant_is_kept(self):
++        messages = [{"role": "user", "content": "only task"}]
++        self.assertEqual(select_prompt_messages(messages, 1), messages)
++
++    def test_parallel_tool_results_stay_together(self):
++        messages = [{"role": "user", "content": "task"},
++                    {"role": "assistant", "content": None, "tool_calls": [
++                        {"id": "a", "function": {"name": "x", "arguments": {}}},
++                        {"id": "b", "function": {"name": "y", "arguments": {}}}]},
++                    {"role": "tool", "tool_call_id": "a", "content": "ra"},
++                    {"role": "tool", "tool_call_id": "b", "content": "rb"}]
++        selected = select_prompt_messages(messages, 1)
++        self.assertEqual([m.get("tool_call_id") for m in selected[-2:]], ["a", "b"])
++
++    def test_retain_all(self):
++        self.assertEqual(len(select_prompt_messages(conversation(), -1)), 7)
++
++
++class NormalizationTests(unittest.TestCase):
++    def test_discard_cots_removes_think_block_and_reasoning_fields(self):
++        composed = compose_prompt(FakeTokenizer(), [
++            {"role": "user", "content": "task"},
++            {"role": "assistant", "content": THINK + "\nsecret plan\n" + END + "\nvisible action",
++             "reasoning_content": "field reason"}], None, config())
++        self.assertNotIn(THINK, composed.text)
++        self.assertNotIn("secret plan", composed.text)
++        self.assertIn("visible action", composed.text)
++
++    def test_plain_assistant_text_is_not_semantically_edited(self):
++        content = 'analysis: {"plan": "a"} and normal explanation'
++        composed = compose_prompt(FakeTokenizer(), [
++            {"role": "user", "content": "task"},
++            {"role": "assistant", "content": content}], None, config())
++        self.assertIn(content, composed.text)
++
++    def test_developer_becomes_system(self):
++        composed = compose_prompt(FakeTokenizer(), [
++            {"role": "developer", "content": "dev rules"},
++            {"role": "user", "content": "task"}], None, config())
++        self.assertNotIn("<|im_start|>developer", composed.text)
++        self.assertIn("<|im_start|>system", composed.text)
++
++    def test_tool_arguments_are_parsed_and_id_kept(self):
++        tokenizer = FakeTokenizer()
++        composed = compose_prompt(tokenizer, [
++            {"role": "user", "content": "task"},
++            {"role": "assistant", "content": None, "tool_calls": [
++                {"id": "call_1", "type": "function",
++                 "function": {"name": "search", "arguments": '{"q": "hello"}'}}]}], None, config())
++        self.assertIn("'q': 'hello'", composed.text)
++        self.assertIn("search", composed.text)
++
++
++class MergeTests(unittest.TestCase):
++    def two_assistants(self):
++        return [{"role": "user", "content": "task"},
++                {"role": "assistant", "content": "first"},
++                {"role": "assistant", "content": "second", "tool_calls": [
++                    {"id": "c1", "function": {"name": "bash", "arguments": {"command": "ls"}}}]},
++                {"role": "tool", "tool_call_id": "c1", "content": "obs"}]
++
++    def test_merge_joins_consecutive_assistants_without_crossing_observations(self):
++        merged = compose_prompt(FakeTokenizer(), self.two_assistants(), None,
++                                config(merge_consecutive_assistants=True))
++        plain = compose_prompt(FakeTokenizer(), self.two_assistants(), None,
++                               config(merge_consecutive_assistants=False))
++        self.assertNotEqual(list(merged.token_ids), list(plain.token_ids))
++        self.assertEqual(merged.text.count("<|im_start|>assistant"),
++                         plain.text.count("<|im_start|>assistant") - 1)
++        self.assertIn("first\nsecond", merged.text)
++        self.assertIn("bash", merged.text)
++        # 观察仍独立成一条
++        self.assertIn("<|im_start|>tool", merged.text)
++
++    def test_merge_is_off_by_default(self):
++        self.assertFalse(config().merge_consecutive_assistants)
++
++
++class PrefixTests(unittest.TestCase):
++    def test_prefix_is_appended_after_generation_header(self):
++        tokenizer = FakeTokenizer()
++        composed = compose_prompt(tokenizer, [{"role": "user", "content": "task"}], None, config())
++        self.assertTrue(tokenizer.text.endswith("<|im_start|>assistant\n"))
++        self.assertTrue(composed.text.endswith(PREFIX))
++        self.assertEqual(composed.text, tokenizer.text + PREFIX)
++
++    def test_prefix_encoded_separately(self):
++        composed = compose_prompt(FakeTokenizer(), [{"role": "user", "content": "task"}], None, config())
++        tokenizer = FakeTokenizer()
++        template = tokenizer.apply_chat_template([{"role": "user", "content": "task"}],
++                                                 tools=None, tokenize=False,
++                                                 add_generation_prompt=True, enable_thinking=True)
++        expected = [1000 + ord(ch) for ch in template] + [1000 + ord(ch) for ch in PREFIX]
++        self.assertEqual(list(composed.token_ids), expected)
++
++    def test_last_token_is_question_mark(self):
++        composed = compose_prompt(FakeTokenizer(), [{"role": "user", "content": "task"}], None, config())
++        self.assertEqual(composed.text[-1], "?")
++
++    def test_empty_prefix_keeps_template_only(self):
++        composed = compose_prompt(FakeTokenizer(), [{"role": "user", "content": "task"}], None,
++                                  config(probe_prefix=""))
++        self.assertTrue(composed.text.endswith("<|im_start|>assistant\n"))
++
++    def test_messages_are_not_mutated(self):
++        messages = conversation()
++        import copy
++        original = copy.deepcopy(messages)
++        compose_prompt(FakeTokenizer(), messages, None, config())
++        self.assertEqual(messages, original)
++
++
++class ConfigValidationTests(unittest.TestCase):
++    def test_invalid_selection_and_positions(self):
++        with self.assertRaises(ValueError):
++            ComposerConfig(retain_n_assistant_turns=0)
++        with self.assertRaises(ValueError):
++            ComposerConfig(selected_positions=())
++        with self.assertRaises(ValueError):
++            ComposerConfig(selected_positions=("x",))
++
++    def test_describe_matches_configured_values(self):
++        described = config(drop_final_tool_result=True).describe()
++        self.assertEqual(described["selected_positions"], [-1])
++        self.assertTrue(described["discard_cots"])
++        self.assertTrue(described["drop_final_tool_result"])
++
++
++if __name__ == "__main__":
++    unittest.main()

@@ -1,9 +1,12 @@
-"""End-to-end probe bank compatibility: real inscope-service app + CoolWatch adapter.
+"""End-to-end adapter compatibility: real inscope-service apps + CoolWatch adapter.
 
-The service app is the actual FastAPI app built by create_app, running in-process over
-httpx ASGITransport. Only the tokenizer, probe and engine backend are stubbed, because
-this check must run without GPU. It proves the wire contract, auth and payload shape that
-CoolWatch's ProbeBankGuard enforces - not detection accuracy.
+Deployment shape under test (decision A): **one instance = one risk**. Each instance
+here is a real FastAPI app built by `create_app`, running in-process over an
+httpx transport; one app per risk. Only tokenizer, probe and engine backend are
+stubbed, because this must run without GPU. It proves the wire contract, auth and
+the fan-out/merge that CoolWatch's ProbeBankGuard performs - not detection accuracy.
+
+Run directly (``python evaluation/tests/test_probe_bank_e2e.py``) or under pytest.
 """
 import asyncio
 import sys
@@ -15,30 +18,53 @@ import torch
 from fastapi.testclient import TestClient
 
 REPO = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(REPO))
+# Checkout root, so `import backend` and `import inscope_server` both work no
+# matter which directory this file is run from.
+ROOT = REPO.parent
+for entry in (str(ROOT), str(REPO), "/data/zmosg/inscope-service"):
+    if entry not in sys.path:
+        sys.path.insert(0, entry)
 
 
-def _build_service(score_map):
-    """Real create_app with stub dependencies; primary ipi + one extra risk."""
+def _original_service_helpers():
+    """Snapshot the unpatched profile helpers before any instance is built."""
+    import inscope_server.app as app_module
+    return {"get_profile": app_module.get_profile, "bind_profile": app_module.bind_profile}
+
+
+_ORIGINAL_HELPERS = _original_service_helpers()
+
+
+def _build_service(score, load=("ipi",), instance="ipi"):
+    """One real service instance that evaluates exactly one risk.
+
+    `load` lists the checkpoints this instance registers; a single-risk instance
+    registers one. `instance` only labels the stubbed checkpoint identity so a
+    test can tell two instances apart in the merged response.
+    """
     import inscope_server.app as app_module
     from inscope_server.app import create_app
 
-    PROFILES = "a6_nemotron_risk_faced_v1"
-    real_get_profile = app_module.get_profile
-    profile = real_get_profile(PROFILES)
+    # Restored by _restore(); must be the originals, not the previous instance's
+    # patched pair, so consecutive instances do not nest patches.
+    real_get_profile = _ORIGINAL_HELPERS["get_profile"]
+    real_bind = _ORIGINAL_HELPERS["bind_profile"]
+    profiles = "a6_nemotron_risk_faced_v1"
+    profile = real_get_profile(profiles)
 
     class Profile:
-        profile_id = PROFILES
+        profile_id = profiles
         composer = profile.composer
 
         def describe(self):
             return profile.describe()
 
-    original_bind = app_module.bind_profile
     app_module.bind_profile = lambda candidate, probe_id: candidate
     app_module.get_profile = lambda name: Profile()
 
     def make(risk, layer, threshold):
+        # `risk` is the *instance* label used in the checkpoint identity; the
+        # service itself always calls its single risk "indirect_prompt_injection".
         spec = SimpleNamespace(
             probe_id=f"probe:{risk}", schema="x", probe_architecture="linear",
             layer_semantics="block", block_indices=(layer - 1,),
@@ -49,7 +75,7 @@ def _build_service(score_map):
                                 capture_layers=(layer,), selected_positions=(-4, -3, -2, -1),
                                 input_dim=4, spec=spec)
         probe.flatten = lambda blocks: torch.cat([b.reshape(-1) for b in blocks])
-        probe.score = lambda x: (score_map[risk], score_map[risk])
+        probe.score = lambda x: (score, score)
         return probe
 
     class Tokenizer:
@@ -71,27 +97,93 @@ def _build_service(score_map):
 
     settings = SimpleNamespace(
         model_path="/m", api_key="bank-secret", probe_checkpoint="/p",
-        composer_profile=PROFILES, backend_url="http://127.0.0.1:1", backend_api_key="",
+        composer_profile=profiles, backend_url="http://127.0.0.1:1", backend_api_key="",
         max_tokens=40959, max_inflight=4, timeout=60, analyze_timeout=600, analyze_batch=8,
         audit_timeout=1200, detect_batch=8, max_body_bytes=10 ** 7, max_batch_items=128,
-        backend_max_inflight=4, probes={"harmful": "/h"},
-        detector_model="qwen3-8b", primary_risk="ipi")
-    app = create_app(settings, tokenizer=Tokenizer(), probe=make("ipi", 9, 0.9),
-                     probes={"harmful": make("harmful", 17, 0.5)}, backend=Backend())
-    return app, (original_bind, real_get_profile, None)
+        backend_max_inflight=4, probes={},
+        detector_model="qwen3-8b", primary_risk=load[0])
+    extra = {risk: make(f"{instance}-{risk}", 9 + 8 * index, 0.9)
+             for index, risk in enumerate(load) if index}
+    app = create_app(settings, tokenizer=Tokenizer(), probe=make(instance, 9, 0.9),
+                     probes=extra or None, backend=Backend())
+    return app, (real_bind, real_get_profile)
 
 
 def _restore(saved):
+    """Restore the profile helpers a check patched.
+
+    `saved` is a list because `_run_two_instances` builds several instances in a
+    row; the first entry is the pristine pair. A bare pair works too.
+    """
     import inscope_server.app as app_module
-    app_module.bind_profile, app_module.get_profile = saved[0], saved[1]
-    for attr in ("get_profile", "bind_profile"):
-        # Other modules may have captured the real helpers at import time; restore them too.
-        pass
+    if not saved:
+        return
+    if isinstance(saved, list) and saved and isinstance(saved[0], tuple):
+        bind, get = saved[0]
+    else:
+        bind, get = saved
+    app_module.bind_profile, app_module.get_profile = bind, get
+
+
+def _asgi_client(app):
+    from httpx import ASGITransport, AsyncClient
+    return AsyncClient(transport=ASGITransport(app=app))
+
+
+def _run_two_instances(scores, requested=("ipi", "harmful")):
+    """Build one service app per risk and drive the real guard against them."""
+    from backend.watchers.probe_bank import ProbeBankGuard
+
+    built, saved = {}, []
+    for risk in requested:
+        app, restore = _build_service(scores[risk], instance=risk)
+        built[risk] = app
+        saved.append(restore)
+    try:
+        async def run():
+            endpoints = ",".join(f"{risk}=http://{risk}.instance" for risk in requested)
+            guard = ProbeBankGuard(SimpleNamespace(
+                probe_bank_base_url="http://probe", activation_probe_timeout_seconds=10,
+                customer_agent_shadow_model="qwen3-8b",
+                probe_bank_enabled_risks=",".join(requested), probe_bank_api_key="bank-secret",
+                probe_bank_risk_endpoints=endpoints))
+            await guard._client.aclose()
+            clients = {f"http://{risk}.instance": _asgi_client(app) for risk, app in built.items()}
+
+            class Router:
+                """Route each request to the ASGI app of the instance it targets."""
+                def __init__(self, clients):
+                    self.clients = clients
+
+                async def post(self, url, headers=None, json=None):
+                    client = self.clients[url.split("/detect")[0]]
+                    return await client.post(url, headers=headers, json=json)
+
+                async def get(self, url, headers=None):
+                    client = self.clients[url.split("/info")[0]]
+                    return await client.get(url, headers=headers)
+
+                async def aclose(self):  # guard.close() still works
+                    pass
+
+            guard._client = Router(clients)
+            try:
+                assessment = await guard.moderate(
+                    [{"role": "user", "content": "Summarise the retrieved document."}])
+                info = await guard.get_model_info()
+            finally:
+                for client in clients.values():
+                    await client.aclose()
+                await guard.close()
+            return assessment, info
+        return asyncio.run(run())
+    finally:
+        _restore(saved)
 
 
 def check_auth_is_required():
-    """CoolWatch used to send no Authorization; service must reject that."""
-    app, saved = _build_service({"ipi": 0.95, "harmful": 0.2})
+    """CoolWatch used to send no Authorization; a service must reject that."""
+    app, saved = _build_service(0.95)
     try:
         with TestClient(app) as client:
             anonymous = client.post("/detect", json={"messages": [{"role": "user", "content": "hi"}]})
@@ -103,120 +195,86 @@ def check_auth_is_required():
         _restore(saved)
 
 
-def check_payload_through_repo_guard():
-    """Run the repository's real ProbeBankGuard against the real service app."""
-    sys.path.insert(0, str(Path("/data/zmosg/coolwatch")))
+def check_two_instances_merge():
+    """One instance per risk: ipi flags, harmful does not -> merged per_risk."""
+    assessment, info = _run_two_instances({"ipi": 0.95, "harmful": 0.2})
+    assert assessment.error is None, assessment.error
+    payload = assessment.payload
+    assert assessment.risky is True, payload
+    assert set(payload["per_risk"]) == {"ipi", "harmful"}, payload
+    assert payload["triggered_entries"] == ["ipi"], payload
+    assert set(payload["disabled_risks"]) == {"prompt_leakage"}
+    assert all(isinstance(row["score"], float) for row in payload["per_risk"].values())
+    assert payload["input_tokens"] > 0
+    # Each risk came from its own instance, with its own checkpoint identity.
+    assert "ipi@ipi-sha" in payload["bank_version"], payload["bank_version"]
+    assert "harmful@harmful-sha" in payload["bank_version"], payload["bank_version"]
+    # /info is composite but keeps the legacy single-risk fields working.
+    assert set(info["per_risk"]) == {"ipi", "harmful"}, info
+    assert info["detector"], info
+
+
+def check_single_instance_benign():
+    assessment, _ = _run_two_instances({"ipi": 0.05}, requested=("ipi",))
+    assert assessment.error is None, assessment.error
+    assert assessment.risky is False
+    assert assessment.payload["per_risk"]["ipi"]["flagged"] is False
+
+
+def check_subset_of_risks():
+    """A single-risk instance deployment only asks for the risk it enabled."""
     from backend.watchers.probe_bank import ProbeBankGuard
-
-    app, saved = _build_service({"ipi": 0.95, "harmful": 0.2})
-    try:
-        transport = httpx.ASGITransport(app=app)
-
-        async def run():
-            settings = SimpleNamespace(
-                probe_bank_base_url="http://probe", activation_probe_timeout_seconds=10,
-                customer_agent_shadow_model="qwen3-8b",
-                probe_bank_enabled_risks="ipi,harmful", probe_bank_api_key="bank-secret")
-            guard = ProbeBankGuard(settings)
-            await guard._client.aclose()
-            guard._client = httpx.AsyncClient(transport=transport)
-            try:
-                assessment = await guard.moderate([
-                    {"role": "user", "content": "Summarise the retrieved document."}])
-                info = await guard.get_model_info()
-            finally:
-                await guard.close()
-            return assessment, info
-
-        assessment, info = asyncio.run(run())
-        assert assessment.error is None, assessment.error
-        assert assessment.risky is True, assessment.payload
-        payload = assessment.payload
-        assert set(payload["per_risk"]) == {"ipi", "harmful"}
-        assert payload["triggered_entries"] == ["ipi"]
-        assert payload["disabled_risks"] == ["prompt_leakage"]
-        # Reported by the probe service, passed through as-is; CoolWatch does not need
-        # to know which model the service runs.
-        assert payload["detector_model"]
-        assert isinstance(payload["latency_ms"], dict) and "total" in payload["latency_ms"]
-        assert payload["input_tokens"] > 0
-        # /info must answer under the same auth (CoolWatch `/activation_probe/info`).
-        assert info["model"] and info["detector"]
-    finally:
-        _restore(saved)
+    guard = ProbeBankGuard(SimpleNamespace(
+        probe_bank_base_url="http://probe", activation_probe_timeout_seconds=10,
+        customer_agent_shadow_model="qwen3-8b",
+        probe_bank_enabled_risks="ipi", probe_bank_api_key="bank-secret",
+        probe_bank_risk_endpoints=""))
+    assert guard.endpoints == {"ipi": "http://probe"}
+    assert guard.enabled_risks == ("ipi",)
+    asyncio.run(guard.close())
 
 
-def check_service_serves_more_than_client_needs():
-    """Service loads extra risks; CoolWatch enables a subset -> intersection, no error."""
-    sys.path.insert(0, str(Path("/data/zmosg/coolwatch")))
+def check_multi_risk_without_endpoints_is_rejected():
+    """Two risks on one base_url is a configuration error, not a silent guess."""
     from backend.watchers.probe_bank import ProbeBankGuard
-
-    app, saved = _build_service({"ipi": 0.95, "harmful": 0.9})
     try:
-        transport = httpx.ASGITransport(app=app)
-
-        async def run():
-            settings = SimpleNamespace(
-                probe_bank_base_url="http://probe", activation_probe_timeout_seconds=10,
-                customer_agent_shadow_model="qwen3-8b",
-                probe_bank_enabled_risks="ipi", probe_bank_api_key="bank-secret")
-            guard = ProbeBankGuard(settings)
-            await guard._client.aclose()
-            guard._client = httpx.AsyncClient(transport=transport)
-            try:
-                return await guard.moderate([{"role": "user", "content": "hi"}])
-            finally:
-                await guard.close()
-
-        assessment = asyncio.run(run())
-        assert assessment.error is None, assessment.error
-        payload = assessment.payload
-        # Service loads ipi+harmful, CoolWatch wants ipi only: harmless, narrowed.
-        assert payload["enabled_risks"] == ["ipi"]
-        assert set(payload["per_risk"]) == {"ipi"}
-        assert set(payload["per_entry"]) == {"ipi"}
-        assert payload["triggered_entries"] == ["ipi"]
-        assert set(payload["disabled_risks"]) == {"harmful", "prompt_leakage"}
-        assert assessment.risky is True
-    finally:
-        _restore(saved)
+        ProbeBankGuard(SimpleNamespace(
+            probe_bank_base_url="http://probe", activation_probe_timeout_seconds=10,
+            probe_bank_enabled_risks="ipi,harmful", probe_bank_api_key="bank-secret",
+            probe_bank_risk_endpoints=""))
+    except ValueError as error:
+        assert "exactly one risk" in str(error), error
+    else:
+        raise AssertionError("multi-risk config without per-risk endpoints was accepted")
 
 
-def check_missing_requested_risk_fails_closed():
-    """CoolWatch asks for a risk the service never loaded -> 422, surfaced as an error."""
-    sys.path.insert(0, str(Path("/data/zmosg/coolwatch")))
+def check_unreachable_instance_fails_closed():
+    """One instance down is an error, never 'the other risks passed'."""
     from backend.watchers.probe_bank import ProbeBankGuard
+    guard = ProbeBankGuard(SimpleNamespace(
+        probe_bank_base_url="http://probe", activation_probe_timeout_seconds=2,
+        customer_agent_shadow_model="qwen3-8b",
+        probe_bank_enabled_risks="ipi,harmful", probe_bank_api_key="bank-secret",
+        probe_bank_risk_endpoints="ipi=http://127.0.0.1:1,harmful=http://127.0.0.1:2"))
 
-    app, saved = _build_service({"ipi": 0.9, "harmful": 0.2})
-    try:
-        transport = httpx.ASGITransport(app=app)
-
-        async def run():
-            settings = SimpleNamespace(
-                probe_bank_base_url="http://probe", activation_probe_timeout_seconds=10,
-                customer_agent_shadow_model="qwen3-8b",
-                probe_bank_enabled_risks="ipi,prompt_leakage", probe_bank_api_key="bank-secret")
-            guard = ProbeBankGuard(settings)
-            await guard._client.aclose()
-            guard._client = httpx.AsyncClient(transport=transport)
-            try:
-                return await guard.moderate([{"role": "user", "content": "hi"}])
-            finally:
-                await guard.close()
-
-        assessment = asyncio.run(run())
-        assert assessment.error is not None, assessment.payload
-        assert assessment.status_code == 503, assessment.status_code
-    finally:
-        _restore(saved)
+    async def run():
+        try:
+            return await guard.moderate([{"role": "user", "content": "hi"}])
+        finally:
+            await guard.close()
+    assessment = asyncio.run(run())
+    assert assessment.error is not None, assessment.payload
+    assert assessment.risky is None
 
 
 if __name__ == "__main__":
-    check_auth_is_required()
-    print("ok  auth required")
-    check_payload_through_repo_guard()
-    print("ok  real ProbeBankGuard accepts the service payload")
-    check_service_serves_more_than_client_needs()
-    print("ok  extra risks on the service are intersected, not rejected")
-    check_missing_requested_risk_fails_closed()
-    print("ok  requesting an unloaded risk fails closed")
+    for check, label in [
+        (check_auth_is_required, "auth required"),
+        (check_two_instances_merge, "two single-risk instances merge into per_risk"),
+        (check_single_instance_benign, "single instance benign"),
+        (check_subset_of_risks, "single-risk deployment keeps its endpoints"),
+        (check_multi_risk_without_endpoints_is_rejected, "multi-risk without endpoints rejected"),
+        (check_unreachable_instance_fails_closed, "unreachable instance fails closed"),
+    ]:
+        check()
+        print(f"ok  {label}")

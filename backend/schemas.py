@@ -137,6 +137,12 @@ class HealthResponse(BaseModel):
     vllm_reachable: bool
     models: list[str] = Field(default_factory=list)
     error: str | None = None
+    # Probe-backed availability is reported separately from business-model
+    # reachability so a console can show "business up, detection down".
+    activation_probe_backend: str = ""
+    probe_bank_reachable: bool | None = None
+    probe_bank_error: str | None = None
+    probe_bank_enabled_risks: list[str] = Field(default_factory=list)
 
 
 class FinVaultReplayRequest(BaseModel):

@@ -4,8 +4,16 @@ import { createAgentFlow, advanceAgentFlow, finishAgentFlow } from "./agent-flow
 import { renderToolBrowser } from "./tool-browser.js";
 import { createCustomerAgentApiClient } from "./api.js?v=ipi-only-20261012";
 
+// Risk keys as the service reports them; the console shows product names, not
+// internal keys, and never claims a risk is covered unless it was enabled.
+const RISK_LABELS = {
+  harmful: "内容安全",
+  prompt_leakage: "提示词/知识泄露",
+  ipi: "提示词注入（IPI）",
+};
+
 const DEFENSES = [
-  { id: "activation_probe", name: "基于隐藏层的可解释性技术", stage: "输入", phase: "input", defaultEnabled: false, description: "当前仅启用提示词注入（IPI）探针，检测工具返回和检索内容中的隐藏指令" },
+  { id: "activation_probe", name: "InsScope Detect", stage: "输入", phase: "input", defaultEnabled: true, description: "检测每轮工具上下文中的隐藏指令，检测风险由服务端实际启用的探针决定" },
   { id: "safegauge", name: "后缀概率检测", stage: "生成前", phase: "input", defaultEnabled: false, pendingModel: true, description: "在检测上下文后拼接固定后缀，根据后缀各 token 的 logprobs 识别风险。检测模型与 probe 权重待配置，当前仅展示方法。" },
   { id: "qwen_guard", name: "Qwen3Guard 文本检测", stage: "输入", phase: "input", origin: "baseline", description: "使用 Qwen3Guard 模型进行生成前输入文本检测", showInlineDescription: false },
   { id: "llama_prompt_guard", name: "护栏 C 文本检测", stage: "输入", phase: "input", origin: "baseline", hidden: true, description: "识别 Prompt Injection 与越权指令" },
@@ -190,6 +198,9 @@ const state = {
   catalogDefenseIds: DEFENSES.map((item) => item.id),
   availableDefenseIds: [],
   selectedDefenseIds: [],
+  enabledRisks: [],
+  probeReachable: true,
+  probeError: "",
   defensesInitialized: false,
   modelParams: {
     model: "qwen3-8b",
@@ -249,9 +260,11 @@ async function init() {
   renderSecurityFlow();
   resizeComposer();
 
+  // The workspace stays hidden until `auth-pending` is removed. Every backend
+  // call below is bounded so a hung request cannot leave a blank console.
   if (api.mode !== "mock") {
     try {
-      await api.currentUser();
+      await withTimeout(api.currentUser(), 8000, "登录状态检查超时");
     } catch {
       const next = `${window.location.pathname}${window.location.search}`;
       window.location.replace(`/login.html?next=${encodeURIComponent(next || "/")}`);
@@ -260,9 +273,11 @@ async function init() {
   }
   document.documentElement.classList.remove("auth-pending");
 
+  // Health must not block rendering: if it is slow, render with what we have
+  // and let the runtime badge report "未连接" instead.
   const [workspaceResult, healthResult] = await Promise.allSettled([
-    api.bootstrap(),
-    api.health(),
+    withTimeout(api.bootstrap(), 15000, "场景加载超时"),
+    withTimeout(api.health(), 15000, "模型状态检查超时"),
   ]);
 
   if (healthResult.status === "fulfilled") {
@@ -330,7 +345,7 @@ function applyScenarioAppearance() {
   workspaceFiles.setEnabled(isHrScenario);
   DEFENSES.find(item => item.id === "activation_probe").description = isHrScenario
     ? "检测每轮工具上下文中的隐藏指令，在后续生成前识别并阻断风险"
-    : "当前仅启用提示词注入（IPI）探针，检测工具返回和检索内容中的隐藏指令";
+    : "检测每轮工具上下文中的隐藏指令，检测风险由服务端实际启用的探针决定";
 }
 
 async function switchScenario(id) {
@@ -455,13 +470,8 @@ function renderWorkspace(workspace) {
   renderConnectedTools(profile);
   state.catalogDefenseIds = normalizeDefenseIds(profile.defense_pipeline);
   if (!state.defensesInitialized) {
-    const defaults = new Set(
-      DEFENSES.filter((defense) => defense.defaultEnabled).map((defense) => defense.id),
-    );
-    state.selectedDefenseIds = state.catalogDefenseIds.filter(
-      (id) => defaults.has(id) && state.availableDefenseIds.includes(id),
-    );
     state.defensesInitialized = true;
+    applyDefaultDefenses();
   } else {
     state.selectedDefenseIds = state.selectedDefenseIds.filter((id) => state.availableDefenseIds.includes(id));
   }
@@ -838,15 +848,23 @@ function openGuardMethodDialog(defenseId) {
   if (!defense) return;
   const available = !defense.pendingModel && state.availableDefenseIds.includes(defense.id);
   const enabled = state.selectedDefenseIds.includes(defense.id);
-  const source = DEFENSE_SOURCES[defenseId] ?? { label: "我们的产品 · 平台实现", href: "./audit.html", linkLabel: "实验审计" };
-  elements.guardMethodDialogType.textContent = defense.origin === "baseline" ? "其他已有产品" : "我们的产品";
+  const source = DEFENSE_SOURCES[defenseId] ?? { label: "InsScope Detect · 平台实现", href: "./audit.html", linkLabel: "实验审计" };
+  elements.guardMethodDialogType.textContent = defense.origin === "baseline" ? "其他已有产品" : "InsScope Detect";
   elements.guardMethodDialogTitle.textContent = defense.name;
   elements.guardMethodDialogSummary.textContent = defense.description;
+  const coverage = defense.id === "activation_probe"
+    ? (state.enabledRisks.length
+      ? state.enabledRisks.map((risk) => RISK_LABELS[risk] ?? risk).join("、")
+      : "服务端未报告已启用风险")
+    : null;
+  const enforced = ["activation_probe", "qwen_guard", "llama_prompt_guard", "netease_yidun", "fangcun_guard"].includes(defense.id);
   elements.guardMethodDialogFacts.innerHTML = `
     <div><dt>执行阶段</dt><dd>${escapeHtml(defense.stage)}</dd></div>
     <div><dt>当前状态</dt><dd>${defense.pendingModel ? "待配置模型" : available ? (enabled ? "已启用" : "未启用") : "当前运行时未连接"}</dd></div>
+    ${coverage ? `<div><dt>检测风险</dt><dd>${escapeHtml(coverage)}</dd></div>` : ""}
+    ${defense.id === "activation_probe" && state.probeReachable === false ? `<div><dt>服务状态</dt><dd>检测服务不可用：${escapeHtml(state.probeError || "连接失败")}</dd></div>` : ""}
     <div><dt>来源</dt><dd>${escapeHtml(source.label)} ${source.href !== "#" ? `<a href="${source.href}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.linkLabel)} ↗</a>` : ""}</dd></div>
-    <div><dt>运行模型</dt><dd>${defense.pendingModel ? "待配置" : escapeHtml(state.modelParams.model)}</dd></div>
+    <div><dt>运行模型</dt><dd>${defense.pendingModel ? "待配置" : defense.origin === "baseline" ? escapeHtml(state.modelParams.model) : "检测模型由探针服务提供，业务模型不参与检测"}</dd></div>
     ${defense.id === "safegauge" && !defense.pendingModel ? `<div><dt>当前风险阈值</dt><dd>${formatThreshold(state.safegaugeThreshold)}</dd></div>` : ""}
   `;
   elements.guardMethodDialogSteps.innerHTML = (defense.pendingModel ? [
@@ -856,7 +874,9 @@ function openGuardMethodDialog(defenseId) {
   ] : [
     `在${defense.stage}阶段接收本轮 Agent 的安全信号。`,
     "只对当前客服助手-小航请求生效，不改变业务工具和知识库。",
-    "风险命中时仅记录和提示，原始 Query 仍会进入业务模型和工具。",
+    enforced
+      ? "防护模式下命中会阻断本轮交付；检测服务异常时本轮直接暂停，不会当作通过继续执行。"
+      : "风险命中时记录并提示，原始 Query 仍会进入业务模型和工具。",
   ]).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
   elements.guardMethodDialog.showModal();
 }
@@ -884,11 +904,23 @@ function openGuardrailGroupDialog(members = []) {
 
 function renderHealth(health) {
   const ready = health.status === "ready" && health.model_available;
+  // Detection state is reported separately from the business model: "model up,
+  // probes down" is exactly the case where a defended run is refused, so it
+  // must never look ready.
+  const risks = Array.isArray(health.enabled_risks) ? health.enabled_risks : [];
+  const probeReady = health.probe_reachable !== false;
+  const riskLabel = risks.length ? RISK_LABELS[risks[0]] ?? risks.join("、") : "探针";
+  if (ready && !probeReady) {
+    setRuntimeStatus("degraded", "检测服务未就绪", health.probe_error || `${riskLabel}探针不可用，防护模式将拒绝执行`);
+    return;
+  }
   if (ready) {
     setRuntimeStatus(
       "ready",
       api.mode === "mock" ? "Mock Agent 已就绪" : "Agent 已就绪",
-      `${health.model} · 业务模型 · 探针影子模型 ${health.shadow_available === false ? "未连接" : "就绪"}`,
+      risks.length
+        ? `${health.model} · 业务模型 · 已启用检测：${risks.map((risk) => RISK_LABELS[risk] ?? risk).join("、")}`
+        : `${health.model} · 业务模型 · 探针影子模型 ${health.shadow_available === false ? "未连接" : "就绪"}`,
     );
     return;
   }
@@ -896,7 +928,12 @@ function renderHealth(health) {
 }
 
 function syncModelParamsFromHealth(health) {
+  const hadSelection = state.availableDefenseIds.length > 0;
   state.availableDefenseIds = normalizeDefenseIds(health.defense_methods);
+  state.enabledRisks = Array.isArray(health.enabled_risks) ? health.enabled_risks.map(String) : [];
+  state.probeReachable = health.probe_reachable !== false;
+  state.probeError = health.probe_error || "";
+  if (!hadSelection && state.defensesInitialized) applyDefaultDefenses();
   state.selectedDefenseIds = state.selectedDefenseIds.filter((id) => state.availableDefenseIds.includes(id));
   if (health.model) state.modelParams.model = health.model;
   try {
@@ -3096,6 +3133,23 @@ function selectedDefenseIds() {
   );
 }
 
+function applyDefaultDefenses() {
+  // Detection is on by default: a console whose first request silently runs
+  // without defence misrepresents what the product does.
+  //
+  // Pre-select only methods that opt in with `defaultEnabled: true`. Other
+  // entries leave the field undefined, and "undefined !== false" used to switch
+  // them on too - which turned every text guard into a default dependency the
+  // deployment never asked for. Being in the backend catalog means the method
+  // exists, not that its service is reachable.
+  const enabled = state.catalogDefenseIds.filter((id) => state.availableDefenseIds.includes(id));
+  state.selectedDefenseIds = enabled.filter((id) => {
+    const defense = DEFENSES.find((item) => item.id === id);
+    if (!defense || defense.pendingModel) return false;
+    return defense.defaultEnabled === true;
+  });
+}
+
 function visibleDefenses() {
   const catalog = new Set(state.catalogDefenseIds);
   return DEFENSES.filter((defense) => (!defense.hidden || isHrScenario) && (defense.pendingModel || catalog.has(defense.id)));
@@ -3178,4 +3232,13 @@ function fallbackWorkspace() {
 
 function agentDisplayName() {
   return state.workspace?.profile?.name || AGENT_DISPLAY_NAME;
+}
+
+function withTimeout(promise, milliseconds, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(message)), milliseconds);
+    }),
+  ]);
 }

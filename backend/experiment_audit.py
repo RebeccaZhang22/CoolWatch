@@ -65,7 +65,7 @@ def _logit_to_probability(value: Any) -> float | None:
     return 1.0 / (1.0 + math.exp(-logit))
 GUARD_NAMES = {
     "inline_probing": "Inline Probe",
-    "activation_probe": "基于隐藏层的可解释性技术",
+    "activation_probe": "InsScope Detect",
     "suffix_probe": "SafeGauge",
     "llama_prompt_guard": "Llama Prompt Guard 2",
     "qwen3_guard": "Qwen3Guard",
@@ -910,7 +910,7 @@ def _load_finvault_overview_qwen3_8b() -> dict[str, Any]:
             {"key": "netease_yidun_defense_success_rate", "label": "某某易盾攻击检出率", "value": f"{float(yidun_summary['attacks']['risk_rate']) * 100:.1f}%" if yidun_summary and yidun_summary.get("attacks", {}).get("risk_rate") is not None else None, "placeholder": "xx%", "note": "全部攻击 Case；嫌疑或不通过视为检出"},
             {"key": "xguard_defense_success_rate", "label": "YuFeng-XGuard 攻击检出率", "value": f"{xguard_detected / len(xguard_attacks) * 100:.1f}%" if xguard_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
             {"key": "suffix_probe_defense_success_rate", "label": "SafeGauge（我们的产品）攻击检出率", "value": f"{suffix_detected / len(suffix_attacks) * 100:.1f}%" if suffix_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
-            {"key": "activation_probe_defense_success_rate", "label": "基于隐藏层的可解释性技术（我们的产品）攻击检出率", "value": f"{probe_detected / len(probe_attacks) * 100:.1f}%" if probe_attacks else None, "placeholder": "xx%", "note": "全部攻击 Case；逐轮检测"},
+            {"key": "activation_probe_defense_success_rate", "label": "InsScope Detect（我们的产品）攻击检出率", "value": f"{probe_detected / len(probe_attacks) * 100:.1f}%" if probe_attacks else None, "placeholder": "xx%", "note": "全部攻击 Case；逐轮检测"},
         ],
         "integrity": {
             "sandbox_count": 31,
@@ -1148,7 +1148,7 @@ def load_finvault_overview(agent_model: str = "qwen3-8b") -> dict[str, Any]:
         {"key": "netease_yidun_defense_success_rate", "label": "某某易盾攻击检出率", "value": f"{yidun_detected / len(yidun_attacks) * 100:.1f}%" if yidun_attacks else None, "placeholder": "xx%", "note": "全部攻击 Case；嫌疑或不通过视为检出"},
         {"key": "xguard_defense_success_rate", "label": "YuFeng-XGuard 攻击检出率", "value": f"{xguard_detected / len(xguard_attacks) * 100:.1f}%" if xguard_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
         {"key": "suffix_probe_defense_success_rate", "label": "SafeGauge（我们的产品）攻击检出率", "value": f"{suffix_detected / len(suffix_attacks) * 100:.1f}%" if suffix_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
-        {"key": "activation_probe_defense_success_rate", "label": "基于隐藏层的可解释性技术（我们的产品）攻击检出率", "value": f"{activation_detected / len(activation_attacks) * 100:.1f}%" if activation_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
+        {"key": "activation_probe_defense_success_rate", "label": "InsScope Detect（我们的产品）攻击检出率", "value": f"{activation_detected / len(activation_attacks) * 100:.1f}%" if activation_attacks else None, "placeholder": "待运行", "note": "全部攻击 Case；逐轮检测"},
     ]
     overview["integrity"].update({"attack_case_count": len(cases), "normal_case_count": 0, "result_status": experiment["result_status"]})
     overview["cases"] = cases
@@ -1338,7 +1338,7 @@ def load_finvault_case_detail(sample_index: int, agent_model: str = "qwen3-8b") 
         },
         "activation_probe": {
             "status": "complete" if activation_case_result else "pending",
-            "model": "基于隐藏层的可解释性技术",
+            "model": "InsScope Detect",
             "input_stage": "每轮 Assistant 回复前",
             "case_prediction_available": bool(activation_case_result),
             "selected_layer": activation_case_result.get("layer", (activation_probe_summary or {}).get("selected_layer")),
@@ -1548,7 +1548,7 @@ def _prompt_extraction_probe_guard_row(
     return {
         "case_key": str(base["case_key"]),
         "guard": "activation_probe",
-        "guard_name": "基于隐藏层的可解释性技术",
+        "guard_name": "InsScope Detect",
         "guard_input_mode": "system_prompt_and_attack_query_activation",
         "guard_input_sha256": base.get("attack_prompt_sha256"),
         "guard_input_chars": len(query),

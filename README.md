@@ -111,7 +111,19 @@ CUSTOMER_AGENT_ENABLE_RUNTIME_PROBES=true
 ACTIVATION_PROBE_BACKEND=probe_bank
 PROBE_BANK_ENABLED_RISKS=ipi
 PROBE_BANK_BASE_URL=http://127.0.0.1:8302
+PROBE_BANK_API_KEY=<与该服务的 INSCOPE_API_KEY 相同>
 ```
+
+**一个检测服务实例只负责一类风险**（inscope-service 的一个实例加载一个探针 checkpoint）。因此启用多种风险时，需要为每类风险各起一个实例，并按风险声明地址；只配置 `PROBE_BANK_BASE_URL` 却启用多类风险会直接拒绝启动，而不是把某类风险发到别的实例上：
+
+```dotenv
+PROBE_BANK_ENABLED_RISKS=harmful,prompt_leakage,ipi
+PROBE_BANK_RISK_ENDPOINTS=harmful=http://127.0.0.1:8301,prompt_leakage=http://127.0.0.1:8303,ipi=http://127.0.0.1:8302
+```
+
+后端并发调用各实例，再把结果合并成统一的 `per_risk`（每类风险一项 `score` / `threshold` / `flagged`）。任一已启用风险的实例不可用时整体返回错误，不会把其余风险算作通过；`disabled_risks` 只表示未启用，不代表检测通过。
+
+防护模式（`defense_mode=defended`）不会静默降级：请求的方法当前不可用、或检测服务返回错误时，本轮业务执行直接拒绝/暂停，而不是退回无检测继续生成。需要无防护对照时请显式使用 `baseline`。`ACTIVATION_PROBE_BACKEND` 只接受 `probe_bank` 或 `standalone`，旧版 `vllm` 取值会在启动时被拒绝。演示台的 `GET /api/health` 会单独报告探针状态（`probe_bank_reachable` / `probe_bank_enabled_risks`），业务模型可用但探针不可用时前端显示“检测服务未就绪”。
 
 业务模型接入 OpenAI-compatible 服务。仓库保留两套 Probe Bank 运行方式，均提供 `/detect` 与 `/bank` 接口：
 
@@ -130,7 +142,7 @@ CUDA_VISIBLE_DEVICES=0 \
 bash vllm_setups/run_probe_bank_qwen3_8b.sh
 ```
 
-将上述路径替换为已准备好的 Probe 运行环境与模型目录。启动脚本使用配套 SGLang 运行环境，默认只加载 `probe/qwen3-8b/` 中的 IPI 探针；`PROBE_BANK_ENABLED_RISKS=harmful,prompt_leakage,ipi` 可启用全部三类。Web 后端和检测服务必须使用相同的风险配置，修改后分别重启。响应中的 `enabled_risks` / `disabled_risks` 表明实际启用范围，未启用不代表检测通过。部署参数见[启动脚本](vllm_setups/run_probe_bank_qwen3_8b.sh)，探针训练与数据处理见[训练代码说明](probe/src/README.md)。
+将上述路径替换为已准备好的 Probe 运行环境与模型目录。启动脚本使用配套 SGLang 运行环境，默认只加载 `probe/qwen3-8b/` 中的 IPI 探针；`PROBE_BANK_ENABLED_RISKS=harmful,prompt_leakage,ipi` 可启用全部三类。**旧版兼容方案的启动脚本本身会在一个进程里加载多类探针；改用 inscope-service 时，多类风险要按上面的 `PROBE_BANK_RISK_ENDPOINTS` 拆成多个单风险实例。** Web 后端和检测服务必须使用相同的风险配置，修改后分别重启。响应中的 `enabled_risks` / `disabled_risks` 表明实际启用范围，未启用不代表检测通过。部署参数见[启动脚本](vllm_setups/run_probe_bank_qwen3_8b.sh)，探针训练与数据处理见[训练代码说明](probe/src/README.md)。
 
 其他护栏的服务地址、模型与凭证统一在[配置模板](backend/.env.example)中设置。
 

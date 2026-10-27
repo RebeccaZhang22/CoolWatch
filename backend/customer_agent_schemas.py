@@ -38,9 +38,15 @@ def default_customer_model_params() -> ModelParams:
 
 
 def default_customer_defenses() -> list[DefenseId]:
+    """The default request must be runnable on every supported backend.
+
+    `safegauge` used to sit in this list, but the probe-bank backend never
+    serves it, so every default request was refused once defended runs started
+    rejecting unavailable methods. Keep only the method the current backend
+    actually provides; callers that want text guards ask for them explicitly.
+    """
     return [
         "activation_probe",
-        "safegauge",
     ]
 
 
@@ -169,6 +175,12 @@ class CustomerAgentHealthResponse(BaseModel):
     shadow_available: bool | None = None
     shadow_error: str | None = None
     error: str | None = None
+    # Which risks the probe backend is actually serving. The console uses this
+    # to state what was checked instead of hard-coding a risk name, and to
+    # explain a refused defended run when detection is unavailable.
+    enabled_risks: list[str] = Field(default_factory=list)
+    probe_reachable: bool | None = None
+    probe_error: str | None = None
 
 
 class CustomerAgentRunRequest(BaseModel):

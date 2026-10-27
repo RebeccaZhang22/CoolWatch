@@ -1,6 +1,6 @@
 from functools import lru_cache
 from pathlib import Path
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -21,9 +21,18 @@ class Settings(BaseSettings):
     admin_email: str = Field(default="admin@admin.com", alias="PROSPECTMONITOR_ADMIN_EMAIL")
     admin_password: str = Field(default="", alias="PROSPECTMONITOR_ADMIN_PASSWORD")
     probe_bank_enabled_risks: str = Field(default="ipi", alias="PROBE_BANK_ENABLED_RISKS")
+    # One probe service instance evaluates exactly one risk, so multiple risks need
+    # one endpoint each: risk=url[,risk=url...]. Leave empty for a single-risk
+    # deployment and the legacy PROBE_BANK_BASE_URL covers that one risk.
+    probe_bank_risk_endpoints: str = Field(default="", alias="PROBE_BANK_RISK_ENDPOINTS")
     probe_bank_base_url: str = Field(default="http://127.0.0.1:8302", alias="PROBE_BANK_BASE_URL")
     # Bearer key for the probe service; must equal its INSCOPE_API_KEY.
     probe_bank_api_key: str = Field(default="", alias="PROBE_BANK_API_KEY")
+    @property
+    def probe_bank_endpoints(self) -> dict[str, str]:
+        """Per-risk probe service addresses; raises on malformed config."""
+        from backend.probe_risks import parse_risk_endpoints
+        return parse_risk_endpoints(self.probe_bank_risk_endpoints)
     vllm_base_url: str = Field(default="http://127.0.0.1:8013/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
     vllm_model: str = Field(default="qwen3-8b", alias="VLLM_MODEL")
@@ -110,7 +119,7 @@ class Settings(BaseSettings):
         alias="ACTIVATION_PROBE_TIMEOUT_SECONDS",
     )
     activation_probe_backend: str = Field(
-        default="vllm",
+        default="probe_bank",
         alias="ACTIVATION_PROBE_BACKEND",
     )
     activation_probe_vllm_base_url: str = Field(
@@ -155,6 +164,26 @@ class Settings(BaseSettings):
     def customer_agent_shadow_base_url(self) -> str:
         """Server-side-only hidden-state/logprob prefill endpoint."""
         return self.customer_agent_shadow_vllm_base_url.rstrip("/")
+
+    @model_validator(mode="after")
+    def validate_probe_configuration(self) -> "Settings":
+        """Fail at startup, not per request, on probe settings we cannot honour.
+
+        A defended run must be able to detect. Accepting a backend that no
+        longer exists turns every detection into an error the caller only
+        discovers at request time, so reject it as soon as it is configured.
+        """
+        supported = {"probe_bank", "standalone"}
+        backend = self.activation_probe_backend.strip().lower()
+        if backend not in supported:
+            raise ValueError(
+                f"ACTIVATION_PROBE_BACKEND={self.activation_probe_backend!r} is not supported; "
+                f"choose one of: {', '.join(sorted(supported))}"
+            )
+        self.activation_probe_backend = backend
+        if backend == "probe_bank" and not self.probe_bank_enabled_risks.strip():
+            raise ValueError("PROBE_BANK_ENABLED_RISKS must name at least one risk for the probe_bank backend")
+        return self
 
 
 @lru_cache

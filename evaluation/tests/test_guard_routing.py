@@ -52,6 +52,9 @@ def bank_payload(flagged, *, latency=100):
         "bank_version": "ipi@sha-abc",
         "input_tokens": 17,
         "latency_ms": latency,
+        # The guard always emits per-risk detail rows; the route surfaces them.
+        "per_risk_detail": {"ipi": {"checkpoint_sha256": "sha-abc",
+                                    "composer_profile": "a6_nemotron_risk_faced_v1"}},
     }
 
 

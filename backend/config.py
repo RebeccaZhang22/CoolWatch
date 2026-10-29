@@ -28,11 +28,6 @@ class Settings(BaseSettings):
     probe_bank_base_url: str = Field(default="http://127.0.0.1:8302", alias="PROBE_BANK_BASE_URL")
     # Bearer key for the probe service; must equal its INSCOPE_API_KEY.
     probe_bank_api_key: str = Field(default="", alias="PROBE_BANK_API_KEY")
-    @property
-    def probe_bank_endpoints(self) -> dict[str, str]:
-        """Per-risk probe service addresses; raises on malformed config."""
-        from backend.probe_risks import parse_risk_endpoints
-        return parse_risk_endpoints(self.probe_bank_risk_endpoints)
     vllm_base_url: str = Field(default="http://127.0.0.1:8013/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
     vllm_model: str = Field(default="qwen3-8b", alias="VLLM_MODEL")

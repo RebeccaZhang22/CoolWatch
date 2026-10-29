@@ -468,6 +468,13 @@ async def standardized_moderate(request: Request) -> JSONResponse:
         "bank_version": bank_result["bank_version"],
         "action": "block" if flagged else "pass",
         "per_risk": bank_result["per_risk"],
+        "per_risk_detail": bank_result["per_risk_detail"],
+        "enabled_risks": bank_result["enabled_risks"],
+        "disabled_risks": bank_result["disabled_risks"],
+        "overall": bank_result["overall"],
+        "probes": {risk: {"checkpoint_sha256": detail.get("checkpoint_sha256"),
+                           "probe": detail.get("composer_profile")}
+                   for risk, detail in bank_result["per_risk_detail"].items()},
         "per_entry": bank_result["per_entry"],
         "triggered_entries": bank_result["triggered_entries"],
         "usage": {"input_tokens": input_tokens, "billable_tokens": input_tokens, "billable_units": round(input_tokens / 1000, 6), "unit": "1k_input_tokens"},

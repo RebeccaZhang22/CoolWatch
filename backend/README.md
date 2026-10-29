@@ -54,7 +54,7 @@ checkpoint。若融合请求中的某一项失败，聊天路径只对失败项�
 
 ## InsScope Detect
 
-当前使用外部 inscope-service，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL=http://127.0.0.1:8302` 和与该服务相同的 `PROBE_BANK_API_KEY`。默认 `PROBE_BANK_ENABLED_RISKS=ipi`。Coolwatch 约定每个实例只服务一类风险；检测前会核对 `/info` 的 `risks`，声明不符就失败关闭。仓内 `activation_probe_server.py` / `qwen3_probe_bank_server.py` 是旧实现，接口已不兼容，不能当作这个配置的检测服务。`standalone` Transformers 后端只保留给旧部署对照。
+当前使用仓外 inscope-service，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL`（单风险部署回退地址）和与服务相同的 `PROBE_BANK_API_KEY`。多风险部署需为每类风险配置 `PROBE_BANK_RISK_ENDPOINTS=risk=url,...`。每次检测会先核对各 `/info` 的风险身份；任一风险服务不可用时整体失败关闭。探测请求设置 `explain: true`，可用的块级证据通过 moderation 响应 `per_risk_detail[risk].blocks` 返回。仓内 `activation_probe_server.py` / `qwen3_probe_bank_server.py` 是旧实现，接口已不兼容；`standalone` Transformers 后端只保留给旧部署对照。
 
 ## Inline Probing
 

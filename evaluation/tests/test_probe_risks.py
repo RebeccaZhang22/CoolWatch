@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import unittest
 
 import httpx
+import json
 
 # Checkout root, so `import backend` works whether this file is run from the repo
 # root or from evaluation/.
@@ -31,13 +32,17 @@ def settings(**overrides):
     return SimpleNamespace(**base)
 
 
-def detect_payload(probability, threshold=0.9, model="Qwen3-8B-FP8", sha="sha-abc"):
+def detect_payload(probability, threshold=0.9, model="Qwen3-8B-FP8", sha="sha-abc", risk="indirect_prompt_injection"):
     """One single-risk service's response, in inscope-service 0.6.0 shape."""
     return dict(logit=0.0, probability=probability, threshold=threshold,
                 label="attack" if probability >= threshold else "benign",
-                risk="indirect_prompt_injection", model=model, input_tokens=17,
+                risk=risk, model=model, input_tokens=17,
                 request_id="req_x", latency_ms=1.0,
-                composer_profile="a6_nemotron_risk_faced_v1", checkpoint_sha256=sha)
+                composer_profile="a6_nemotron_risk_faced_v1", checkpoint_sha256=sha,
+                blocks=[dict(message_index=0, kind="block", start=0, end=2,
+                             source_message_indices=[0])],
+                coordinate_system="compiled_messages",
+                importance_semantics="cached cumulative-prefix evidence")
 
 
 class EndpointResolutionTests(unittest.TestCase):
@@ -88,7 +93,8 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
             risk = by_port[port]
             seen.append((risk, request))
             if request.url.path == "/info":
-                return httpx.Response(200, json={"risks": [{"risk": risk}]})
+                advertised = "indirect_prompt_injection" if risk == "ipi" else risk
+                return httpx.Response(200, json={"risks": [{"risk": advertised}]})
             value = responses[risk]
             if isinstance(value, Exception):
                 return httpx.Response(getattr(value, "status_code", 500), json={"detail": "boom"})
@@ -101,9 +107,20 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         guard._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         return guard, seen
 
+    async def test_detect_risk_id_matches_info_model_name(self):
+        guard, seen = await self._guard({"ipi": detect_payload(0.15)})
+        try:
+            assessment = await guard.moderate([{"role": "user", "content": "x"}])
+        finally:
+            await guard.close()
+        self.assertIsNone(assessment.error, assessment.error)
+        self.assertEqual(assessment.payload["per_risk"]["ipi"]["score"], 0.15)
+        self.assertTrue(any(request.url.path == "/info" for _, request in seen))
+        self.assertTrue(any(request.url.path == "/detect" for _, request in seen))
+
     async def test_two_instances_merge_into_per_risk(self):
         guard, seen = await self._guard(
-            {"harmful": detect_payload(0.93, sha="sha_harmful"),
+            {"harmful": detect_payload(0.93, risk="harmful", sha="sha_harmful"),
              "ipi": detect_payload(0.10, sha="sha_ipi")},
             risks=("harmful", "ipi"))
         try:
@@ -127,6 +144,9 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(sorted(request.url.path for _, request in seen), ["/detect", "/detect", "/info", "/info"])
         for _, request in seen:
             self.assertEqual(request.headers["authorization"], "Bearer test-bank-key")
+        detect_requests = [request for _, request in seen if request.url.path == "/detect"]
+        self.assertTrue(all(json.loads(request.content)["explain"] is True for request in detect_requests))
+        self.assertEqual(payload["per_risk_detail"]["ipi"]["blocks"][0]["source_message_indices"], [0])
 
     async def test_single_instance_benign(self):
         guard, _ = await self._guard({"ipi": detect_payload(0.05)})
@@ -209,7 +229,7 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         def handler(request):
             seen.append(("harmful", request))
             if request.url.path == "/info":
-                return httpx.Response(200, json={"risks": [{"risk": "ipi"}]})
+                return httpx.Response(200, json={"risks": [{"risk": "indirect_prompt_injection"}]})
             return httpx.Response(200, json=detect_payload(0.93))
 
         await guard._client.aclose()
@@ -219,7 +239,7 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await guard.close()
         self.assertIsNotNone(result.error)
-        self.assertIn("advertises ipi", result.error)
+        self.assertIn("advertises indirect_prompt_injection", result.error)
         self.assertIsNone(result.risky)
         self.assertTrue(all(request.url.path == "/info" for _, request in seen))
 
@@ -227,7 +247,7 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         guard, _ = await self._guard({"ipi": detect_payload(0.05)})
 
         def handler(request):
-            return httpx.Response(200, json={"risks": [{"risk": "ipi"}, {"risk": "harmful"}]})
+            return httpx.Response(200, json={"risks": [{"risk": "indirect_prompt_injection"}, {"risk": "harmful"}]})
 
         await guard._client.aclose()
         guard._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -235,7 +255,7 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
             result = await guard.moderate([{"role": "user", "content": "hi"}])
         finally:
             await guard.close()
-        self.assertIn("advertises ipi,harmful", result.error or "")
+        self.assertIn("advertises indirect_prompt_injection,harmful", result.error or "")
         self.assertIsNone(result.risky)
 
 
@@ -247,7 +267,7 @@ class ModelInfoTests(unittest.IsolatedAsyncioTestCase):
         async def fake_fetch(probe):
             if probe.risk == "ipi":
                 return {"detector": "linear:arm6", "model": "Qwen3-8B-FP8", "threshold": 0.9,
-                        "risks": [{"risk": "ipi"}]}
+                        "risks": [{"risk": "indirect_prompt_injection"}]}
             raise ValueError("down")
         guard._fetch_info = fake_fetch
         info = await guard.get_model_info()
@@ -264,7 +284,7 @@ class ModelInfoTests(unittest.IsolatedAsyncioTestCase):
             return {"risks": [{"risk": "harmful"}]}
         guard._fetch_info = fake_fetch
         info = await guard.get_model_info()
-        self.assertEqual(info["per_risk"], {})
+        self.assertNotIn("ipi", info["per_risk"])
         self.assertEqual(len(info["unavailable"]), 1)
         self.assertIn("advertises harmful", info["unavailable"][0]["error"])
 

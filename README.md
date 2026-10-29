@@ -121,6 +121,8 @@ PROBE_BANK_ENABLED_RISKS=harmful,prompt_leakage,ipi
 PROBE_BANK_RISK_ENDPOINTS=harmful=http://127.0.0.1:8301,prompt_leakage=http://127.0.0.1:8303,ipi=http://127.0.0.1:8302
 ```
 
+`/v1/moderations` 返回每风险分数与 `per_risk_detail` 解释信息；当检测服务启用块级解释时，`per_risk_detail[risk].blocks` 会包含区块证据及其来源消息序号。应用仍返回当前客户端所需的 `detector_model`、`per_risk`、`per_entry`、`triggered_entries` 和 `latency_ms` 字段。
+
 后端并发调用各实例，再把结果合并成统一的 `per_risk`（每类风险一项 `score` / `threshold` / `flagged`）。任一已启用风险的实例不可用时整体返回错误，不会把其余风险算作通过；`disabled_risks` 只表示未启用，不代表检测通过。
 
 防护模式（`defense_mode=defended`）不会静默降级：请求的方法当前不可用、或检测服务返回错误时，本轮业务执行直接拒绝/暂停，而不是退回无检测继续生成。需要无防护对照时请显式使用 `baseline`。`ACTIVATION_PROBE_BACKEND` 只接受 `probe_bank` 或 `standalone`，旧版 `vllm` 取值会在启动时被拒绝。演示台的 `GET /api/health` 会单独报告探针状态（`probe_bank_reachable` / `probe_bank_enabled_risks`），业务模型可用但探针不可用时前端显示“检测服务未就绪”。

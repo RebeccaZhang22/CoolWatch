@@ -29,6 +29,13 @@ from backend.probe_risks import (
     parse_risk_endpoints,
 )
 
+# CoolWatch and InScope use different identifiers for the IPI risk.
+DETECTOR_RISK_NAMES = {"ipi": "indirect_prompt_injection"}
+
+
+def detector_risk_name(risk):
+    return DETECTOR_RISK_NAMES.get(risk, risk)
+
 
 @dataclass
 class BankAssessment:
@@ -129,8 +136,8 @@ class ProbeBankGuard:
     def _advertised_risks(info):
         """Risks this instance actually loaded, from `/info`, not from our config.
 
-        `risks[].risk` is the registry. Top-level `risk` on `/detect` is a historical
-        constant and must not be used as identity. A missing or malformed registry is
+        `risks[].risk` is the registry, using InScope's model risk name. Top-level
+        `/detect` `risk` is not identity; a missing or malformed registry is
         not "trust the URL": it is an identity we cannot verify.
         """
         rows = info.get('risks') if isinstance(info, dict) else None
@@ -148,7 +155,8 @@ class ProbeBankGuard:
     def _require_single_risk(self, probe, info):
         """Option A: this URL must serve exactly the risk we configured for it."""
         advertised = self._advertised_risks(info)
-        if advertised != (probe.risk,):
+        expected = 'indirect_prompt_injection' if probe.risk == 'ipi' else probe.risk
+        if advertised != (expected,):
             raise ValueError(
                 f'{probe.base_url} is configured as {probe.risk} but advertises '
                 + ','.join(advertised)
@@ -208,7 +216,7 @@ class ProbeBankGuard:
             self._require_single_risk(probe, info)
             response = await self._client.post(probe.base_url + '/detect',
                                                headers=self._auth_headers(),
-                                               json={'messages': messages, 'tools': tools})
+                                               json={'messages': messages, 'tools': tools, 'explain': True})
             response.raise_for_status()
             payload = response.json()
         else:
@@ -223,6 +231,9 @@ class ProbeBankGuard:
         if (not math.isfinite(float(probability)) or not 0 <= float(probability) <= 1
                 or not math.isfinite(float(threshold)) or not 0 <= float(threshold) <= 1):
             raise ValueError(f'{probe.risk}: invalid probe score/threshold')
+        expected = detector_risk_name(probe.risk)
+        if payload.get('risk') != expected:
+            raise ValueError(f'{probe.risk}: probe service answered for {payload.get("risk")!r}; expected {expected!r}')
         # Prefer the service's own verdict; recomputing keeps one source of truth
         # when a service only returns the label without a threshold comparison.
         label = payload.get('label')
@@ -234,12 +245,20 @@ class ProbeBankGuard:
             flagged = float(probability) >= float(threshold)
         if flagged != (float(probability) >= float(threshold)):
             raise ValueError(f'{probe.risk}: label is inconsistent with probability and threshold')
+        blocks = payload.get('blocks') or []
+        if blocks:
+            for block in blocks:
+                if not isinstance(block, dict) or any(key not in block for key in ('message_index', 'kind', 'start', 'end')):
+                    raise ValueError(f'{probe.risk}: malformed block evidence')
         return {
             'risk': probe.risk,
             'base_url': probe.base_url,
             'detector_model': detector_model,
             'row': {'score': float(probability), 'threshold': float(threshold), 'flagged': flagged},
             'detail': {
+                'blocks': blocks,
+                'coordinate_system': payload.get('coordinate_system'),
+                'importance_semantics': payload.get('importance_semantics'),
                 'logit': payload.get('logit'),
                 'label': label,
                 'probability': float(probability),

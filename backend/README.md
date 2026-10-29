@@ -1,6 +1,6 @@
 # ProspectMonitor Backend
 
-FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回护栏检测状态、泄露指标和 RAG Trace。在原有 `/api/chat` 中，Qwen3Guard、Llama Prompt Guard、Suffix Probe（界面名称为 SafeGauge）和易盾在生成前执行；FinVault/系统提示词场景的基于隐藏层的可解释性技术可由 patched vLLM worker 或独立 Transformers 服务执行；间接提示词注入的 Inline Probing 则嵌入新工具返回后的首次真实 assistant generation。这条旧链路中的护栏均不改写模型上下文或输出。
+FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回护栏检测状态、泄露指标和 RAG Trace。在原有 `/api/chat` 中，Qwen3Guard、Llama Prompt Guard、Suffix Probe（界面名称为 SafeGauge）和易盾在生成前执行；FinVault/系统提示词场景的InsScope Detect可由 patched vLLM worker 或独立 Transformers 服务执行；间接提示词注入的 Inline Probing 则嵌入新工具返回后的首次真实 assistant generation。这条旧链路中的护栏均不改写模型上下文或输出。
 
 首页演示台使用 `/api/customer-agent/*` API，默认运行航旅客服，也可切换到 `/api/customer-agent/hr/*` 提供的 HR 简历筛选场景。业务模型自主选择工具，Probe Bank 在每轮生成前检查包含工具/RAG 返回的上下文，前端通过 SSE 展示执行阶段、检测结果与等待心跳。HR 工具从合成资料和本地数据库返回确定性结果，金融/航旅演示工具保留模拟响应。场景与启动方式见[项目 README](../README.md) 和 [HR 演示说明](../data/hr_agent/README.md)；金融场景及原有 API 说明见 [Customer Agent 文档](CUSTOMER_AGENT.md)。原有 `/api/chat` 仅供旧审计与回放页面兼容，下文部分护栏说明针对该旧链路。
 
@@ -52,9 +52,9 @@ checkpoint。若融合请求中的某一项失败，聊天路径只对失败项�
 `INLINE_PROBING_TASK=system_prompt_leakage_intent` 和对应的
 `INLINE_PROBING_EXPECTED_CHECKPOINT_ID`。配套的 patched-vLLM 服务和真实权重需要由外部部署提供。
 
-## 基于隐藏层的可解释性技术
+## InsScope Detect
 
-当前检测器是独立的 InScope 服务（三个包不在本仓库，见 [inscope/README.md](../inscope/README.md)），配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_ENABLED_RISKS=ipi`、`PROBE_BANK_RISK_ENDPOINTS=ipi=http://127.0.0.1:8302`、`PROBE_BANK_API_KEY=<实例 key>`。**一个风险一个实例**：只启用一个风险时可省略 `PROBE_BANK_RISK_ENDPOINTS`，用 `PROBE_BANK_BASE_URL` 兜底；启用多个风险时每个风险都必须给端点。检测器在 `/info` 与 `/detect` 里声明自己答哪个风险，接入侧会校验，接错地址直接报错。使用观测块探针时，`/v1/moderations` 的 `per_risk[risk].blocks` 给出块级证据，`blocks[].source_message_indices` 指回请求里的消息序号。可使用[新版请求级激活采集服务](../sglang-activation-runtime/deploy/README.md)，或通过 `vllm_setups/run_probe_bank_qwen3_8b.sh` 启动原有特征提取实现。`standalone` Transformers 后端保留用于旧部署对照。
+当前使用仓外 inscope-service，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL`（单风险部署回退地址）和与服务相同的 `PROBE_BANK_API_KEY`。多风险部署需为每类风险配置 `PROBE_BANK_RISK_ENDPOINTS=risk=url,...`。每次检测会先核对各 `/info` 的风险身份；任一风险服务不可用时整体失败关闭。探测请求设置 `explain: true`，可用的块级证据通过 moderation 响应 `per_risk_detail[risk].blocks` 返回。仓内 `activation_probe_server.py` / `qwen3_probe_bank_server.py` 是旧实现，接口已不兼容；`standalone` Transformers 后端只保留给旧部署对照。
 
 ## Inline Probing
 

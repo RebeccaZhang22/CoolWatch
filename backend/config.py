@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     admin_password: str = Field(default="", alias="PROSPECTMONITOR_ADMIN_PASSWORD")
     probe_bank_enabled_risks: str = Field(default="ipi", alias="PROBE_BANK_ENABLED_RISKS")
     probe_bank_base_url: str = Field(default="http://127.0.0.1:8302", alias="PROBE_BANK_BASE_URL")
+    # One InScope instance per risk: ``risk=url`` pairs, e.g.
+    # ``ipi=http://127.0.0.1:8302,harmful=http://127.0.0.1:8303``.
+    # Unset means a single instance serves every enabled risk.
+    probe_bank_risk_endpoints: str = Field(default="", alias="PROBE_BANK_RISK_ENDPOINTS")
+    probe_bank_api_key: str = Field(default="", alias="PROBE_BANK_API_KEY")
     vllm_base_url: str = Field(default="http://127.0.0.1:8013/v1", alias="VLLM_BASE_URL")
     vllm_api_key: str = Field(default="EMPTY", alias="VLLM_API_KEY")
     vllm_model: str = Field(default="qwen3-8b", alias="VLLM_MODEL")

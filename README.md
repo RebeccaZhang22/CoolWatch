@@ -110,8 +110,12 @@ CUSTOMER_AGENT_SHADOW_MODEL=qwen3-8b
 CUSTOMER_AGENT_ENABLE_RUNTIME_PROBES=true
 ACTIVATION_PROBE_BACKEND=probe_bank
 PROBE_BANK_ENABLED_RISKS=ipi
-PROBE_BANK_BASE_URL=http://127.0.0.1:8302
+# 一个风险一个 InScope 实例；只启用一个风险时可用 PROBE_BANK_BASE_URL 兜底。
+PROBE_BANK_RISK_ENDPOINTS=ipi=http://127.0.0.1:8302
+PROBE_BANK_API_KEY=<与实例 INSCOPE_API_KEY 一致>
 ```
+
+检测器是独立的 InScope 服务（见 [inscope/README.md](inscope/README.md)），本仓库不再保存其代码副本。
 
 业务模型接入 OpenAI-compatible 服务。仓库保留两套 Probe Bank 运行方式，均提供 `/detect` 与 `/bank` 接口：
 

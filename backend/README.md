@@ -54,7 +54,7 @@ checkpoint。若融合请求中的某一项失败，聊天路径只对失败项�
 
 ## 基于隐藏层的可解释性技术
 
-当前使用 Probe Bank，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL=http://127.0.0.1:8302`。默认 `PROBE_BANK_ENABLED_RISKS=ipi`，仅加载和执行 IPI 探针；另外两类权重保留在 `probe/qwen3-8b/`。修改启用范围时，检测服务和 Web 后端应保持一致。可使用[新版请求级激活采集服务](../sglang-activation-runtime/deploy/README.md)，或通过 `vllm_setups/run_probe_bank_qwen3_8b.sh` 启动原有特征提取实现。`standalone` Transformers 后端保留用于旧部署对照。
+当前检测器是独立的 InScope 服务（三个包不在本仓库，见 [inscope/README.md](../inscope/README.md)），配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_ENABLED_RISKS=ipi`、`PROBE_BANK_RISK_ENDPOINTS=ipi=http://127.0.0.1:8302`、`PROBE_BANK_API_KEY=<实例 key>`。**一个风险一个实例**：只启用一个风险时可省略 `PROBE_BANK_RISK_ENDPOINTS`，用 `PROBE_BANK_BASE_URL` 兜底；启用多个风险时每个风险都必须给端点。检测器在 `/info` 与 `/detect` 里声明自己答哪个风险，接入侧会校验，接错地址直接报错。使用观测块探针时，`/v1/moderations` 的 `per_risk[risk].blocks` 给出块级证据，`blocks[].source_message_indices` 指回请求里的消息序号。可使用[新版请求级激活采集服务](../sglang-activation-runtime/deploy/README.md)，或通过 `vllm_setups/run_probe_bank_qwen3_8b.sh` 启动原有特征提取实现。`standalone` Transformers 后端保留用于旧部署对照。
 
 ## Inline Probing
 

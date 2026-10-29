@@ -407,23 +407,22 @@ async def standardized_moderate(request: Request) -> JSONResponse:
             content={"error": {"type": "server_error" if assessment.status_code >= 500 else "rate_limit_error" if assessment.status_code == 429 else "invalid_request_error", "code": error_code, "message": assessment.error, "request_id": request_id}},
             headers={"X-Request-Id": request_id, "Retry-After": "5"},
         )
-    bank_result = assessment.payload
+    assessment_payload = assessment.payload
     flagged = assessment.risky
     request_id = f"req_{uuid4().hex}"
     elapsed_ms = round((time.perf_counter() - started) * 1000, 1)
-    input_tokens = bank_result["input_tokens"]
+    input_tokens = assessment_payload["input_tokens"]
     response = {
         "id": f"mod_{uuid4().hex}",
         "request_id": request_id,
         "created": int(time.time()),
         "detector_model": detector_model,
-        "bank_version": bank_result["bank_version"],
+        # 每个风险由一个独立实例作答；probes 记录实际应答的探针与 checkpoint。
+        "probes": assessment_payload["probes"],
         "action": "block" if flagged else "pass",
-        "per_risk": bank_result["per_risk"],
-        "per_entry": bank_result["per_entry"],
-        "triggered_entries": bank_result["triggered_entries"],
+        "per_risk": assessment_payload["per_risk"],
         "usage": {"input_tokens": input_tokens, "billable_tokens": input_tokens, "billable_units": round(input_tokens / 1000, 6), "unit": "1k_input_tokens"},
-        "latency_ms": {**bank_result["latency_ms"], "total": elapsed_ms},
+        "latency_ms": {**assessment_payload["latency_ms"], "total": elapsed_ms},
     }
     usage_store.append(user=user, request_id=request_id, messages=normalized_messages, tools=tools, result=response)
     return JSONResponse(response, headers={"X-Request-Id": request_id})

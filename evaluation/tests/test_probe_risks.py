@@ -93,8 +93,9 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
             risk = by_port[port]
             seen.append((risk, request))
             if request.url.path == "/info":
-                advertised = "indirect_prompt_injection" if risk == "ipi" else risk
-                return httpx.Response(200, json={"risks": [{"risk": advertised}]})
+                # The live service advertises its risk code here (KNOWN_RISKS),
+                # e.g. "ipi" — not the model risk name.
+                return httpx.Response(200, json={"risks": [{"risk": risk}]})
             value = responses[risk]
             if isinstance(value, Exception):
                 return httpx.Response(getattr(value, "status_code", 500), json={"detail": "boom"})
@@ -107,7 +108,10 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         guard._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         return guard, seen
 
-    async def test_detect_risk_id_matches_info_model_name(self):
+    async def test_info_then_detect_happy_path(self):
+        # Identity first (/info), then score (/detect). The registry speaks
+        # risk codes ("ipi"); the /detect payload carries the model risk name
+        # ("indirect_prompt_injection") — two different identifiers by design.
         guard, seen = await self._guard({"ipi": detect_payload(0.15)})
         try:
             assessment = await guard.moderate([{"role": "user", "content": "x"}])
@@ -117,6 +121,18 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(assessment.payload["per_risk"]["ipi"]["score"], 0.15)
         self.assertTrue(any(request.url.path == "/info" for _, request in seen))
         self.assertTrue(any(request.url.path == "/detect" for _, request in seen))
+
+    async def test_detect_risk_must_be_model_name_not_code(self):
+        # A /detect payload answering with the risk code instead of the model
+        # risk name means the wire contract broke; fail closed.
+        guard, _ = await self._guard({"ipi": detect_payload(0.15, risk="ipi")})
+        try:
+            result = await guard.moderate([{"role": "user", "content": "hi"}])
+        finally:
+            await guard.close()
+        self.assertIsNotNone(result.error)
+        self.assertIn("indirect_prompt_injection", result.error)
+        self.assertIsNone(result.risky)
 
     async def test_two_instances_merge_into_per_risk(self):
         guard, seen = await self._guard(
@@ -229,7 +245,7 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         def handler(request):
             seen.append(("harmful", request))
             if request.url.path == "/info":
-                return httpx.Response(200, json={"risks": [{"risk": "indirect_prompt_injection"}]})
+                return httpx.Response(200, json={"risks": [{"risk": "ipi"}]})
             return httpx.Response(200, json=detect_payload(0.93))
 
         await guard._client.aclose()
@@ -239,7 +255,7 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         finally:
             await guard.close()
         self.assertIsNotNone(result.error)
-        self.assertIn("advertises indirect_prompt_injection", result.error)
+        self.assertIn("advertises ipi", result.error)
         self.assertIsNone(result.risky)
         self.assertTrue(all(request.url.path == "/info" for _, request in seen))
 
@@ -247,7 +263,7 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
         guard, _ = await self._guard({"ipi": detect_payload(0.05)})
 
         def handler(request):
-            return httpx.Response(200, json={"risks": [{"risk": "indirect_prompt_injection"}, {"risk": "harmful"}]})
+            return httpx.Response(200, json={"risks": [{"risk": "ipi"}, {"risk": "harmful"}]})
 
         await guard._client.aclose()
         guard._client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -255,7 +271,7 @@ class FanOutTests(unittest.IsolatedAsyncioTestCase):
             result = await guard.moderate([{"role": "user", "content": "hi"}])
         finally:
             await guard.close()
-        self.assertIn("advertises indirect_prompt_injection,harmful", result.error or "")
+        self.assertIn("advertises ipi,harmful", result.error or "")
         self.assertIsNone(result.risky)
 
 
@@ -267,7 +283,7 @@ class ModelInfoTests(unittest.IsolatedAsyncioTestCase):
         async def fake_fetch(probe):
             if probe.risk == "ipi":
                 return {"detector": "linear:arm6", "model": "Qwen3-8B-FP8", "threshold": 0.9,
-                        "risks": [{"risk": "indirect_prompt_injection"}]}
+                        "risks": [{"risk": "ipi"}]}
             raise ValueError("down")
         guard._fetch_info = fake_fetch
         info = await guard.get_model_info()

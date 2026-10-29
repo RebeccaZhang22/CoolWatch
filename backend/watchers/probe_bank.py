@@ -136,8 +136,10 @@ class ProbeBankGuard:
     def _advertised_risks(info):
         """Risks this instance actually loaded, from `/info`, not from our config.
 
-        `risks[].risk` is the registry, using InScope's model risk name. Top-level
-        `/detect` `risk` is not identity; a missing or malformed registry is
+        `risks[].risk` is the registry and uses the service's risk code (the
+        same identifier we configure, e.g. ``ipi``); the top-level ``/detect``
+        ``risk`` is the model risk name (e.g. ``indirect_prompt_injection``)
+        and is not identity. A missing or malformed registry is
         not "trust the URL": it is an identity we cannot verify.
         """
         rows = info.get('risks') if isinstance(info, dict) else None
@@ -153,10 +155,15 @@ class ProbeBankGuard:
         return tuple(advertised)
 
     def _require_single_risk(self, probe, info):
-        """Option A: this URL must serve exactly the risk we configured for it."""
+        """Option A: this URL must serve exactly the risk we configured for it.
+
+        The registry speaks risk codes: configured ``ipi`` must be advertised
+        as ``ipi`` (verified against a live service on 2026-10-29). Do not map
+        this to the model risk name — that mapping only applies to the
+        top-level ``/detect`` ``risk`` field.
+        """
         advertised = self._advertised_risks(info)
-        expected = 'indirect_prompt_injection' if probe.risk == 'ipi' else probe.risk
-        if advertised != (expected,):
+        if advertised != (probe.risk,):
             raise ValueError(
                 f'{probe.base_url} is configured as {probe.risk} but advertises '
                 + ','.join(advertised)

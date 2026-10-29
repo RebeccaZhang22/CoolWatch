@@ -140,6 +140,8 @@ conftest.py
 !/evaluation/tests/test_probe_risks.py
 !/evaluation/tests/test_tool_result_status.py
 !/evaluation/tests/test_qwen3guard_heldout.py
+# Product routing / defended-mode contract regression tests.
+!/evaluation/tests/test_guard_routing.py
 
 # Live agent loop state regression checks.
 !/frontend/tests/

@@ -201,6 +201,11 @@ async def disable_frontend_asset_cache(request: Request, call_next):
     return response
 
 
+def _as_millis(value: float | int | None) -> float:
+    """Normalise a detector-side duration to milliseconds as a plain number."""
+    return round(float(value), 1) if isinstance(value, (int, float)) else 0.0
+
+
 @app.middleware("http")
 async def require_customer_agent_api_key(request: Request, call_next):
     """Keep the customer product behind a browser session or CLI token."""
@@ -299,14 +304,21 @@ async def usage_events(request: Request, limit: int = 100, page: int | None = No
 
 @app.post("/v1/guardrails")
 async def guardrails_api(payload: GuardrailsApiRequest) -> dict:
-    """Minimal product API: one key, one input, one protected answer."""
-    result = await customer_agent_service.run(
-        CustomerAgentRunRequest(
-            message=payload.input,
-            session_id=payload.session_id,
-            defense_mode="defended",
+    """Minimal product API: one key, one input, one protected answer.
+
+    A refused run (detection unavailable, no usable method) is a service-state
+    problem, not a caller mistake, so it maps to 503 rather than an unhandled 500.
+    """
+    try:
+        result = await customer_agent_service.run(
+            CustomerAgentRunRequest(
+                message=payload.input,
+                session_id=payload.session_id,
+                defense_mode="defended",
+            )
         )
-    )
+    except RuntimeError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
     return {
         "id": result.run_id,
         "object": "guardrails.result",
@@ -319,14 +331,47 @@ async def guardrails_api(payload: GuardrailsApiRequest) -> dict:
 
 @app.get("/api/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
+    # The demo console needs to know whether detection is usable, not only
+    # whether the business model answers. A probe outage is an unavailable
+    # verdict for defended runs, so it belongs in the health payload.
+    #
+    # `/info` still answers when only *some* instances are down - that is a
+    # diagnostic, not a success signal. Detection is fail-closed per enabled
+    # risk, so one dead instance means every defended run will be refused; read
+    # the per-risk `unavailable` list instead of treating any reply as healthy.
+    probe_reachable: bool | None = None
+    probe_error: str | None = None
+    enabled_risks: list[str] = []
+    if settings.activation_probe_backend == "probe_bank":
+        enabled_risks = list(probe_bank_guard.enabled_risks)
+        try:
+            info = await probe_bank_guard.get_model_info()
+            unavailable = list(info.get("unavailable") or [])
+            if unavailable:
+                probe_reachable = False
+                probe_error = "; ".join(
+                    f"{item.get('risk', '?')}@{item.get('base_url', '?')}: {item.get('error', 'unavailable')}"
+                    for item in unavailable
+                )
+            else:
+                probe_reachable = True
+            enabled_risks = list(info.get("enabled_risks", enabled_risks))
+        except Exception as error:
+            probe_reachable = False
+            probe_error = str(error)
     try:
         models = await llm_client.list_models()
         return HealthResponse(
-            status="ok",
+            status="ok" if probe_reachable is not False else "degraded",
             vllm_base_url=settings.vllm_base_url,
             vllm_model=settings.vllm_model,
             vllm_reachable=True,
             models=models,
+            error=None if probe_reachable is not False else probe_error,
+            activation_probe_backend=settings.activation_probe_backend,
+            probe_bank_reachable=probe_reachable,
+            probe_bank_error=probe_error,
+            probe_bank_enabled_risks=enabled_risks,
         )
     except Exception as error:
         return HealthResponse(
@@ -335,6 +380,10 @@ async def health() -> HealthResponse:
             vllm_model=settings.vllm_model,
             vllm_reachable=False,
             error=str(error),
+            activation_probe_backend=settings.activation_probe_backend,
+            probe_bank_reachable=probe_reachable,
+            probe_bank_error=probe_error,
+            probe_bank_enabled_risks=enabled_risks,
         )
 
 
@@ -396,7 +445,6 @@ async def standardized_moderate(request: Request) -> JSONResponse:
     if tools is not None and (not isinstance(tools, list) or any(not isinstance(t, dict) for t in tools)):
         return JSONResponse(status_code=400, content={"error": {"code": "invalid_tools", "message": "tools must be an array of objects."}})
     started = time.perf_counter()
-    detector_model = settings.customer_agent_shadow_model or "qwen3-8b"
     assessment = await probe_bank_guard.moderate(normalized_messages, tools=payload.get("tools"))
     if assessment.error:
         request_id = f"req_{uuid4().hex}"
@@ -416,14 +464,19 @@ async def standardized_moderate(request: Request) -> JSONResponse:
         "id": f"mod_{uuid4().hex}",
         "request_id": request_id,
         "created": int(time.time()),
-        "detector_model": detector_model,
+        "detector_model": bank_result["detector_model"],
         "bank_version": bank_result["bank_version"],
         "action": "block" if flagged else "pass",
         "per_risk": bank_result["per_risk"],
         "per_entry": bank_result["per_entry"],
         "triggered_entries": bank_result["triggered_entries"],
         "usage": {"input_tokens": input_tokens, "billable_tokens": input_tokens, "billable_units": round(input_tokens / 1000, 6), "unit": "1k_input_tokens"},
-        "latency_ms": {**bank_result["latency_ms"], "total": elapsed_ms},
+        # One documented shape for every success path: numbers, with the
+        # detector share and the full request time side by side.
+        "latency_ms": {
+            "detector": _as_millis(bank_result.get("latency_ms")),
+            "total": elapsed_ms,
+        },
     }
     usage_store.append(user=user, request_id=request_id, messages=normalized_messages, tools=tools, result=response)
     return JSONResponse(response, headers={"X-Request-Id": request_id})
@@ -437,8 +490,24 @@ async def inline_probing_info():
 @app.get("/api/guards/activation_probe/info")
 async def activation_probe_info():
     if settings.activation_probe_backend == "probe_bank":
-        return await probe_bank_guard.get_model_info()
-    return await activation_probe_guard.get_model_info()
+        try:
+            return await probe_bank_guard.get_model_info()
+        except Exception as error:
+            # Info is diagnostics only; never let it take the page down.
+            return JSONResponse(status_code=503,
+                                content={"error": "probe_bank_unavailable", "message": str(error)})
+    # The legacy recipe backends were removed; report their absence explicitly
+    # instead of asking a guard that can only fail.
+    return JSONResponse(
+        status_code=503,
+        content={
+            "error": "unsupported_backend",
+            "message": (
+                f"ACTIVATION_PROBE_BACKEND={settings.activation_probe_backend} 已不再支持，"
+                "请使用 probe_bank 或 standalone"
+            ),
+        },
+    )
 
 
 @app.get("/api/audit/experiment")

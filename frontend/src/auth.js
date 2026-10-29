@@ -116,12 +116,17 @@ async function initAccount() {
     event.preventDefault();
     window.parent.postMessage({ type: "developer-center:close" }, window.location.origin);
   });
+  // The page stays hidden while `html.auth-pending` is set (index.html), so a
+  // request that never settles leaves the user on a blank/loading screen. Fail
+  // fast and show the login page instead of a silent spinner.
+  const settle = timeoutSignal(8000);
   try {
-    const me = await request("/api/auth/me");
+    const me = await request("/api/auth/me", { signal: settle.signal });
     document.querySelector("#userLine").textContent = `当前账号：${me.user.email} · ${me.user.role === "admin" ? "开发者 Admin" : "成员"}`;
     const token = sessionStorage.getItem(tokenKey);
     renderToken(token);
   } catch { (embedded ? window.parent : window).location.href = "/login.html"; return; }
+  finally { settle.clear(); }
   document.querySelector("#toggleToken").addEventListener("click", () => {
     tokenVisible = !tokenVisible;
     renderToken(sessionStorage.getItem(tokenKey));
@@ -252,5 +257,36 @@ function shortRequestId(value) {
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (char) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[char]));
 }
+
+function timeoutSignal(milliseconds) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), milliseconds);
+  return { signal: controller.signal, clear: () => window.clearTimeout(timer) };
+}
+
+// Reveal the page and explain a failure instead of leaving the user looking at
+// a spinner. Only real failures call this: a page that finished loading must
+// never claim it timed out.
+function revealConsole(message) {
+  document.documentElement.classList.remove("auth-pending");
+  const existing = document.querySelector("#consoleErrorBanner");
+  if (existing) {
+    existing.textContent = message;
+    return;
+  }
+  const banner = document.createElement("div");
+  banner.id = "consoleErrorBanner";
+  banner.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;padding:10px 14px;"
+    + "background:#fdecea;color:#a63b35;border-bottom:1px solid #f5c6c2;font:13px/1.5 system-ui,sans-serif";
+  banner.textContent = message;
+  document.body.append(banner);
+}
+
+window.addEventListener("error", (event) => {
+  revealConsole(`页面脚本出错：${event.message || event.error || "未知错误"}`);
+});
+window.addEventListener("unhandledrejection", (event) => {
+  revealConsole(`页面脚本出错：${(event.reason && event.reason.message) || event.reason || "未知错误"}`);
+});
 
 initLogin();

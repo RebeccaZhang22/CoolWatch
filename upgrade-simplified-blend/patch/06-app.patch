@@ -1,0 +1,97 @@
+--- a/shadow_server/app.py
++++ b/shadow_server/app.py
+@@ -11,6 +11,7 @@
+ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+ 
+ from .backend import BackendError, InScopeBackend
++from .composer import ComposerConfig
+ from .config import INSCOPE_COMMIT, Settings, validate_model
+ from .probe import Probe
+ from .rendering import render_ids
+@@ -48,6 +49,7 @@
+ def create_app(settings=None, *, tokenizer=None, probe=None, backend=None):
+     """Dependencies can be injected for CPU-only protocol tests."""
+     settings = settings or Settings.from_env()
++    composer = settings.composer
+ 
+     @asynccontextmanager
+     async def lifespan(app):
+@@ -57,14 +59,15 @@
+             from transformers import AutoTokenizer
+             tokenizer = AutoTokenizer.from_pretrained(settings.model_path, local_files_only=True,
+                                                      trust_remote_code=False)
+-        probe = probe or Probe(settings.checkpoint, settings.threshold)
++        # setup 一次加载两支权重与阈值；不逐请求加载。
++        probe = probe or Probe(settings.models_dir, settings.detector_seed, settings.threshold_logit)
+         backend = backend or InScopeBackend(settings)
+         try:
+             yield
+         finally:
+             await backend.close()
+ 
+-    app = FastAPI(title="CoolWatch-server Qwen3-8B-FP8 detector", version="0.2.0", lifespan=lifespan)
++    app = FastAPI(title="CoolWatch-server Qwen3-8B-FP8 detector", version="0.3.0", lifespan=lifespan)
+     inflight = 0
+ 
+     def authenticate(request):
+@@ -74,13 +77,11 @@
+ 
+     async def capture(messages, tools=None):
+         try:
+-            ids = await asyncio.to_thread(render_ids, tokenizer, messages, tools)
++            ids = await asyncio.to_thread(render_ids, tokenizer, messages, tools, composer)
+         except (ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
+             raise HTTPException(422, "Invalid conversation or tool template input") from exc
+         if len(ids) > settings.max_tokens:
+             raise HTTPException(413, f"Input exceeds {settings.max_tokens} tokens; no truncation applied")
+-        if len(ids) < 4:
+-            raise HTTPException(422, "Prompt must contain at least four tokens")
+         try:
+             hidden = await backend.capture(ids, probe.capture_layers)
+         except TimeoutError as exc:
+@@ -119,15 +120,26 @@
+     async def info(request: Request):
+         authenticate(request)
+         return {"model": "Qwen3-8B-FP8", "quantization": "fp8", "risk": "indirect_prompt_injection",
+-                "checkpoint_sha256": probe.sha256, "threshold": probe.threshold,
+-                "checkpoint_threshold": probe.checkpoint_threshold,
+-                "setting": "default", "block_indices": list(probe.block_indices),
+-                "capture_layers": list(probe.capture_layers), "selected_positions": list(probe.selected_positions),
+-                "feature_shape": [1,3,4,4096], "input_dim": probe.input_dim,
++                "detector": "a5_blend_linear_n1024", "detector_seed": probe.seed,
++                "blend_alpha": probe.blend_alpha,
++                "checkpoint_sha256": probe.linear_sha256,
++                "linear_sha256": probe.linear_sha256, "mlp_sha256": probe.mlp_sha256,
++                "threshold": probe.threshold, "threshold_unit": "sigmoid",
++                "threshold_logit": probe.threshold_logit, "threshold_logit_unit": "logit",
++                "setting": "simplified", "composer": composer.describe(),
++                "block_indices": list(probe.block_indices),
++                "capture_layers": list(probe.capture_layers),
++                "selected_positions": list(probe.selected_positions),
++                "feature_shape": list(probe.feature_shape), "input_dim": probe.input_dim,
+                 "feature_quantization": "float8_e5m2", "labeling_protocol": "risk_faced",
+-                "enable_thinking": True, "max_input_tokens": settings.max_tokens,
++                "enable_thinking": composer.enable_thinking, "max_input_tokens": settings.max_tokens,
+                 "inscope_commit": INSCOPE_COMMIT,
+-                "fp8_probe_calibration": "source_A6_validated_runtime_parity_pending"}
++                "fp8_probe_calibration": "source_A6_validated_runtime_parity_pending",
++                "threshold_calibration": "frozen_A5_cell_seed_thresholds_non_merged_config",
++                "threshold_calibration_note": (
++                    "阈值取自冻结的 A5 cell results；未合并配置。"
++                    "实测 FPR 随 split 变化（validation 2.37% / test 1.06% / extra80k 1.86%），"
++                    "不要假定 1% 或跨配置等效。")}
+ 
+     @app.post("/detect")
+     async def detect(request: Request):
+@@ -153,8 +165,10 @@
+                     raise HTTPException(422, "Expected messages list or {messages: [...], tools?: [...]}") from exc
+                 result, tokens = await capture(parsed.messages, parsed.tools)
+                 return {**result, "risk": "indirect_prompt_injection", "model": "Qwen3-8B-FP8",
++                        "setting": "simplified", "detector_seed": probe.seed,
++                        "composer": composer.describe(),
+                         "normalization": {"applied": bool(changes), "changes": changes},
+-                        "checkpoint_sha256": probe.sha256, "input_tokens": tokens,
++                        "checkpoint_sha256": probe.linear_sha256, "input_tokens": tokens,
+                         "request_id": request_id, "latency_ms": round((time.perf_counter() - start) * 1000, 2)}
+         except TimeoutError as exc:
+             raise HTTPException(504, "Detection deadline exceeded") from exc

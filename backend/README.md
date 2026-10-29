@@ -1,6 +1,6 @@
 # ProspectMonitor Backend
 
-FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回护栏检测状态、泄露指标和 RAG Trace。在原有 `/api/chat` 中，Qwen3Guard、Llama Prompt Guard、Suffix Probe（界面名称为 SafeGauge）和易盾在生成前执行；FinVault/系统提示词场景的基于隐藏层的可解释性技术可由 patched vLLM worker 或独立 Transformers 服务执行；间接提示词注入的 Inline Probing 则嵌入新工具返回后的首次真实 assistant generation。这条旧链路中的护栏均不改写模型上下文或输出。
+FastAPI 后端负责接收前端聊天请求、执行 Agent Loop、调用本地 vLLM OpenAI-compatible API，并返回护栏检测状态、泄露指标和 RAG Trace。在原有 `/api/chat` 中，Qwen3Guard、Llama Prompt Guard、Suffix Probe（界面名称为 SafeGauge）和易盾在生成前执行；FinVault/系统提示词场景的InsScope Detect可由 patched vLLM worker 或独立 Transformers 服务执行；间接提示词注入的 Inline Probing 则嵌入新工具返回后的首次真实 assistant generation。这条旧链路中的护栏均不改写模型上下文或输出。
 
 首页演示台使用 `/api/customer-agent/*` API，默认运行航旅客服，也可切换到 `/api/customer-agent/hr/*` 提供的 HR 简历筛选场景。业务模型自主选择工具，Probe Bank 在每轮生成前检查包含工具/RAG 返回的上下文，前端通过 SSE 展示执行阶段、检测结果与等待心跳。HR 工具从合成资料和本地数据库返回确定性结果，金融/航旅演示工具保留模拟响应。场景与启动方式见[项目 README](../README.md) 和 [HR 演示说明](../data/hr_agent/README.md)；金融场景及原有 API 说明见 [Customer Agent 文档](CUSTOMER_AGENT.md)。原有 `/api/chat` 仅供旧审计与回放页面兼容，下文部分护栏说明针对该旧链路。
 
@@ -52,9 +52,9 @@ checkpoint。若融合请求中的某一项失败，聊天路径只对失败项�
 `INLINE_PROBING_TASK=system_prompt_leakage_intent` 和对应的
 `INLINE_PROBING_EXPECTED_CHECKPOINT_ID`。配套的 patched-vLLM 服务和真实权重需要由外部部署提供。
 
-## 基于隐藏层的可解释性技术
+## InsScope Detect
 
-当前使用 Probe Bank，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL=http://127.0.0.1:8302`。默认 `PROBE_BANK_ENABLED_RISKS=ipi`，仅加载和执行 IPI 探针；另外两类权重保留在 `probe/qwen3-8b/`。修改启用范围时，检测服务和 Web 后端应保持一致。可使用[新版请求级激活采集服务](../sglang-activation-runtime/deploy/README.md)，或通过 `vllm_setups/run_probe_bank_qwen3_8b.sh` 启动原有特征提取实现。`standalone` Transformers 后端保留用于旧部署对照。
+当前使用外部 inscope-service，配置 `ACTIVATION_PROBE_BACKEND=probe_bank`、`PROBE_BANK_BASE_URL=http://127.0.0.1:8302` 和与该服务相同的 `PROBE_BANK_API_KEY`。默认 `PROBE_BANK_ENABLED_RISKS=ipi`。Coolwatch 约定每个实例只服务一类风险；检测前会核对 `/info` 的 `risks`，声明不符就失败关闭。仓内 `activation_probe_server.py` / `qwen3_probe_bank_server.py` 是旧实现，接口已不兼容，不能当作这个配置的检测服务。`standalone` Transformers 后端只保留给旧部署对照。
 
 ## Inline Probing
 

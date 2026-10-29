@@ -233,11 +233,39 @@ class CustomerServiceAgent:
             defense_pipeline=list(self._enabled_defenses()),
         )
 
+    async def _probe_health(self) -> tuple[list[str], str | None, bool | None]:
+        """Report which risks detection can actually serve right now.
+
+        The console needs this to explain a refused defended run, so a probe
+        outage is surfaced as its own field instead of being folded into the
+        business-model error string.
+
+        `get_model_info` still answers while only some instances are down, so a
+        reply is not proof of health: detection is fail-closed per enabled risk,
+        which makes any entry in `unavailable` a hard outage for defended runs.
+        """
+        if self.settings.activation_probe_backend != "probe_bank":
+            return [], None, None
+        enabled = list(getattr(self.activation_probe_guard.bank_guard, "enabled_risks", ()))
+        try:
+            info = await self.activation_probe_guard.bank_guard.get_model_info()
+        except Exception as error:
+            return enabled, str(error), False
+        unavailable = list(info.get("unavailable") or [])
+        if unavailable:
+            detail = "; ".join(
+                f"{item.get('risk', '?')}@{item.get('base_url', '?')}: {item.get('error', 'unavailable')}"
+                for item in unavailable
+            )
+            return list(info.get("enabled_risks", enabled)), detail, False
+        return list(info.get("enabled_risks", enabled)), None, True
+
     async def health(self) -> CustomerAgentHealthResponse:
         base_url = self.settings.customer_agent_business_base_url
         shadow_base_url = self.settings.customer_agent_shadow_base_url
         shadow_available: bool | None = None
         shadow_error: str | None = None
+        enabled_risks, probe_error, probe_reachable = await self._probe_health()
         try:
             models = await self.llm_client.list_models(base_url=base_url)
             available = self.settings.customer_agent_model in models
@@ -251,7 +279,9 @@ class CustomerServiceAgent:
                     shadow_available = False
                     shadow_error = str(error)
             return CustomerAgentHealthResponse(
-                status="ready" if available else "degraded",
+                # A healthy business model with dead detection is not "ready":
+                # defended runs would all be refused, so say so up front.
+                status="degraded" if (not available or probe_reachable is False) else "ready",
                 base_url=base_url,
                 model=self.settings.customer_agent_model,
                 model_available=available,
@@ -262,6 +292,9 @@ class CustomerServiceAgent:
                 shadow_available=shadow_available,
                 shadow_error=shadow_error,
                 error=None if available else f"模型列表中没有 {self.settings.customer_agent_model}",
+                enabled_risks=enabled_risks,
+                probe_reachable=probe_reachable,
+                probe_error=probe_error,
             )
         except Exception as error:
             return CustomerAgentHealthResponse(
@@ -276,6 +309,9 @@ class CustomerServiceAgent:
                 shadow_available=False if self._dual_model_enabled else None,
                 shadow_error=shadow_error,
                 error=str(error),
+                enabled_risks=enabled_risks,
+                probe_reachable=probe_reachable,
+                probe_error=probe_error,
             )
 
     def reset_session(self, session_id: str) -> int:
@@ -301,6 +337,22 @@ class CustomerServiceAgent:
             for defense_id in request.defenses
             if defense_id in enabled_defenses
         ]
+        if request.defense_mode == "defended":
+            # A defended request must actually run every method it asked for.
+            # Dropping an unavailable method here used to continue business with
+            # a "defended" label and no detection, which reads as safe to the
+            # caller. Refuse instead; the operator picks a mode or fixes config.
+            dropped = sorted(set(request.defenses) - enabled_defenses)
+            if dropped:
+                raise RuntimeError(
+                    "以下防护方法当前不可用，已拒绝在防护模式下继续执行："
+                    + "、".join(dropped)
+                    + "。请检查探针服务配置，或显式使用 baseline 模式。"
+                )
+            if not requested_defenses:
+                raise RuntimeError(
+                    "防护模式没有可执行的检测方法，已拒绝继续执行；请选择至少一个已启用的防护方法。"
+                )
         selected = (
             set(requested_defenses)
             if request.defense_mode == "defended"
@@ -362,6 +414,10 @@ class CustomerServiceAgent:
         if bank_unavailable and request.defense_mode == "defended":
             # Overload/timeouts are unavailable verdicts, never safe verdicts.
             raise RuntimeError("风险检测暂不可用，本次业务执行已暂停，请稍后重试。")
+        if input_guard_failed and request.defense_mode == "defended":
+            # Same rule for every other detector: an unavailable verdict is not
+            # a pass. Previously only the probe bank path stopped here.
+            raise RuntimeError("防护方法运行异常，本次业务执行已暂停，请稍后重试。")
         input_guards_enabled = bool(selected)
         completed_signals = _complete_signals(signals, requested_defenses)
         stage_trace.append(
@@ -1854,7 +1910,7 @@ def _activation_signal(assessment: Any) -> CustomerAgentDefenseSignal:
         score=assessment.score,
         threshold=assessment.threshold,
         latency_ms=assessment.latency_ms,
-        detail="基于隐藏层的可解释性技术命中窃密意图，风险已记录。" if risky else "基于隐藏层的可解释性技术未命中。",
+        detail="InsScope Detect命中窃密意图，风险已记录。" if risky else "InsScope Detect未命中。",
         raw_output=assessment.raw_output,
         metadata={
             "protocol": assessment.protocol,

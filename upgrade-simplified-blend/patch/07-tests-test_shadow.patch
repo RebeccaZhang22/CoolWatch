@@ -1,0 +1,253 @@
+--- a/tests/test_shadow.py
++++ b/tests/test_shadow.py
+@@ -15,9 +15,9 @@
+ from shadow_server.probe import Probe
+ from shadow_server.rendering import render_ids
+ 
+-CHECKPOINT = ROOT / 'checkpoints/best_layers_08_16_24.pt'
++MODELS = str(ROOT / 'checkpoints/blend')
+ LAYERS = (9,17,25)
+-POSITIONS = (0,1,2,3)
++POSITIONS = (0,)
+ 
+ 
+ def transport(handler):
+@@ -29,11 +29,11 @@
+     return httpx.MockTransport(route)
+ 
+ 
+-def record(value=0.0, position=3):
++def record(value=0.0, position=0):
+     return {'meta_info': {'features': [{
+         'schema_version': 'inscope.feature_capture.v1', 'layer': layer,
+-        'site': 'block_output', 'positions': list(range(position-3,position+1)), 'dtype': 'bfloat16',
+-        'shape': [4, 4096], 'encoding': 'float_list', 'data': [[value] * 4096 for _ in range(4)],
++        'site': 'block_output', 'positions': [position], 'dtype': 'bfloat16',
++        'shape': [1, 4096], 'encoding': 'float_list', 'data': [[value] * 4096],
+     } for layer in LAYERS]}}
+ 
+ 
+@@ -49,57 +49,69 @@
+ 
+ class ProbeTests(unittest.TestCase):
+     def test_concat_axis_order_and_e5m2_roundtrip(self):
+-        p=Probe(CHECKPOINT)
+-        raw=torch.stack([torch.stack([torch.full((4096,), 2*(l*4+t)+1.125) for t in range(4)]) for l in range(3)]).unsqueeze(0)
+-        expected=raw.to(torch.bfloat16).to(torch.float8_e5m2).float().reshape(1,49152)
+-        actual=p.prepare_features(raw)
+-        torch.testing.assert_close(actual,expected,rtol=0,atol=0)
+-        self.assertFalse(torch.equal(actual,raw.reshape(1,49152)))
+-        self.assertFalse(torch.equal(actual,raw.transpose(1,2).contiguous().to(torch.bfloat16).to(torch.float8_e5m2).float().reshape(1,49152)))
+-        for threshold in (0.5,0.91):
+-            with self.assertRaisesRegex(ValueError,'fixed threshold'):
+-                Probe(CHECKPOINT,threshold)
++        p = Probe(MODELS, seed=42)
++        raw = torch.stack([torch.stack([torch.full((4096,), 2*(l+t)+1.125)
++                                        for t in range(1)]) for l in range(3)]).unsqueeze(0)
++        expected = raw.to(torch.bfloat16).to(torch.float8_e5m2).float().reshape(1,12288)
++        actual = p.prepare_features(raw)
++        torch.testing.assert_close(actual, expected, rtol=0, atol=0)
++        self.assertFalse(torch.equal(actual, raw.reshape(1,12288)))
+         with self.assertRaisesRegex(ValueError,'E5M2'):
+-            p.prepare_features(torch.full((1,3,4,4096),1e10))
+-
+-    def test_original_checkpoint_math_and_threshold(self):
+-        probe = Probe(CHECKPOINT)
+-        ck = torch.load(CHECKPOINT, map_location='cpu', weights_only=True)
+-        state = ck['model_state_dict']
+-        hidden = torch.linspace(-7, 7, 49152).reshape(1, 3, 4, 4096)
+-        quantized = hidden.to(torch.bfloat16).to(torch.float8_e5m2).float().reshape(1,49152)
+-        reference = torch.nn.functional.linear((quantized - state['input_mean']) / state['input_std'],
+-                                              state['probe.weight'], state['probe.bias']).item()
++            p.prepare_features(torch.full((1,3,1,4096),1e10))
++        # 旧 last4 形状必须被拒绝，不能静默按新形状处理
++        with self.assertRaises(ValueError):
++            p.prepare_features(torch.zeros(1,3,4,4096))
++
++    def test_blend_math_and_seed_threshold(self):
++        probe = Probe(MODELS, seed=42)
++        linear = torch.load(probe.linear_path, map_location='cpu', weights_only=True)
++        mlp = torch.load(probe.mlp_path, map_location='cpu', weights_only=True)
++        hidden = torch.linspace(-7, 7, 12288).reshape(1, 3, 1, 4096)
++        quantized = hidden.to(torch.bfloat16).to(torch.float8_e5m2).float().reshape(1,12288)
++        normalized = (quantized - linear['mean']) / linear['std']
++        z_linear = torch.nn.functional.linear(normalized, linear['model_state_dict']['0.weight'],
++                                              linear['model_state_dict']['0.bias']).item()
++        z_mlp = torch.nn.Sequential(
++            torch.nn.Linear(12288,1024), torch.nn.LayerNorm(1024), torch.nn.ReLU(),
++            torch.nn.Dropout(0.1), torch.nn.Linear(1024,1))
++        z_mlp.load_state_dict(mlp['model_state_dict'])
++        z_mlp.eval()
++        with torch.no_grad():
++            z_mlp = z_mlp(normalized).item()
++        reference = 0.5 * z_linear + 0.5 * z_mlp
+         result = probe.score(hidden)
+         self.assertAlmostEqual(result['logit'], reference, places=4)
+-        self.assertEqual(result['threshold'], 0.9)
+-        self.assertEqual(result['flagged'], result['score'] >= 0.9)
+-        self.assertEqual(Probe(CHECKPOINT, 0.9).threshold, 0.9)
+-
+-    def test_checkpoint_tampering_and_invalid_features(self):
+-        with tempfile.NamedTemporaryFile() as f:
+-            f.write(CHECKPOINT.read_bytes() + b'x')
+-            f.flush()
+-            with self.assertRaisesRegex(ValueError, 'SHA256'):
+-                Probe(f.name)
+-        probe = Probe(CHECKPOINT)
+-        for hidden in [torch.zeros(4096), torch.full((1,3,4,4096), float('nan'))]:
++        # 阈值按 seed 走 logit 空间，flagged 用 logit 比较而不是 sigmoid
++        self.assertEqual(result['threshold_logit'], 2.3247954845428467)
++        self.assertAlmostEqual(result['threshold'], 0.9109098766012635, places=6)
++        self.assertEqual(result['flagged'], result['logit'] >= result['threshold_logit'])
++        self.assertEqual(Probe(MODELS, seed=43).threshold_logit, 1.7843475341796875)
++        self.assertEqual(Probe(MODELS, seed=44).threshold_logit, 2.0362582206726074)
++
++    def test_missing_arm_and_invalid_features(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            with self.assertRaisesRegex(ValueError, 'Missing linear checkpoint'):
++                Probe(tmp, seed=42)
++        probe = Probe(MODELS, seed=42)
++        for hidden in [torch.zeros(4096), torch.full((1,3,1,4096), float('nan'))]:
+             with self.assertRaises(ValueError):
+                 probe.score(hidden)
+ 
+ 
+ class RenderingTests(unittest.TestCase):
+-    def test_default_keeps_all_history_reasoning_and_observations(self):
++    def test_simplified_keeps_opening_and_last_turn_only(self):
+         messages=[{'role':'user','content':'original task'},
+-                  {'role':'assistant','content':'<think>old thought</think>action A','reasoning':'old reason'},
++                  {'role':'assistant','content':'<think\nold thought\n</think>\naction A','reasoning':'old reason'},
+                   {'role':'user','content':'observation A'},
+                   {'role':'assistant','content':'action B','reasoning_content':'new reason'},
+                   {'role':'user','content':'observation B'}]
+         tokenizer=Tokenizer()
+         render_ids(tokenizer,messages,[])
+-        self.assertEqual(len(tokenizer.messages),5)
+-        self.assertEqual(tokenizer.messages[1]['content'],messages[1]['content'])
+-        self.assertEqual(tokenizer.messages[1]['reasoning_content'],'old reason')
++        # 开场 user + 最后一个完整 turn（assistant 及其观察）；更早动作被裁掉
++        self.assertEqual([m['role'] for m in tokenizer.messages],['user','assistant','user'])
++        self.assertEqual(tokenizer.messages[0]['content'],'original task')
++        self.assertEqual(tokenizer.messages[1]['content'],'action B')
++        self.assertNotIn('reasoning_content',tokenizer.messages[1])
+         self.assertEqual(tokenizer.messages[-1]['content'],'observation B')
+ 
+     def test_developer_adaptation_preserves_input_and_order(self):
+@@ -121,11 +133,13 @@
+         tokenizer = Tokenizer()
+         self.assertEqual(render_ids(tokenizer, messages), [11,12,13,14])
+         self.assertEqual(messages, original)
+-        self.assertEqual(tokenizer.messages[0]['tool_calls'], [{'name':'search','arguments':{'q':'hello'}}])
++        self.assertEqual(tokenizer.messages[0]['tool_calls'],
++                         [{'function':{'name':'search','arguments':{'q':'hello'}},'id':'call_1'}])
+         self.assertTrue(tokenizer.kwargs['enable_thinking'])
+         self.assertTrue(tokenizer.kwargs['add_generation_prompt'])
+-        self.assertFalse(tokenizer.encoding_kwargs['truncation'])
+         self.assertFalse(tokenizer.encoding_kwargs['add_special_tokens'])
++        # composer 不传 truncation：超长由 app 层以 413 拒绝，不静默截断
++        self.assertIn(tokenizer.encoding_kwargs.get('truncation'), (None, False))
+ 
+ 
+ class BackendTests(unittest.IsolatedAsyncioTestCase):
+@@ -151,12 +165,12 @@
+             self.assertEqual(payload['input_ids'], [11,12,13,14])
+             self.assertEqual(payload['sampling_params']['max_new_tokens'], 0)
+             self.assertEqual(payload['feature_capture']['layers'], list(LAYERS))
+-            self.assertEqual(payload['feature_capture']['positions'], {'mode':'explicit','index':[-4,-3,-2,-1]})
+-            return httpx.Response(200, json=record())
++            self.assertEqual(payload['feature_capture']['positions'], {'mode':'explicit','index':[-1]})
++            return httpx.Response(200, json=record(position=len(payload['input_ids'])-1))
+         client = httpx.AsyncClient(base_url='http://backend', transport=transport(handler))
+         backend = InScopeBackend(Settings(model_path='unused', api_key='key'), client)
+         try:
+-            self.assertEqual((await backend.capture([11,12,13,14],LAYERS)).shape, (1,3,4,4096))
++            self.assertEqual((await backend.capture([11,12,13,14],LAYERS)).shape, (1,3,1,4096))
+         finally:
+             await backend.close()
+ 
+@@ -178,7 +192,8 @@
+ 
+     def test_reject_wrong_layer_position_schema_shape_and_nonfinite(self):
+         for field, value in [('layer',22),('positions',[1]),('schema_version',1),
+-                             ('shape',[4096]),('data',[[0]*4095]),('data',[[float('inf')]*4096])]:
++                             ('shape',[4096]),('data',[[0]*4095]),('data',[[float('inf')]*4096]),
++                             ('shape',[4,4096]),('data',[[0]*4096 for _ in range(4)])]:
+             bad = record()
+             bad['meta_info']['features'][0][field] = value
+             with self.subTest(field=field), self.assertRaises(BackendError):
+@@ -211,7 +226,7 @@
+             return httpx.Response(200, json=record(position=len(payload['input_ids'])-1))
+         config = Settings(model_path='unused', api_key='test-key', **settings)
+         http = httpx.AsyncClient(base_url='http://backend', transport=transport(handler or default_handler))
+-        return TestClient(create_app(config, tokenizer=Tokenizer(), probe=Probe(CHECKPOINT, config.threshold),
++        return TestClient(create_app(config, tokenizer=Tokenizer(), probe=Probe(MODELS, config.detector_seed, config.threshold_logit),
+                                      backend=InScopeBackend(config,http)))
+ 
+     def test_message_list_and_object_real_probe_end_to_end(self):
+@@ -236,7 +251,7 @@
+             self.assertEqual(c.get('/info').status_code,401)
+             for payload in [[],{},[{'role':'bad','content':'x'}],
+                             [{'role':'user','content':[{'type':'image_url'}]}],
+-                            {'messages':[{'role':'user','content':'x'}],'threshold':0.1},
++                            {'messages':[{'role':'user','content':'x'}],'detector_seed':43},
+                             [{'role':'assistant','tool_calls':['bad']}]]:
+                 self.assertEqual(c.post('/detect',headers=headers,json=payload).status_code,422)
+             self.assertEqual(c.post('/detect',headers=headers,content='{bad').status_code,422)
+@@ -258,9 +273,9 @@
+         async def handler(request):
+             i=json.loads(request.content)['input_ids'][0]
+             await asyncio.sleep((5-i)*0.005)
+-            return httpx.Response(200,json=record(value=i/10))
++            return httpx.Response(200,json=record(value=i/10,position=len(json.loads(request.content)['input_ids'])-1))
+         config=Settings(model_path='unused',api_key='key',max_inflight=8)
+-        probe=Probe(CHECKPOINT)
++        probe=Probe(MODELS)
+         upstream=httpx.AsyncClient(base_url='http://backend',transport=transport(handler))
+         app=create_app(config,tokenizer=PerRequestTokenizer(),probe=probe,backend=InScopeBackend(config,upstream))
+         async with app.router.lifespan_context(app):
+@@ -269,7 +284,7 @@
+                 results=await asyncio.gather(*[c.post('/detect',json=[{'role':'user','content':str(i)}]) for i in range(5)])
+         for i,r in enumerate(results):
+             self.assertEqual(r.status_code,200,r.text)
+-            self.assertAlmostEqual(r.json()['logit'],probe.score(torch.full((1,3,4,4096),i/10))['logit'])
++            self.assertAlmostEqual(r.json()['logit'],probe.score(torch.full((1,3,1,4096),i/10))['logit'])
+         self.assertEqual(len({r.json()['request_id'] for r in results}),5)
+ 
+     async def test_overload_and_timeout_release_capacity(self):
+@@ -278,10 +293,10 @@
+         async def handler(request):
+             entered.set()
+             await release.wait()
+-            return httpx.Response(200,json=record())
++            return httpx.Response(200,json=record(position=len(json.loads(request.content)['input_ids'])-1))
+         config=Settings(model_path='unused',api_key='key',max_inflight=1,timeout=0.2)
+         upstream=httpx.AsyncClient(base_url='http://backend',transport=transport(handler))
+-        app=create_app(config,tokenizer=Tokenizer(),probe=Probe(CHECKPOINT),backend=InScopeBackend(config,upstream))
++        app=create_app(config,tokenizer=Tokenizer(),probe=Probe(MODELS),backend=InScopeBackend(config,upstream))
+         async with app.router.lifespan_context(app):
+             async with httpx.AsyncClient(base_url='http://api',headers={'Authorization':'Bearer key'},
+                                          transport=httpx.ASGITransport(app=app)) as c:
+@@ -295,11 +310,19 @@
+ 
+ 
+ class ModelConfigTests(unittest.TestCase):
+-    def test_handoff_budget_and_fixed_threshold(self):
+-        self.assertEqual(Settings(model_path='unused',api_key='key').max_tokens,40959)
+-        for options in ({'max_tokens':40960},{'max_tokens':3},{'threshold':0.5}):
++    def test_handoff_budget_and_seed_threshold(self):
++        settings = Settings(model_path='unused',api_key='key')
++        self.assertEqual(settings.max_tokens,40959)
++        self.assertEqual(settings.detector_seed,42)
++        self.assertEqual(settings.composer.selected_positions,(-1,))
++        for options in ({'max_tokens':40960},{'max_tokens':3},{'max_inflight':0}):
+             with self.assertRaises(ValueError):
+                 Settings(model_path='unused',api_key='key',**options)
++        # 没有标定过的 seed 必须显式给阈值，不能继承 42 的
++        with self.assertRaises(ValueError):
++            Settings(model_path='unused',api_key='key',detector_seed=99)
++        self.assertEqual(Settings(model_path='unused',api_key='key',detector_seed=99,
++                                  threshold_logit=1.0).threshold_logit,1.0)
+ 
+     def test_fp8_required(self):
+         config={'model_type':'qwen3','hidden_size':4096,'num_hidden_layers':36,

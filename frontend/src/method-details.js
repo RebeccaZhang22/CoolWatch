@@ -19,7 +19,7 @@ export const FINVAULT_METHOD_DETAILS = {
     ],
   },
   activation_probe: {
-    title: "基于隐藏层的可解释性技术（我们的产品）",
+    title: "InsScope Detect",
     type: "Linear Activation Probe",
     summary: "直接读取目标模型在生成回复前的内部 residual-stream 激活，用一个轻量线性分类器识别高风险金融操作意图。",
     input: "累计到当前轮的完整对话",
